@@ -326,6 +326,7 @@ class ChurchMobileApi(http.Controller):
                 'profession': member.profession or '',
                 'marital_status': member.marital_status,
                 'member_type': member.member_type,
+                'salvation_date': str(member.salvation_date) if member.salvation_date else '',
                 'district_id': member.district_id.id if member.district_id else False,
                 'prayer_cell_id': member.prayer_cell_id.id if member.prayer_cell_id else False,
                 'age_group_id': member.age_group_id.id if member.age_group_id else False,
@@ -351,7 +352,7 @@ class ChurchMobileApi(http.Controller):
             return {'status': 'error', 'message': 'Membre non trouvé'}
 
         allowed_fields = [
-            'name', 'first_name', 'phone', 'gender', 'date_of_birth',
+            'name', 'first_name', 'phone', 'gender', 'date_of_birth', 'salvation_date',
             'address', 'profession', 'marital_status', 'member_type', 'notes',
         ]
         vals = {}

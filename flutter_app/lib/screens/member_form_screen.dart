@@ -25,6 +25,7 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
   String _memberType = 'new';
   String _maritalStatus = 'single';
   DateTime? _dob;
+  DateTime? _salvationDate;
 
   List<dynamic> _districts = [];
   List<dynamic> _prayerCells = [];
@@ -68,8 +69,11 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
         _maritalStatus = member['marital_status'] ?? 'single';
         _districtId = member['district_id'] is List ? member['district_id'][0] : member['district_id'];
         _prayerCellId = member['prayer_cell_id'] is List ? member['prayer_cell_id'][0] : member['prayer_cell_id'];
-        if (member['date_of_birth'] != null) {
+        if (member['date_of_birth'] != null && member['date_of_birth'].toString().isNotEmpty) {
           _dob = DateTime.tryParse(member['date_of_birth']);
+        }
+        if (member['salvation_date'] != null && member['salvation_date'].toString().isNotEmpty) {
+          _salvationDate = DateTime.tryParse(member['salvation_date']);
         }
       }
     }
@@ -93,6 +97,7 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
       'district_id': _districtId,
       'prayer_cell_id': _prayerCellId,
       if (_dob != null) 'date_of_birth': _dob!.toIso8601String().split('T')[0],
+      if (_salvationDate != null) 'salvation_date': _salvationDate!.toIso8601String().split('T')[0],
     };
 
     final service = context.read<ChurchService>();
@@ -121,15 +126,24 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
     }
   }
 
-  Future<void> _pickDate() async {
+  Future<void> _pickDate({required bool isSalvation}) async {
+    final initial = isSalvation ? (_salvationDate ?? DateTime.now()) : (_dob ?? DateTime(1990));
     final date = await showDatePicker(
       context: context,
-      initialDate: _dob ?? DateTime(1990),
+      initialDate: initial,
       firstDate: DateTime(1920),
       lastDate: DateTime.now(),
       locale: const Locale('fr'),
     );
-    if (date != null) setState(() => _dob = date);
+    if (date != null) {
+      setState(() {
+        if (isSalvation) {
+          _salvationDate = date;
+        } else {
+          _dob = date;
+        }
+      });
+    }
   }
 
   @override
@@ -173,15 +187,51 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
                     onChanged: (v) => setState(() => _gender = v ?? 'male'),
                   ),
                   const SizedBox(height: 12),
-                  InkWell(
-                    onTap: _pickDate,
-                    child: InputDecorator(
-                      decoration: const InputDecoration(
-                        labelText: 'Date de Naissance',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.cake),
+                  GestureDetector(
+                    onTap: () => _pickDate(isSalvation: false),
+                    child: AbsorbPointer(
+                      child: TextFormField(
+                        decoration: InputDecoration(
+                          labelText: 'Date de Naissance',
+                          border: const OutlineInputBorder(),
+                          prefixIcon: const Icon(Icons.cake),
+                          suffixIcon: _dob != null
+                              ? IconButton(
+                                  icon: const Icon(Icons.clear, size: 18),
+                                  onPressed: () => setState(() => _dob = null),
+                                )
+                              : const Icon(Icons.calendar_today),
+                        ),
+                        controller: TextEditingController(
+                          text: _dob != null
+                              ? '${_dob!.day.toString().padLeft(2, '0')}/${_dob!.month.toString().padLeft(2, '0')}/${_dob!.year}'
+                              : '',
+                        ),
                       ),
-                      child: Text(_dob != null ? '${_dob!.day}/${_dob!.month}/${_dob!.year}' : 'Sélectionner'),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  GestureDetector(
+                    onTap: () => _pickDate(isSalvation: true),
+                    child: AbsorbPointer(
+                      child: TextFormField(
+                        decoration: InputDecoration(
+                          labelText: 'Date de Salut',
+                          border: const OutlineInputBorder(),
+                          prefixIcon: const Icon(Icons.favorite),
+                          suffixIcon: _salvationDate != null
+                              ? IconButton(
+                                  icon: const Icon(Icons.clear, size: 18),
+                                  onPressed: () => setState(() => _salvationDate = null),
+                                )
+                              : const Icon(Icons.calendar_today),
+                        ),
+                        controller: TextEditingController(
+                          text: _salvationDate != null
+                              ? '${_salvationDate!.day.toString().padLeft(2, '0')}/${_salvationDate!.month.toString().padLeft(2, '0')}/${_salvationDate!.year}'
+                              : '',
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 12),
