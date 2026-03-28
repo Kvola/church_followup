@@ -136,12 +136,14 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text(_isEdit ? 'Modifier Membre' : 'Nouveau Membre')),
-      body: _loading
+      body: SafeArea(
+        child: _loading
           ? const Center(child: CircularProgressIndicator())
           : Form(
               key: _formKey,
               child: ListView(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
                 children: [
                   TextFormField(
                     controller: _nameCtrl,
@@ -238,16 +240,21 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
                     onChanged: (v) => setState(() => _prayerCellId = v),
                   ),
                   const SizedBox(height: 24),
-                  FilledButton.icon(
-                    onPressed: _saving ? null : _save,
-                    icon: _saving
-                        ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                        : const Icon(Icons.save),
-                    label: Text(_isEdit ? 'Mettre à jour' : 'Créer le Membre'),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: FilledButton.icon(
+                      onPressed: _saving ? null : _save,
+                      icon: _saving
+                          ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                          : const Icon(Icons.save),
+                      label: Text(_isEdit ? 'Mettre à jour' : 'Créer le Membre'),
+                    ),
                   ),
                 ],
               ),
             ),
+      ),
     );
   }
 }

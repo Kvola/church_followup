@@ -207,25 +207,27 @@ class _FollowupDetailScreenState extends State<FollowupDetailScreen> {
       builder: (_) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
           title: const Text('Intégration'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('Sélectionnez la cellule et le groupe pour l\'intégration.'),
-              const SizedBox(height: 16),
-              DropdownButtonFormField<int>(
-                value: selectedCell,
-                decoration: const InputDecoration(labelText: 'Cellule de prière *', border: OutlineInputBorder()),
-                items: cells.map<DropdownMenuItem<int>>((c) => DropdownMenuItem(value: c['id'] as int, child: Text(c['name'] ?? ''))).toList(),
-                onChanged: (v) => setDialogState(() => selectedCell = v),
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<int>(
-                value: selectedGroup,
-                decoration: const InputDecoration(labelText: 'Groupe d\'âge *', border: OutlineInputBorder()),
-                items: groups.map<DropdownMenuItem<int>>((g) => DropdownMenuItem(value: g['id'] as int, child: Text(g['name'] ?? ''))).toList(),
-                onChanged: (v) => setDialogState(() => selectedGroup = v),
-              ),
-            ],
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('Sélectionnez la cellule et le groupe pour l\'intégration.'),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<int>(
+                  value: selectedCell,
+                  decoration: const InputDecoration(labelText: 'Cellule de prière *', border: OutlineInputBorder()),
+                  items: cells.map<DropdownMenuItem<int>>((c) => DropdownMenuItem(value: c['id'] as int, child: Text(c['name'] ?? ''))).toList(),
+                  onChanged: (v) => setDialogState(() => selectedCell = v),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<int>(
+                  value: selectedGroup,
+                  decoration: const InputDecoration(labelText: 'Groupe d\'âge *', border: OutlineInputBorder()),
+                  items: groups.map<DropdownMenuItem<int>>((g) => DropdownMenuItem(value: g['id'] as int, child: Text(g['name'] ?? ''))).toList(),
+                  onChanged: (v) => setDialogState(() => selectedGroup = v),
+                ),
+              ],
+            ),
           ),
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Annuler')),

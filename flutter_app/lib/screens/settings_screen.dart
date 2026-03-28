@@ -11,8 +11,9 @@ class SettingsScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Paramètres')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.all(16),
         children: [
           Card(
             child: Padding(
@@ -94,6 +95,7 @@ class SettingsScreen extends StatelessWidget {
             style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.red)),
           ),
         ],
+      ),
       ),
     );
   }

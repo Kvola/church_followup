@@ -72,12 +72,14 @@ class _FollowupFormScreenState extends State<FollowupFormScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Nouveau Suivi')),
-      body: _loading
+      body: SafeArea(
+        child: _loading
           ? const Center(child: CircularProgressIndicator())
           : Form(
               key: _formKey,
               child: ListView(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
                 children: [
                   DropdownButtonFormField<int>(
                     value: _memberId,
@@ -126,16 +128,21 @@ class _FollowupFormScreenState extends State<FollowupFormScreen> {
                     onChanged: (v) => setState(() => _totalWeeks = v ?? 4),
                   ),
                   const SizedBox(height: 32),
-                  FilledButton.icon(
-                    onPressed: _saving ? null : _save,
-                    icon: _saving
-                        ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                        : const Icon(Icons.save),
-                    label: const Text('Créer le Suivi'),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: FilledButton.icon(
+                      onPressed: _saving ? null : _save,
+                      icon: _saving
+                          ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                          : const Icon(Icons.save),
+                      label: const Text('Créer le Suivi'),
+                    ),
                   ),
                 ],
               ),
             ),
+      ),
     );
   }
 }

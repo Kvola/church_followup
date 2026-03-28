@@ -96,49 +96,59 @@ class ChurchMobileApi(http.Controller):
         if not user:
             return {'status': 'error', 'message': 'Non authentifié'}
 
-        church_id = user.church_id.id
-        env = request.env.sudo()
+        try:
+            church_id = user.church_id.id
+            church_name = user.church_id.name
+            env = request.env.sudo()
 
-        followups = env['church.followup'].search([('church_id', '=', church_id)])
-        evangelists = env['church.evangelist'].search([('church_id', '=', church_id)])
-        members = env['church.member'].search([('church_id', '=', church_id)])
+            followups = env['church.followup'].search([('church_id', '=', church_id)])
+            evangelists = env['church.evangelist'].search([('church_id', '=', church_id)])
+            members = env['church.member'].search([('church_id', '=', church_id)])
+            cells = env['church.prayer.cell'].search([('church_id', '=', church_id)])
+            groups = env['church.age.group'].search([('church_id', '=', church_id)])
 
-        active_followups = followups.filtered(lambda f: f.state == 'in_progress')
-        integrated = followups.filtered(lambda f: f.state == 'integrated')
-        abandoned = followups.filtered(lambda f: f.state == 'abandoned')
+            active_followups = followups.filtered(lambda f: f.state == 'in_progress')
+            integrated = followups.filtered(lambda f: f.state == 'integrated')
+            abandoned = followups.filtered(lambda f: f.state == 'abandoned')
 
-        # Stats par évangéliste
-        evangelist_stats = []
-        for ev in evangelists:
-            ev_followups = followups.filtered(lambda f: f.evangelist_id.id == ev.id)
-            ev_integrated = ev_followups.filtered(lambda f: f.state == 'integrated')
-            ev_active = ev_followups.filtered(lambda f: f.state == 'in_progress')
-            completed = len(ev_followups.filtered(lambda f: f.state in ('integrated', 'abandoned')))
-            rate = (len(ev_integrated) / completed * 100) if completed else 0
+            # Stats par évangéliste
+            evangelist_stats = []
+            for ev in evangelists:
+                ev_followups = followups.filtered(lambda f: f.evangelist_id.id == ev.id)
+                ev_integrated = ev_followups.filtered(lambda f: f.state == 'integrated')
+                ev_active = ev_followups.filtered(lambda f: f.state == 'in_progress')
+                completed = len(ev_followups.filtered(lambda f: f.state in ('integrated', 'abandoned')))
+                rate = (len(ev_integrated) / completed * 100) if completed else 0
 
-            evangelist_stats.append({
-                'id': ev.id,
-                'name': ev.name,
-                'active_count': len(ev_active),
-                'integrated_count': len(ev_integrated),
-                'total_count': len(ev_followups),
-                'integration_rate': round(rate, 1),
-            })
+                evangelist_stats.append({
+                    'id': ev.id,
+                    'name': ev.name,
+                    'active_count': len(ev_active),
+                    'integrated_count': len(ev_integrated),
+                    'total_count': len(ev_followups),
+                    'integration_rate': round(rate, 1),
+                })
 
-        return {
-            'status': 'success',
-            'dashboard': {
-                'total_members': len(members),
-                'total_evangelists': len(evangelists),
-                'active_followups': len(active_followups),
-                'total_integrated': len(integrated),
-                'total_abandoned': len(abandoned),
-                'integration_rate': round(
-                    len(integrated) / (len(integrated) + len(abandoned)) * 100, 1
-                ) if (len(integrated) + len(abandoned)) > 0 else 0,
-                'evangelist_stats': evangelist_stats,
-            },
-        }
+            return {
+                'status': 'success',
+                'dashboard': {
+                    'church_name': church_name,
+                    'total_members': len(members),
+                    'total_evangelists': len(evangelists),
+                    'total_cells': len(cells),
+                    'total_groups': len(groups),
+                    'active_followups': len(active_followups),
+                    'total_integrated': len(integrated),
+                    'total_abandoned': len(abandoned),
+                    'integration_rate': round(
+                        len(integrated) / (len(integrated) + len(abandoned)) * 100, 1
+                    ) if (len(integrated) + len(abandoned)) > 0 else 0,
+                    'evangelist_stats': evangelist_stats,
+                },
+            }
+        except Exception as e:
+            _logger.exception("Dashboard error")
+            return {'status': 'error', 'message': str(e)}
 
     # ─── Evangelists ──────────────────────────────────────────────────
 

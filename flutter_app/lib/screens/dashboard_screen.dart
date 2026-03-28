@@ -33,9 +33,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) return const Center(child: CircularProgressIndicator());
+    if (_loading) return const SafeArea(child: Center(child: CircularProgressIndicator()));
     if (_error != null || _data == null || _data!.isEmpty) {
-      return Center(
+      return SafeArea(child: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -46,24 +46,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
             FilledButton.icon(onPressed: _load, icon: const Icon(Icons.refresh), label: const Text('Réessayer')),
           ],
         ),
-      );
+      ));
     }
 
     final d = _data!;
-    return RefreshIndicator(
-      onRefresh: _load,
-      child: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Text('Tableau de Bord', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
-          if (d['church_name'] != null) Text(d['church_name'], style: const TextStyle(color: Colors.grey)),
-          const SizedBox(height: 16),
-          _statGrid(d),
-          const SizedBox(height: 16),
-          _followupStats(d),
-          const SizedBox(height: 16),
-          _evangelistPerformance(d),
-        ],
+    return SafeArea(
+      child: RefreshIndicator(
+        onRefresh: _load,
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            Text('Tableau de Bord', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
+            if (d['church_name'] != null) Text(d['church_name'], style: const TextStyle(color: Colors.grey)),
+            const SizedBox(height: 16),
+            _statGrid(d),
+            const SizedBox(height: 16),
+            _followupStats(d),
+            const SizedBox(height: 16),
+            _evangelistPerformance(d),
+          ],
+        ),
       ),
     );
   }

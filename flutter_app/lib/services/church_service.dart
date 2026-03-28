@@ -169,12 +169,13 @@ class ChurchService extends ChangeNotifier {
         await _cacheData('dashboard', result['dashboard']);
         return result['dashboard'];
       }
+      throw Exception(result['message'] ?? 'Erreur serveur');
     } catch (e) {
       debugPrint('getDashboard error: $e');
       final cached = await _getCachedData('dashboard');
       if (cached != null) return Map<String, dynamic>.from(cached);
+      rethrow;
     }
-    return {};
   }
 
   // ─── Evangelists ───────────────────────────────────────────────────
