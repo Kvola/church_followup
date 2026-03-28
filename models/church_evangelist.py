@@ -36,6 +36,8 @@ class ChurchEvangelist(models.Model):
     def create(self, vals_list):
         records = super().create(vals_list)
         for rec in records:
+            if not rec.phone:
+                continue
             # Créer automatiquement le compte mobile
             mobile_user = self.env['church.mobile.user'].create({
                 'name': rec.name,

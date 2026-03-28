@@ -6,6 +6,8 @@
         <field name="arch" type="xml">
             <form string="Rotation cuisine">
                 <header>
+                    <button name="action_done" string="Marquer effectué" type="object" class="btn-primary" invisible="state != 'planned'"/>
+                    <button name="action_cancel" string="Annuler" type="object" class="btn-secondary" invisible="state == 'done'" confirm="Êtes-vous sûr de vouloir annuler cette rotation ?"/>
                     <field name="state" widget="statusbar"/>
                 </header>
                 <sheet>

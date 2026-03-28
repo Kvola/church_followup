@@ -27,9 +27,9 @@ class ChurchFollowup(models.Model):
     ], string='État', default='in_progress', tracking=True, index=True)
 
     # Résultat
-    transferred_to_id = fields.Many2one('church.evangelist', string='Transféré à')
-    target_cell_id = fields.Many2one('church.prayer.cell', string='Cellule cible')
-    target_age_group_id = fields.Many2one('church.age.group', string='Groupe d\'âge cible')
+    transferred_to_id = fields.Many2one('church.evangelist', string='Transféré à', ondelete='set null')
+    target_cell_id = fields.Many2one('church.prayer.cell', string='Cellule cible', ondelete='set null')
+    target_age_group_id = fields.Many2one('church.age.group', string='Groupe d\'âge cible', ondelete='set null')
 
     # Rapports hebdomadaires
     week_ids = fields.One2many('church.followup.week', 'followup_id', string='Rapports hebdomadaires')
@@ -55,8 +55,15 @@ class ChurchFollowup(models.Model):
         for vals in vals_list:
             if vals.get('name', 'Nouveau') == 'Nouveau':
                 vals['name'] = self.env['ir.sequence'].next_by_code('church.followup') or 'Nouveau'
-            # Mettre le membre en suivi
+            # Vérifier qu'il n'y a pas de suivi actif pour ce membre
             if vals.get('member_id'):
+                existing = self.search_count([
+                    ('member_id', '=', vals['member_id']),
+                    ('state', 'in', ('in_progress', 'extended')),
+                ])
+                if existing:
+                    raise ValidationError(_('Un suivi actif existe déjà pour ce membre.'))
+                # Mettre le membre en suivi
                 self.env['church.member'].browse(vals['member_id']).write({'member_type': 'in_followup'})
         return super().create(vals_list)
 

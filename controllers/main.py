@@ -1,8 +1,2 @@
-from odoo import http
-
-
-class ChurchFollowupController(http.Controller):
-
-    @http.route('/church_followup', type='http', auth='public', website=True)
-    def index(self, **kwargs):
-        return http.request.render('church_followup.index', {})
+# This module does not use website routes.
+# All mobile interactions are handled via the JSON-RPC API in mobile_api.py.

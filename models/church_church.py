@@ -30,6 +30,10 @@ class ChurchChurch(models.Model):
     evangelist_count = fields.Integer(compute='_compute_counts', string='Nombre d\'évangélistes')
     cell_count = fields.Integer(compute='_compute_counts', string='Nombre de cellules')
 
+    _sql_constraints = [
+        ('unique_code', 'UNIQUE(code)', 'Le code de l\'église doit être unique.'),
+    ]
+
     @api.depends('member_ids', 'evangelist_ids', 'prayer_cell_ids')
     def _compute_counts(self):
         for rec in self:

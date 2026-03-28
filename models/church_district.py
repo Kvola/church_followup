@@ -14,6 +14,7 @@ class ChurchDistrict(models.Model):
 
     prayer_cell_id = fields.Many2one('church.prayer.cell', string='Cellule de prière', compute='_compute_prayer_cell', store=True)
     member_count = fields.Integer(compute='_compute_member_count', string='Nombre de membres')
+    member_ids = fields.One2many('church.member', 'district_id', string='Membres')
 
     @api.depends('church_id.prayer_cell_ids.district_ids')
     def _compute_prayer_cell(self):
@@ -24,8 +25,7 @@ class ChurchDistrict(models.Model):
             ], limit=1)
             rec.prayer_cell_id = cell.id if cell else False
 
+    @api.depends('member_ids')
     def _compute_member_count(self):
         for rec in self:
-            rec.member_count = self.env['church.member'].search_count([
-                ('district_id', '=', rec.id),
-            ])
+            rec.member_count = len(rec.member_ids)

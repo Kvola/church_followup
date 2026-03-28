@@ -26,9 +26,9 @@ class ChurchMember(models.Model):
 
     # Adresse
     address = fields.Char(string='Lieu d\'habitation')
-    district_id = fields.Many2one('church.district', string='Quartier', tracking=True)
+    district_id = fields.Many2one('church.district', string='Quartier', tracking=True, ondelete='set null')
     city = fields.Char(string='Ville')
-    country_id = fields.Many2one('res.country', string='Pays')
+    country_id = fields.Many2one('res.country', string='Pays', ondelete='set null')
 
     # Église
     church_id = fields.Many2one('church.church', string='Église', required=True, ondelete='cascade', tracking=True)
@@ -51,9 +51,9 @@ class ChurchMember(models.Model):
     ], string='Type', default='new', tracking=True)
 
     # Relations
-    prayer_cell_id = fields.Many2one('church.prayer.cell', string='Cellule de prière', tracking=True)
-    age_group_id = fields.Many2one('church.age.group', string='Groupe d\'âge', tracking=True)
-    evangelist_id = fields.Many2one('church.evangelist', string='Évangéliste référent')
+    prayer_cell_id = fields.Many2one('church.prayer.cell', string='Cellule de prière', tracking=True, ondelete='set null')
+    age_group_id = fields.Many2one('church.age.group', string='Groupe d\'âge', tracking=True, ondelete='set null')
+    evangelist_id = fields.Many2one('church.evangelist', string='Évangéliste référent', ondelete='set null')
 
     # Notes
     notes = fields.Text(string='Notes')

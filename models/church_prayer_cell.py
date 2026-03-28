@@ -1,4 +1,5 @@
 from odoo import api, fields, models, _
+from odoo.exceptions import UserError
 
 
 class ChurchPrayerCell(models.Model):
@@ -54,7 +55,7 @@ class ChurchPrayerCell(models.Model):
         if self.mobile_user_id:
             return
         if not self.leader_phone:
-            return
+            raise UserError(_('Veuillez renseigner le téléphone du responsable avant de créer le compte.'))
         mobile_user = self.env['church.mobile.user'].create({
             'name': self.leader_name or self.name,
             'phone': self.leader_phone,

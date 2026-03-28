@@ -29,6 +29,22 @@ class ChurchFollowupWeek(models.Model):
     # Score calculé
     score = fields.Integer(compute='_compute_score', store=True, string='Score')
 
+    _sql_constraints = [
+        ('unique_followup_week', 'UNIQUE(followup_id, week_number)',
+         'Un rapport pour cette semaine existe déjà.'),
+    ]
+
+    @api.constrains('week_number')
+    def _check_week_number(self):
+        for rec in self:
+            if rec.week_number < 1:
+                raise ValidationError(_('Le numéro de semaine doit être supérieur à 0.'))
+            if rec.followup_id and rec.week_number > rec.followup_id.duration_weeks:
+                raise ValidationError(
+                    _('Le numéro de semaine (%s) dépasse la durée du suivi (%s semaines).')
+                    % (rec.week_number, rec.followup_id.duration_weeks)
+                )
+
     @api.depends('sunday_attendance', 'call_made', 'visit_made', 'spiritual_state')
     def _compute_score(self):
         state_scores = {
@@ -49,14 +65,3 @@ class ChurchFollowupWeek(models.Model):
                 score += 3
             score += state_scores.get(rec.spiritual_state, 0)
             rec.score = score
-
-    @api.constrains('followup_id', 'week_number')
-    def _check_week_unique(self):
-        for rec in self:
-            duplicate = self.search_count([
-                ('followup_id', '=', rec.followup_id.id),
-                ('week_number', '=', rec.week_number),
-                ('id', '!=', rec.id),
-            ])
-            if duplicate:
-                raise ValidationError(_('Un rapport pour la semaine %s existe déjà.') % rec.week_number)

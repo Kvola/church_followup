@@ -60,4 +60,67 @@
         <field name="domain_force">[(1, '=', 1)]</field>
         <field name="groups" eval="[(4, ref('group_church_user'))]"/>
     </record>
+
+    <record id="rule_church_district_global" model="ir.rule">
+        <field name="name">Quartier : accès global</field>
+        <field name="model_id" ref="model_church_district"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="groups" eval="[(4, ref('group_church_user'))]"/>
+    </record>
+
+    <record id="rule_church_prayer_cell_global" model="ir.rule">
+        <field name="name">Cellule de prière : accès global</field>
+        <field name="model_id" ref="model_church_prayer_cell"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="groups" eval="[(4, ref('group_church_user'))]"/>
+    </record>
+
+    <record id="rule_church_age_group_global" model="ir.rule">
+        <field name="name">Groupe d'âge : accès global</field>
+        <field name="model_id" ref="model_church_age_group"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="groups" eval="[(4, ref('group_church_user'))]"/>
+    </record>
+
+    <record id="rule_church_age_range_global" model="ir.rule">
+        <field name="name">Tranche d'âge : accès global</field>
+        <field name="model_id" ref="model_church_age_range"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="groups" eval="[(4, ref('group_church_user'))]"/>
+    </record>
+
+    <record id="rule_church_attendance_sunday_global" model="ir.rule">
+        <field name="name">Présence culte : accès global</field>
+        <field name="model_id" ref="model_church_attendance_sunday"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="groups" eval="[(4, ref('group_church_user'))]"/>
+    </record>
+
+    <record id="rule_church_attendance_cell_global" model="ir.rule">
+        <field name="name">Présence cellule : accès global</field>
+        <field name="model_id" ref="model_church_attendance_cell"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="groups" eval="[(4, ref('group_church_user'))]"/>
+    </record>
+
+    <record id="rule_church_cooking_rotation_global" model="ir.rule">
+        <field name="name">Rotation cuisine : accès global</field>
+        <field name="model_id" ref="model_church_cooking_rotation"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="groups" eval="[(4, ref('group_church_user'))]"/>
+    </record>
+
+    <record id="rule_church_mobile_user_global" model="ir.rule">
+        <field name="name">Utilisateur mobile : accès global</field>
+        <field name="model_id" ref="model_church_mobile_user"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="groups" eval="[(4, ref('group_church_user'))]"/>
+    </record>
+
+    <record id="rule_church_followup_week_global" model="ir.rule">
+        <field name="name">Rapport hebdomadaire : accès global</field>
+        <field name="model_id" ref="model_church_followup_week"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="groups" eval="[(4, ref('group_church_user'))]"/>
+    </record>
 </odoo>

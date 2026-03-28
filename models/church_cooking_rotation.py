@@ -1,5 +1,5 @@
 from odoo import api, fields, models, _
-from odoo.exceptions import ValidationError
+from odoo.exceptions import ValidationError, UserError
 
 
 class ChurchCookingRotation(models.Model):
@@ -8,7 +8,7 @@ class ChurchCookingRotation(models.Model):
     _order = 'date'
 
     church_id = fields.Many2one('church.church', string='Église', required=True, ondelete='cascade')
-    prayer_cell_id = fields.Many2one('church.prayer.cell', string='Cellule responsable', required=True)
+    prayer_cell_id = fields.Many2one('church.prayer.cell', string='Cellule responsable', required=True, ondelete='restrict')
     date = fields.Date(string='Date', required=True)
     description = fields.Char(string='Description', default='Cuisine pour l\'église')
     state = fields.Selection([
@@ -18,13 +18,19 @@ class ChurchCookingRotation(models.Model):
     ], string='État', default='planned')
     notes = fields.Text(string='Notes')
 
-    @api.constrains('church_id', 'date')
-    def _check_rotation_unique(self):
+    _sql_constraints = [
+        ('unique_church_date', 'UNIQUE(church_id, date)',
+         'Une rotation est déjà planifiée pour cette date.'),
+    ]
+
+    def action_done(self):
         for rec in self:
-            duplicate = self.search_count([
-                ('church_id', '=', rec.church_id.id),
-                ('date', '=', rec.date),
-                ('id', '!=', rec.id),
-            ])
-            if duplicate:
-                raise ValidationError(_('Une rotation est déjà planifiée pour cette date.'))
+            if rec.state != 'planned':
+                raise UserError(_('Seules les rotations planifiées peuvent être marquées comme effectuées.'))
+            rec.state = 'done'
+
+    def action_cancel(self):
+        for rec in self:
+            if rec.state == 'done':
+                raise UserError(_('Impossible d\'annuler une rotation déjà effectuée.'))
+            rec.state = 'cancelled'

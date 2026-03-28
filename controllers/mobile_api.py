@@ -1,9 +1,15 @@
 import hashlib
 import logging
+import secrets
+from datetime import timedelta
 from odoo import http, fields, _
 from odoo.http import request
 
 _logger = logging.getLogger(__name__)
+
+# Rate limiting: max attempts per phone
+_MAX_LOGIN_ATTEMPTS = 5
+_LOCKOUT_MINUTES = 15
 
 
 class ChurchMobileApi(http.Controller):
@@ -16,20 +22,44 @@ class ChurchMobileApi(http.Controller):
         """Connexion via téléphone + PIN."""
         phone = kwargs.get('phone', '').strip()
         pin = kwargs.get('pin', '').strip()
-        db = kwargs.get('db', request.db)
 
         if not phone or not pin:
             return {'status': 'error', 'message': 'Téléphone et PIN requis'}
 
         try:
-            user = request.env['church.mobile.user'].sudo().search([
+            MobileUser = request.env['church.mobile.user'].sudo()
+            user = MobileUser.search([
                 ('phone', '=', phone),
-                ('pin', '=', pin),
                 ('active', '=', True),
             ], limit=1)
 
             if not user:
                 return {'status': 'error', 'message': 'Identifiants incorrects'}
+
+            # Rate limiting check
+            now = fields.Datetime.now()
+            if user.login_attempts >= _MAX_LOGIN_ATTEMPTS and user.last_login_attempt:
+                lockout_until = user.last_login_attempt + timedelta(minutes=_LOCKOUT_MINUTES)
+                if now < lockout_until:
+                    return {'status': 'error', 'message': 'Trop de tentatives. Réessayez dans quelques minutes.'}
+                # Lockout expired, reset
+                user.write({'login_attempts': 0})
+
+            # Verify PIN
+            if not user.verify_pin(pin):
+                user.write({
+                    'login_attempts': user.login_attempts + 1,
+                    'last_login_attempt': now,
+                })
+                return {'status': 'error', 'message': 'Identifiants incorrects'}
+
+            # Successful login — reset attempts, generate token
+            token = secrets.token_hex(32)
+            user.write({
+                'login_attempts': 0,
+                'last_login_attempt': now,
+                'token': token,
+            })
 
             # Build user data
             data = {
@@ -48,11 +78,6 @@ class ChurchMobileApi(http.Controller):
             elif user.role == 'group_leader' and user.age_group_id:
                 data['age_group_id'] = user.age_group_id.id
 
-            # Generate a simple token
-            token = hashlib.sha256(
-                f"{user.id}:{user.pin}:{fields.Datetime.now()}".encode()
-            ).hexdigest()
-
             return {
                 'status': 'success',
                 'message': 'Connexion réussie',
@@ -61,19 +86,20 @@ class ChurchMobileApi(http.Controller):
             }
         except Exception as e:
             _logger.exception("Login error")
-            return {'status': 'error', 'message': str(e)}
+            return {'status': 'error', 'message': 'Erreur interne du serveur'}
 
     def _get_mobile_user(self, kwargs):
-        """Helper to get authenticated mobile user."""
+        """Helper to get authenticated mobile user via token."""
         user_id = kwargs.get('user_id')
-        if not user_id:
+        token = kwargs.get('token')
+        if not user_id or not token:
             return None
         try:
             user_id = int(user_id)
         except (ValueError, TypeError):
             return None
         user = request.env['church.mobile.user'].sudo().browse(user_id)
-        if user.exists() and user.active:
+        if user.exists() and user.active and user.token and user.token == token:
             return user
         return None
 
@@ -147,7 +173,7 @@ class ChurchMobileApi(http.Controller):
             }
         except Exception as e:
             _logger.exception("Dashboard error")
-            return {'status': 'error', 'message': str(e)}
+            return {'status': 'error', 'message': 'Erreur lors du chargement du tableau de bord'}
 
     # ─── Evangelists ──────────────────────────────────────────────────
 
@@ -616,7 +642,8 @@ class ChurchMobileApi(http.Controller):
 
             return {'status': 'success', 'message': 'Action effectuée'}
         except Exception as e:
-            return {'status': 'error', 'message': str(e)}
+            _logger.exception("Followup action error: %s", action)
+            return {'status': 'error', 'message': 'Erreur lors de l\'exécution de l\'action'}
 
     # ─── Prayer Cells ─────────────────────────────────────────────────
 
@@ -731,12 +758,16 @@ class ChurchMobileApi(http.Controller):
             ], limit=1)
 
             if not existing:
-                AttSunday.create({
+                member = request.env['church.member'].sudo().browse(mid_int)
+                vals = {
                     'church_id': user.church_id.id,
                     'member_id': mid_int,
                     'date': date,
                     'present': True,
-                })
+                }
+                if member.exists() and member.age_group_id:
+                    vals['age_group_id'] = member.age_group_id.id
+                AttSunday.create(vals)
 
         return {'status': 'success', 'success': True, 'message': 'Présences enregistrées'}
 

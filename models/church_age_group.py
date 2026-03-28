@@ -1,4 +1,5 @@
 from odoo import api, fields, models, _
+from odoo.exceptions import UserError
 
 
 class ChurchAgeGroup(models.Model):
@@ -21,7 +22,7 @@ class ChurchAgeGroup(models.Model):
         ('female', 'Femmes'),
         ('mixed', 'Mixte'),
     ], string='Sexe', required=True)
-    age_range_id = fields.Many2one('church.age.range', string='Tranche d\'âge',
+    age_range_id = fields.Many2one('church.age.range', string='Tranche d\'âge', ondelete='set null',
                                     help='Applicable pour les groupes de mariés')
 
     # Responsable
@@ -56,7 +57,7 @@ class ChurchAgeGroup(models.Model):
         if self.mobile_user_id:
             return
         if not self.leader_phone:
-            return
+            raise UserError(_('Veuillez renseigner le téléphone du responsable avant de créer le compte.'))
         mobile_user = self.env['church.mobile.user'].create({
             'name': self.leader_name or self.name,
             'phone': self.leader_phone,
