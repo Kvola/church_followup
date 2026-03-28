@@ -1,27 +1,33 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <odoo>
-    <!-- Privilege -->
-    <record id="privilege_church_followup" model="ir.module.category">
+    <!-- Module Category -->
+    <record id="module_category_church_followup" model="ir.module.category">
         <field name="name">Suivi Évangélisation</field>
         <field name="description">Gestion du suivi d'évangélisation des églises</field>
         <field name="sequence">30</field>
     </record>
 
+    <!-- Privilege -->
+    <record id="privilege_church_followup" model="res.groups.privilege">
+        <field name="name">Suivi Évangélisation</field>
+        <field name="category_id" ref="module_category_church_followup"/>
+    </record>
+
     <!-- Groups -->
     <record id="group_church_user" model="res.groups">
         <field name="name">Utilisateur Église</field>
-        <field name="category_id" ref="privilege_church_followup"/>
+        <field name="privilege_id" ref="privilege_church_followup"/>
     </record>
 
     <record id="group_church_manager" model="res.groups">
         <field name="name">Responsable Église</field>
-        <field name="category_id" ref="privilege_church_followup"/>
+        <field name="privilege_id" ref="privilege_church_followup"/>
         <field name="implied_ids" eval="[(4, ref('group_church_user'))]"/>
     </record>
 
     <record id="group_church_admin" model="res.groups">
         <field name="name">Super Administrateur Église</field>
-        <field name="category_id" ref="privilege_church_followup"/>
+        <field name="privilege_id" ref="privilege_church_followup"/>
         <field name="implied_ids" eval="[(4, ref('group_church_manager'))]"/>
     </record>
 

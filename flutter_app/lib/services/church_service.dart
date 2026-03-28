@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
@@ -73,7 +74,10 @@ class ChurchService extends ChangeNotifier {
 
   // ─── JSON-RPC ──────────────────────────────────────────────────────
 
-  Future<dynamic> _jsonRpc(String endpoint, Map<String, dynamic> params) async {
+  static const _timeout = Duration(seconds: 30);
+  static const _maxRetries = 2;
+
+  Future<dynamic> _jsonRpc(String endpoint, Map<String, dynamic> params, {int retries = 0}) async {
     final url = Uri.parse('$_baseUrl$endpoint');
     // Always add user_id for authentication
     if (_currentUser != null) {
@@ -87,23 +91,38 @@ class ChurchService extends ChangeNotifier {
       'params': params,
     });
 
-    final response = await http.post(
-      url,
-      headers: {'Content-Type': 'application/json'},
-      body: body,
-    );
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: body,
+      ).timeout(_timeout);
 
-    if (response.statusCode != 200) {
-      throw Exception('Erreur serveur: ${response.statusCode}');
+      if (response.statusCode != 200) {
+        throw Exception('Erreur serveur: ${response.statusCode}');
+      }
+
+      final result = jsonDecode(response.body);
+      if (result['error'] != null) {
+        final error = result['error'];
+        throw Exception(error['data']?['message'] ?? error['message'] ?? 'Erreur inconnue');
+      }
+
+      return result['result'];
+    } on Exception catch (e) {
+      // Retry on timeout or network errors (not on server-side errors)
+      final isRetryable = e.toString().contains('TimeoutException') ||
+          e.toString().contains('SocketException') ||
+          e.toString().contains('Connection');
+      if (isRetryable && retries < _maxRetries) {
+        await Future.delayed(Duration(seconds: retries + 1));
+        return _jsonRpc(endpoint, params, retries: retries + 1);
+      }
+      if (e.toString().contains('TimeoutException')) {
+        throw Exception('Le serveur ne répond pas. Vérifiez votre connexion.');
+      }
+      rethrow;
     }
-
-    final result = jsonDecode(response.body);
-    if (result['error'] != null) {
-      final error = result['error'];
-      throw Exception(error['data']?['message'] ?? error['message'] ?? 'Erreur inconnue');
-    }
-
-    return result['result'];
   }
 
   // ─── Authentication ────────────────────────────────────────────────
@@ -295,12 +314,14 @@ class ChurchService extends ChangeNotifier {
     }
   }
 
-  Future<Map<String, dynamic>> followupAction(int followupId, String action, {int? evangelistId}) async {
+  Future<Map<String, dynamic>> followupAction(int followupId, String action, {int? evangelistId, int? cellId, int? groupId}) async {
     final params = <String, dynamic>{
       'followup_id': followupId,
       'action': action,
     };
-    if (evangelistId != null) params['evangelist_id'] = evangelistId;
+    if (evangelistId != null) params['transferred_to_id'] = evangelistId;
+    if (cellId != null) params['target_cell_id'] = cellId;
+    if (groupId != null) params['target_age_group_id'] = groupId;
     try {
       final result = await _jsonRpc('/api/church/followup/action', params);
       return Map<String, dynamic>.from(result);

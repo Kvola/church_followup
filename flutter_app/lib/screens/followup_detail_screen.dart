@@ -30,9 +30,16 @@ class _FollowupDetailScreenState extends State<FollowupDetailScreen> {
   Future<void> _doAction(String action) async {
     final service = context.read<ChurchService>();
     final result = await service.followupAction(widget.followupId, action);
-    if (result['success'] == true) {
+    if (!mounted) return;
+    if (result['success'] == true || result['status'] == 'success') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result['message'] ?? 'Action effectuée'),
+          backgroundColor: Colors.green,
+        ),
+      );
       _load();
-    } else if (mounted) {
+    } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(result['message'] ?? 'Erreur'), backgroundColor: Colors.red),
       );
@@ -146,7 +153,7 @@ class _FollowupDetailScreenState extends State<FollowupDetailScreen> {
       runSpacing: 8,
       children: [
         FilledButton.icon(
-          onPressed: () => _confirmAction('integrate', 'Confirmer l\'intégration ?'),
+          onPressed: () => _showIntegrateDialog(),
           icon: const Icon(Icons.check_circle),
           label: const Text('Intégrer'),
           style: FilledButton.styleFrom(backgroundColor: Colors.green),
@@ -186,6 +193,70 @@ class _FollowupDetailScreenState extends State<FollowupDetailScreen> {
     if (ok == true) _doAction(action);
   }
 
+  Future<void> _showIntegrateDialog() async {
+    final service = context.read<ChurchService>();
+    final cells = await service.getPrayerCells();
+    final groups = await service.getAgeGroups();
+    if (!mounted) return;
+
+    int? selectedCell;
+    int? selectedGroup;
+
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: const Text('Intégration'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Sélectionnez la cellule et le groupe pour l\'intégration.'),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<int>(
+                value: selectedCell,
+                decoration: const InputDecoration(labelText: 'Cellule de prière *', border: OutlineInputBorder()),
+                items: cells.map<DropdownMenuItem<int>>((c) => DropdownMenuItem(value: c['id'] as int, child: Text(c['name'] ?? ''))).toList(),
+                onChanged: (v) => setDialogState(() => selectedCell = v),
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<int>(
+                value: selectedGroup,
+                decoration: const InputDecoration(labelText: 'Groupe d\'âge *', border: OutlineInputBorder()),
+                items: groups.map<DropdownMenuItem<int>>((g) => DropdownMenuItem(value: g['id'] as int, child: Text(g['name'] ?? ''))).toList(),
+                onChanged: (v) => setDialogState(() => selectedGroup = v),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Annuler')),
+            FilledButton(
+              onPressed: selectedCell != null && selectedGroup != null ? () => Navigator.pop(ctx, true) : null,
+              child: const Text('Intégrer'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (ok == true && selectedCell != null && selectedGroup != null) {
+      final result = await service.followupAction(
+        widget.followupId, 'integrate',
+        cellId: selectedCell, groupId: selectedGroup,
+      );
+      if (!mounted) return;
+      if (result['success'] == true || result['status'] == 'success') {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Personne intégrée avec succès'), backgroundColor: Colors.green),
+        );
+        _load();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(result['message'] ?? 'Erreur'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
   Future<void> _showTransferDialog() async {
     final service = context.read<ChurchService>();
     final evangelists = await service.getEvangelists();
@@ -213,9 +284,13 @@ class _FollowupDetailScreenState extends State<FollowupDetailScreen> {
     );
     if (selected != null) {
       final result = await service.followupAction(widget.followupId, 'transfer', evangelistId: selected);
-      if (result['success'] == true) {
+      if (!mounted) return;
+      if (result['success'] == true || result['status'] == 'success') {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Suivi transféré'), backgroundColor: Colors.green),
+        );
         _load();
-      } else if (mounted) {
+      } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(result['message'] ?? 'Erreur'), backgroundColor: Colors.red),
         );
@@ -370,11 +445,23 @@ class _FollowupDetailScreenState extends State<FollowupDetailScreen> {
         'spiritual_state': spiritualState,
         'notes': notesCtrl.text,
       };
+      Map<String, dynamic> result;
       if (isNew) {
         vals['week_number'] = int.tryParse(weekCtrl.text) ?? 1;
-        await service.createFollowupWeek(widget.followupId, vals);
+        result = await service.createFollowupWeek(widget.followupId, vals);
       } else {
-        await service.updateFollowupWeek(existing!['id'], vals);
+        result = await service.updateFollowupWeek(existing!['id'], vals);
+      }
+      if (mounted) {
+        if (result['status'] == 'success' || result['success'] == true) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Rapport enregistré'), backgroundColor: Colors.green),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(result['message'] ?? 'Erreur'), backgroundColor: Colors.red),
+          );
+        }
       }
       _load();
     }

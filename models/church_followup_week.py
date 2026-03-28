@@ -1,4 +1,5 @@
 from odoo import api, fields, models, _
+from odoo.exceptions import ValidationError
 
 
 class ChurchFollowupWeek(models.Model):
@@ -49,7 +50,13 @@ class ChurchFollowupWeek(models.Model):
             score += state_scores.get(rec.spiritual_state, 0)
             rec.score = score
 
-    _sql_constraints = [
-        ('week_followup_uniq', 'UNIQUE(followup_id, week_number)',
-         'Un rapport pour cette semaine existe déjà.'),
-    ]
+    @api.constrains('followup_id', 'week_number')
+    def _check_week_unique(self):
+        for rec in self:
+            duplicate = self.search_count([
+                ('followup_id', '=', rec.followup_id.id),
+                ('week_number', '=', rec.week_number),
+                ('id', '!=', rec.id),
+            ])
+            if duplicate:
+                raise ValidationError(_('Un rapport pour la semaine %s existe déjà.') % rec.week_number)

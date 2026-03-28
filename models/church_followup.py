@@ -1,5 +1,5 @@
 from odoo import api, fields, models, _
-from odoo.exceptions import ValidationError
+from odoo.exceptions import ValidationError, UserError
 from dateutil.relativedelta import relativedelta
 
 
@@ -63,6 +63,8 @@ class ChurchFollowup(models.Model):
     def action_integrate(self):
         """Intégrer la personne dans l'église."""
         for rec in self:
+            if rec.state not in ('in_progress', 'extended'):
+                raise UserError(_('Seuls les suivis en cours peuvent être intégrés.'))
             if not rec.target_cell_id or not rec.target_age_group_id:
                 raise ValidationError(_('Veuillez sélectionner une cellule de prière et un groupe d\'âge.'))
             rec.state = 'integrated'
@@ -75,21 +77,29 @@ class ChurchFollowup(models.Model):
 
     def action_abandon(self):
         for rec in self:
+            if rec.state not in ('in_progress', 'extended'):
+                raise UserError(_('Seuls les suivis en cours peuvent être abandonnés.'))
             rec.state = 'abandoned'
             rec.member_id.write({'member_type': 'new'})
 
     def action_extend(self):
         """Prolonger le suivi de 4 semaines supplémentaires."""
         for rec in self:
-            rec.state = 'extended'
+            if rec.state not in ('in_progress', 'extended'):
+                raise UserError(_('Seuls les suivis en cours peuvent être prolongés.'))
             rec.duration_weeks += 4
-            rec.state = 'in_progress'
+            rec.state = 'extended'
+            rec.message_post(body=_('Suivi prolongé de 4 semaines (total: %s semaines)') % rec.duration_weeks)
 
     def action_transfer(self):
         """Transférer à un autre évangéliste."""
         for rec in self:
+            if rec.state not in ('in_progress', 'extended'):
+                raise UserError(_('Seuls les suivis en cours peuvent être transférés.'))
             if not rec.transferred_to_id:
                 raise ValidationError(_('Veuillez sélectionner l\'évangéliste destinataire.'))
+            if rec.transferred_to_id == rec.evangelist_id:
+                raise ValidationError(_('Impossible de transférer à la même personne.'))
             rec.state = 'transferred'
             # Créer un nouveau suivi pour le nouvel évangéliste
             self.create({

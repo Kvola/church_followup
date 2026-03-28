@@ -12,6 +12,7 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   Map<String, dynamic>? _data;
   bool _loading = true;
+  String? _error;
 
   @override
   void initState() {
@@ -20,16 +21,33 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> _load() async {
-    setState(() => _loading = true);
+    setState(() { _loading = true; _error = null; });
     final service = context.read<ChurchService>();
-    final data = await service.getDashboard();
-    if (mounted) setState(() { _data = data; _loading = false; });
+    try {
+      final data = await service.getDashboard();
+      if (mounted) setState(() { _data = data; _loading = false; });
+    } catch (e) {
+      if (mounted) setState(() { _error = '$e'; _loading = false; });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     if (_loading) return const Center(child: CircularProgressIndicator());
-    if (_data == null) return const Center(child: Text('Erreur de chargement'));
+    if (_error != null || _data == null || _data!.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.cloud_off, size: 48, color: Colors.grey),
+            const SizedBox(height: 12),
+            Text(_error ?? 'Impossible de charger le tableau de bord', textAlign: TextAlign.center, style: const TextStyle(color: Colors.grey)),
+            const SizedBox(height: 12),
+            FilledButton.icon(onPressed: _load, icon: const Icon(Icons.refresh), label: const Text('Réessayer')),
+          ],
+        ),
+      );
+    }
 
     final d = _data!;
     return RefreshIndicator(

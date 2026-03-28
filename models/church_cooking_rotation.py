@@ -1,4 +1,5 @@
 from odoo import api, fields, models, _
+from odoo.exceptions import ValidationError
 
 
 class ChurchCookingRotation(models.Model):
@@ -17,7 +18,13 @@ class ChurchCookingRotation(models.Model):
     ], string='État', default='planned')
     notes = fields.Text(string='Notes')
 
-    _sql_constraints = [
-        ('rotation_date_church_uniq', 'UNIQUE(church_id, date)',
-         'Une rotation est déjà planifiée pour cette date.'),
-    ]
+    @api.constrains('church_id', 'date')
+    def _check_rotation_unique(self):
+        for rec in self:
+            duplicate = self.search_count([
+                ('church_id', '=', rec.church_id.id),
+                ('date', '=', rec.date),
+                ('id', '!=', rec.id),
+            ])
+            if duplicate:
+                raise ValidationError(_('Une rotation est déjà planifiée pour cette date.'))

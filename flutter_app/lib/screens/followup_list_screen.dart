@@ -102,7 +102,19 @@ class _FollowupListScreenState extends State<FollowupListScreen> {
                 : RefreshIndicator(
                     onRefresh: _load,
                     child: _filtered.isEmpty
-                        ? const Center(child: Text('Aucun suivi trouvé'))
+                        ? Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.assignment_outlined, size: 48, color: Colors.grey.shade400),
+                                const SizedBox(height: 12),
+                                Text(
+                                  _stateFilter == 'all' ? 'Aucun suivi trouvé' : 'Aucun suivi ${_stateLabel(_stateFilter).toLowerCase()}',
+                                  style: TextStyle(color: Colors.grey.shade600, fontSize: 16),
+                                ),
+                              ],
+                            ),
+                          )
                         : ListView.builder(
                             padding: const EdgeInsets.symmetric(horizontal: 16),
                             itemCount: _filtered.length,

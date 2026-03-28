@@ -10,7 +10,7 @@
                     <button name="action_extend" string="Prolonger" type="object" class="btn-secondary" invisible="state != 'in_progress'"/>
                     <button name="action_transfer" string="Transférer" type="object" class="btn-secondary" invisible="state != 'in_progress'"/>
                     <button name="action_abandon" string="Abandonner" type="object" class="btn-danger" invisible="state != 'in_progress'" confirm="Êtes-vous sûr de vouloir abandonner ce suivi ?"/>
-                    <field name="state" widget="statusbar" statusbar_visible="in_progress,integrated"/>
+                    <field name="state" widget="statusbar" statusbar_visible="in_progress,extended,integrated"/>
                 </header>
                 <sheet>
                     <div class="oe_title">
@@ -25,18 +25,18 @@
                             <field name="duration_weeks"/>
                             <field name="end_date"/>
                         </group>
-                        <group string="Intégration" invisible="state == 'in_progress'">
+                        <group string="Intégration" invisible="state in ('abandoned', 'transferred')">
                             <field name="target_cell_id" domain="[('church_id', '=', church_id)]"
-                                   invisible="state not in ('in_progress', 'integrated')"/>
+                                   required="state == 'integrated'"/>
                             <field name="target_age_group_id" domain="[('church_id', '=', church_id)]"
-                                   invisible="state not in ('in_progress', 'integrated')"/>
+                                   required="state == 'integrated'"/>
                             <field name="transferred_to_id" domain="[('church_id', '=', church_id)]"
                                    invisible="state != 'transferred'"/>
                         </group>
                     </group>
                     <notebook>
                         <page string="Rapports hebdomadaires">
-                            <field name="week_ids">
+                            <field name="week_ids" readonly="state not in ('in_progress', 'extended')">
                                 <list editable="bottom">
                                     <field name="week_number"/>
                                     <field name="date"/>

@@ -80,7 +80,19 @@ class _MemberListScreenState extends State<MemberListScreen> {
                 : RefreshIndicator(
                     onRefresh: _load,
                     child: _filtered.isEmpty
-                        ? const Center(child: Text('Aucun membre trouvé'))
+                        ? Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.people_outline, size: 48, color: Colors.grey.shade400),
+                                const SizedBox(height: 12),
+                                Text(
+                                  _search.isNotEmpty ? 'Aucun résultat pour "$_search"' : 'Aucun membre trouvé',
+                                  style: TextStyle(color: Colors.grey.shade600, fontSize: 16),
+                                ),
+                              ],
+                            ),
+                          )
                         : ListView.builder(
                             itemCount: _filtered.length,
                             itemBuilder: (_, i) => _buildItem(_filtered[i]),

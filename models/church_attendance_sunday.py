@@ -1,4 +1,5 @@
 from odoo import api, fields, models, _
+from odoo.exceptions import ValidationError
 
 
 class ChurchAttendanceSunday(models.Model):
@@ -13,7 +14,13 @@ class ChurchAttendanceSunday(models.Model):
     present = fields.Boolean(string='Présent', default=True)
     notes = fields.Text(string='Notes')
 
-    _sql_constraints = [
-        ('attendance_sunday_uniq', 'UNIQUE(member_id, date)',
-         'La présence de ce membre est déjà enregistrée pour cette date.'),
-    ]
+    @api.constrains('member_id', 'date')
+    def _check_attendance_unique(self):
+        for rec in self:
+            duplicate = self.search_count([
+                ('member_id', '=', rec.member_id.id),
+                ('date', '=', rec.date),
+                ('id', '!=', rec.id),
+            ])
+            if duplicate:
+                raise ValidationError(_('La présence de ce membre est déjà enregistrée pour cette date.'))

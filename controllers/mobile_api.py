@@ -71,10 +71,24 @@ class ChurchMobileApi(http.Controller):
         user_id = kwargs.get('user_id')
         if not user_id:
             return None
-        user = request.env['church.mobile.user'].sudo().browse(int(user_id))
+        try:
+            user_id = int(user_id)
+        except (ValueError, TypeError):
+            return None
+        user = request.env['church.mobile.user'].sudo().browse(user_id)
         if user.exists() and user.active:
             return user
         return None
+
+    @staticmethod
+    def _safe_int(value, field_name=''):
+        """Safely convert a value to int, raising a clear error message."""
+        if not value:
+            return None
+        try:
+            return int(value)
+        except (ValueError, TypeError):
+            raise ValueError(_('Valeur invalide pour %s') % field_name)
 
     # ─── Dashboard ────────────────────────────────────────────────────
 
@@ -249,7 +263,10 @@ class ChurchMobileApi(http.Controller):
 
         district_id = kwargs.get('district_id')
         if district_id:
-            vals['district_id'] = int(district_id)
+            try:
+                vals['district_id'] = int(district_id)
+            except (ValueError, TypeError):
+                return {'status': 'error', 'message': 'district_id invalide'}
 
         member_type = kwargs.get('member_type', 'new')
         vals['member_type'] = member_type
@@ -283,7 +300,10 @@ class ChurchMobileApi(http.Controller):
         if not member_id:
             return {'status': 'error', 'message': 'member_id requis'}
 
-        member = request.env['church.member'].sudo().browse(int(member_id))
+        try:
+            member = request.env['church.member'].sudo().browse(int(member_id))
+        except (ValueError, TypeError):
+            return {'status': 'error', 'message': 'member_id invalide'}
         if not member.exists() or member.church_id.id != user.church_id.id:
             return {'status': 'error', 'message': 'Membre non trouvé'}
 
@@ -317,7 +337,10 @@ class ChurchMobileApi(http.Controller):
         if not member_id:
             return {'status': 'error', 'message': 'member_id requis'}
 
-        member = request.env['church.member'].sudo().browse(int(member_id))
+        try:
+            member = request.env['church.member'].sudo().browse(int(member_id))
+        except (ValueError, TypeError):
+            return {'status': 'error', 'message': 'member_id invalide'}
         if not member.exists() or member.church_id.id != user.church_id.id:
             return {'status': 'error', 'message': 'Membre non trouvé'}
 
@@ -333,7 +356,10 @@ class ChurchMobileApi(http.Controller):
         int_fields = ['district_id', 'prayer_cell_id', 'age_group_id']
         for f in int_fields:
             if f in kwargs:
-                vals[f] = int(kwargs[f]) if kwargs[f] else False
+                try:
+                    vals[f] = int(kwargs[f]) if kwargs[f] else False
+                except (ValueError, TypeError):
+                    return {'status': 'error', 'message': f'{f} invalide'}
 
         if vals:
             member.write(vals)
@@ -416,14 +442,20 @@ class ChurchMobileApi(http.Controller):
         elif not evangelist_id:
             return {'status': 'error', 'message': 'Évangéliste requis'}
 
-        vals = {
-            'church_id': user.church_id.id,
-            'evangelist_id': int(evangelist_id),
-            'member_id': int(member_id),
-        }
+        try:
+            vals = {
+                'church_id': user.church_id.id,
+                'evangelist_id': int(evangelist_id),
+                'member_id': int(member_id),
+            }
+        except (ValueError, TypeError):
+            return {'status': 'error', 'message': 'IDs invalides'}
         total_weeks = kwargs.get('total_weeks')
         if total_weeks:
-            vals['duration_weeks'] = int(total_weeks)
+            try:
+                vals['duration_weeks'] = int(total_weeks)
+            except (ValueError, TypeError):
+                return {'status': 'error', 'message': 'Nombre de semaines invalide'}
 
         followup = request.env['church.followup'].sudo().create(vals)
 
@@ -448,7 +480,10 @@ class ChurchMobileApi(http.Controller):
         if not followup_id:
             return {'status': 'error', 'message': 'followup_id requis'}
 
-        f = request.env['church.followup'].sudo().browse(int(followup_id))
+        try:
+            f = request.env['church.followup'].sudo().browse(int(followup_id))
+        except (ValueError, TypeError):
+            return {'status': 'error', 'message': 'followup_id invalide'}
         if not f.exists() or f.church_id.id != user.church_id.id:
             return {'status': 'error', 'message': 'Suivi non trouvé'}
 
@@ -494,8 +529,11 @@ class ChurchMobileApi(http.Controller):
             return {'status': 'error', 'message': 'Suivi et numéro de semaine requis'}
 
         env = request.env.sudo()
-        followup = env['church.followup'].browse(int(followup_id))
-        if not followup.exists():
+        try:
+            followup = env['church.followup'].browse(int(followup_id))
+        except (ValueError, TypeError):
+            return {'status': 'error', 'message': 'followup_id invalide'}
+        if not followup.exists() or followup.church_id.id != user.church_id.id:
             return {'status': 'error', 'message': 'Suivi introuvable'}
 
         # Chercher ou créer le rapport de semaine
@@ -539,8 +577,11 @@ class ChurchMobileApi(http.Controller):
         if not followup_id or not action:
             return {'status': 'error', 'message': 'Suivi et action requis'}
 
-        followup = request.env['church.followup'].sudo().browse(int(followup_id))
-        if not followup.exists():
+        try:
+            followup = request.env['church.followup'].sudo().browse(int(followup_id))
+        except (ValueError, TypeError):
+            return {'status': 'error', 'message': 'followup_id invalide'}
+        if not followup.exists() or followup.church_id.id != user.church_id.id:
             return {'status': 'error', 'message': 'Suivi introuvable'}
 
         try:
@@ -674,15 +715,19 @@ class ChurchMobileApi(http.Controller):
 
         env = request.env.sudo()
         for mid in member_ids:
+            try:
+                mid_int = int(mid)
+            except (ValueError, TypeError):
+                continue
             existing = env['church.attendance.sunday'].search([
-                ('member_id', '=', int(mid)),
+                ('member_id', '=', mid_int),
                 ('date', '=', date),
             ], limit=1)
 
             if not existing:
                 env['church.attendance.sunday'].create({
                     'church_id': user.church_id.id,
-                    'member_id': int(mid),
+                    'member_id': mid_int,
                     'date': date,
                     'present': True,
                 })
@@ -703,19 +748,28 @@ class ChurchMobileApi(http.Controller):
         if not prayer_cell_id:
             return {'status': 'error', 'message': 'Cellule de prière requise'}
 
+        try:
+            cell_id_int = int(prayer_cell_id)
+        except (ValueError, TypeError):
+            return {'status': 'error', 'message': 'prayer_cell_id invalide'}
+
         env = request.env.sudo()
         for mid in member_ids:
+            try:
+                mid_int = int(mid)
+            except (ValueError, TypeError):
+                continue
             existing = env['church.attendance.cell'].search([
-                ('member_id', '=', int(mid)),
+                ('member_id', '=', mid_int),
                 ('date', '=', date),
-                ('prayer_cell_id', '=', int(prayer_cell_id)),
+                ('prayer_cell_id', '=', cell_id_int),
             ], limit=1)
 
             if not existing:
                 env['church.attendance.cell'].create({
                     'church_id': user.church_id.id,
-                    'prayer_cell_id': int(prayer_cell_id),
-                    'member_id': int(mid),
+                    'prayer_cell_id': cell_id_int,
+                    'member_id': mid_int,
                     'date': date,
                     'present': True,
                 })
@@ -760,8 +814,11 @@ class ChurchMobileApi(http.Controller):
         if not target_user_id:
             return {'status': 'error', 'message': 'Utilisateur cible requis'}
 
-        target = request.env['church.mobile.user'].sudo().browse(int(target_user_id))
-        if not target.exists():
+        try:
+            target = request.env['church.mobile.user'].sudo().browse(int(target_user_id))
+        except (ValueError, TypeError):
+            return {'status': 'error', 'message': 'target_user_id invalide'}
+        if not target.exists() or target.church_id.id != user.church_id.id:
             return {'status': 'error', 'message': 'Utilisateur introuvable'}
 
         message = target.get_share_message()
@@ -785,8 +842,11 @@ class ChurchMobileApi(http.Controller):
             return {'status': 'error', 'message': 'Évangéliste requis'}
 
         env = request.env.sudo()
-        evangelist = env['church.evangelist'].browse(int(evangelist_id))
-        if not evangelist.exists():
+        try:
+            evangelist = env['church.evangelist'].browse(int(evangelist_id))
+        except (ValueError, TypeError):
+            return {'status': 'error', 'message': 'evangelist_id invalide'}
+        if not evangelist.exists() or evangelist.church_id.id != user.church_id.id:
             return {'status': 'error', 'message': 'Évangéliste introuvable'}
 
         followups = env['church.followup'].search([
@@ -861,8 +921,11 @@ class ChurchMobileApi(http.Controller):
         if not name or not phone or not cell_id:
             return {'status': 'error', 'message': 'Nom, téléphone et cellule requis'}
 
-        cell = request.env['church.prayer.cell'].sudo().browse(int(cell_id))
-        if not cell.exists():
+        try:
+            cell = request.env['church.prayer.cell'].sudo().browse(int(cell_id))
+        except (ValueError, TypeError):
+            return {'status': 'error', 'message': 'prayer_cell_id invalide'}
+        if not cell.exists() or cell.church_id.id != user.church_id.id:
             return {'status': 'error', 'message': 'Cellule introuvable'}
 
         cell.write({
@@ -891,8 +954,11 @@ class ChurchMobileApi(http.Controller):
         if not name or not phone or not group_id:
             return {'status': 'error', 'message': 'Nom, téléphone et groupe requis'}
 
-        group = request.env['church.age.group'].sudo().browse(int(group_id))
-        if not group.exists():
+        try:
+            group = request.env['church.age.group'].sudo().browse(int(group_id))
+        except (ValueError, TypeError):
+            return {'status': 'error', 'message': 'age_group_id invalide'}
+        if not group.exists() or group.church_id.id != user.church_id.id:
             return {'status': 'error', 'message': 'Groupe introuvable'}
 
         group.write({

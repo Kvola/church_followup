@@ -51,7 +51,13 @@ class _FollowupFormScreenState extends State<FollowupFormScreen> {
     });
 
     if (mounted) {
-      if (result['success'] == true) {
+      if (result['success'] == true || result['status'] == 'success') {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Suivi créé avec succès'),
+            backgroundColor: Colors.green,
+          ),
+        );
         Navigator.pop(context, true);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(

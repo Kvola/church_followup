@@ -27,10 +27,16 @@ class ChurchMobileUser(models.Model):
     prayer_cell_id = fields.Many2one('church.prayer.cell', string='Cellule liée')
     age_group_id = fields.Many2one('church.age.group', string='Groupe d\'âge lié')
 
-    _sql_constraints = [
-        ('phone_church_uniq', 'UNIQUE(phone, church_id)',
-         'Ce numéro de téléphone est déjà utilisé dans cette église.'),
-    ]
+    @api.constrains('phone', 'church_id')
+    def _check_phone_unique(self):
+        for rec in self:
+            duplicate = self.search_count([
+                ('phone', '=', rec.phone),
+                ('church_id', '=', rec.church_id.id),
+                ('id', '!=', rec.id),
+            ])
+            if duplicate:
+                raise ValidationError(_('Ce numéro de téléphone est déjà utilisé dans cette église.'))
 
     @api.model_create_multi
     def create(self, vals_list):

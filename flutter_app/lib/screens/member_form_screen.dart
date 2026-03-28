@@ -104,7 +104,13 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
     }
 
     if (mounted) {
-      if (result['success'] == true) {
+      if (result['success'] == true || result['status'] == 'success') {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(_isEdit ? 'Membre mis à jour' : 'Membre créé avec succès'),
+            backgroundColor: Colors.green,
+          ),
+        );
         Navigator.pop(context, true);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
