@@ -99,13 +99,12 @@ class ChurchMobileApi(http.Controller):
         try:
             church_id = user.church_id.id
             church_name = user.church_id.name
-            env = request.env.sudo()
 
-            followups = env['church.followup'].search([('church_id', '=', church_id)])
-            evangelists = env['church.evangelist'].search([('church_id', '=', church_id)])
-            members = env['church.member'].search([('church_id', '=', church_id)])
-            cells = env['church.prayer.cell'].search([('church_id', '=', church_id)])
-            groups = env['church.age.group'].search([('church_id', '=', church_id)])
+            followups = request.env['church.followup'].sudo().search([('church_id', '=', church_id)])
+            evangelists = request.env['church.evangelist'].sudo().search([('church_id', '=', church_id)])
+            members = request.env['church.member'].sudo().search([('church_id', '=', church_id)])
+            cells = request.env['church.prayer.cell'].sudo().search([('church_id', '=', church_id)])
+            groups = request.env['church.age.group'].sudo().search([('church_id', '=', church_id)])
 
             active_followups = followups.filtered(lambda f: f.state == 'in_progress')
             integrated = followups.filtered(lambda f: f.state == 'integrated')
@@ -535,16 +534,15 @@ class ChurchMobileApi(http.Controller):
         if not followup_id or not week_number:
             return {'status': 'error', 'message': 'Suivi et numéro de semaine requis'}
 
-        env = request.env.sudo()
         try:
-            followup = env['church.followup'].browse(int(followup_id))
+            followup = request.env['church.followup'].sudo().browse(int(followup_id))
         except (ValueError, TypeError):
             return {'status': 'error', 'message': 'followup_id invalide'}
         if not followup.exists() or followup.church_id.id != user.church_id.id:
             return {'status': 'error', 'message': 'Suivi introuvable'}
 
         # Chercher ou créer le rapport de semaine
-        week = env['church.followup.week'].search([
+        week = request.env['church.followup.week'].sudo().search([
             ('followup_id', '=', followup.id),
             ('week_number', '=', int(week_number)),
         ], limit=1)
@@ -563,7 +561,7 @@ class ChurchMobileApi(http.Controller):
         if week:
             week.write(vals)
         else:
-            week = env['church.followup.week'].create(vals)
+            week = request.env['church.followup.week'].sudo().create(vals)
 
         return {
             'status': 'success',
@@ -720,19 +718,19 @@ class ChurchMobileApi(http.Controller):
         date = kwargs.get('date', str(fields.Date.today()))
         member_ids = kwargs.get('member_ids', [])
 
-        env = request.env.sudo()
+        AttSunday = request.env['church.attendance.sunday'].sudo()
         for mid in member_ids:
             try:
                 mid_int = int(mid)
             except (ValueError, TypeError):
                 continue
-            existing = env['church.attendance.sunday'].search([
+            existing = AttSunday.search([
                 ('member_id', '=', mid_int),
                 ('date', '=', date),
             ], limit=1)
 
             if not existing:
-                env['church.attendance.sunday'].create({
+                AttSunday.create({
                     'church_id': user.church_id.id,
                     'member_id': mid_int,
                     'date': date,
@@ -760,20 +758,20 @@ class ChurchMobileApi(http.Controller):
         except (ValueError, TypeError):
             return {'status': 'error', 'message': 'prayer_cell_id invalide'}
 
-        env = request.env.sudo()
+        AttCell = request.env['church.attendance.cell'].sudo()
         for mid in member_ids:
             try:
                 mid_int = int(mid)
             except (ValueError, TypeError):
                 continue
-            existing = env['church.attendance.cell'].search([
+            existing = AttCell.search([
                 ('member_id', '=', mid_int),
                 ('date', '=', date),
                 ('prayer_cell_id', '=', cell_id_int),
             ], limit=1)
 
             if not existing:
-                env['church.attendance.cell'].create({
+                AttCell.create({
                     'church_id': user.church_id.id,
                     'prayer_cell_id': cell_id_int,
                     'member_id': mid_int,
@@ -848,15 +846,14 @@ class ChurchMobileApi(http.Controller):
         if not evangelist_id:
             return {'status': 'error', 'message': 'Évangéliste requis'}
 
-        env = request.env.sudo()
         try:
-            evangelist = env['church.evangelist'].browse(int(evangelist_id))
+            evangelist = request.env['church.evangelist'].sudo().browse(int(evangelist_id))
         except (ValueError, TypeError):
             return {'status': 'error', 'message': 'evangelist_id invalide'}
         if not evangelist.exists() or evangelist.church_id.id != user.church_id.id:
             return {'status': 'error', 'message': 'Évangéliste introuvable'}
 
-        followups = env['church.followup'].search([
+        followups = request.env['church.followup'].sudo().search([
             ('evangelist_id', '=', evangelist.id),
         ], order='create_date desc')
 
