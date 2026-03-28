@@ -22,46 +22,43 @@ class ChurchMobileApi(http.Controller):
             return {'status': 'error', 'message': 'Téléphone et PIN requis'}
 
         try:
-            registry = request.env.registry
-            with registry.cursor() as cr:
-                env = request.env(cr=cr, uid=1)
-                user = env['church.mobile.user'].search([
-                    ('phone', '=', phone),
-                    ('pin', '=', pin),
-                    ('active', '=', True),
-                ], limit=1)
+            user = request.env['church.mobile.user'].sudo().search([
+                ('phone', '=', phone),
+                ('pin', '=', pin),
+                ('active', '=', True),
+            ], limit=1)
 
-                if not user:
-                    return {'status': 'error', 'message': 'Identifiants incorrects'}
+            if not user:
+                return {'status': 'error', 'message': 'Identifiants incorrects'}
 
-                # Build user data
-                data = {
-                    'id': user.id,
-                    'name': user.name,
-                    'phone': user.phone,
-                    'role': user.role,
-                    'church_id': user.church_id.id,
-                    'church_name': user.church_id.name,
-                }
+            # Build user data
+            data = {
+                'id': user.id,
+                'name': user.name,
+                'phone': user.phone,
+                'role': user.role,
+                'church_id': user.church_id.id,
+                'church_name': user.church_id.name,
+            }
 
-                if user.role == 'evangelist' and user.evangelist_id:
-                    data['evangelist_id'] = user.evangelist_id.id
-                elif user.role == 'cell_leader' and user.prayer_cell_id:
-                    data['prayer_cell_id'] = user.prayer_cell_id.id
-                elif user.role == 'group_leader' and user.age_group_id:
-                    data['age_group_id'] = user.age_group_id.id
+            if user.role == 'evangelist' and user.evangelist_id:
+                data['evangelist_id'] = user.evangelist_id.id
+            elif user.role == 'cell_leader' and user.prayer_cell_id:
+                data['prayer_cell_id'] = user.prayer_cell_id.id
+            elif user.role == 'group_leader' and user.age_group_id:
+                data['age_group_id'] = user.age_group_id.id
 
-                # Generate a simple token
-                token = hashlib.sha256(
-                    f"{user.id}:{user.pin}:{fields.Datetime.now()}".encode()
-                ).hexdigest()
+            # Generate a simple token
+            token = hashlib.sha256(
+                f"{user.id}:{user.pin}:{fields.Datetime.now()}".encode()
+            ).hexdigest()
 
-                return {
-                    'status': 'success',
-                    'message': 'Connexion réussie',
-                    'user': data,
-                    'token': token,
-                }
+            return {
+                'status': 'success',
+                'message': 'Connexion réussie',
+                'user': data,
+                'token': token,
+            }
         except Exception as e:
             _logger.exception("Login error")
             return {'status': 'error', 'message': str(e)}
