@@ -23,7 +23,7 @@
                 <field name="member_id"/>
                 <field name="date"/>
                 <filter name="filter_present" string="Présents" domain="[('present', '=', True)]"/>
-                <group expand="0" string="Regrouper par">
+                <group string="Regrouper par">
                     <filter name="group_date" string="Date" context="{'group_by': 'date'}"/>
                     <filter name="group_age" string="Groupe d'âge" context="{'group_by': 'age_group_id'}"/>
                 </group>
@@ -60,7 +60,7 @@
                 <field name="member_id"/>
                 <field name="date"/>
                 <filter name="filter_present" string="Présents" domain="[('present', '=', True)]"/>
-                <group expand="0" string="Regrouper par">
+                <group string="Regrouper par">
                     <filter name="group_date" string="Date" context="{'group_by': 'date'}"/>
                     <filter name="group_cell" string="Cellule" context="{'group_by': 'prayer_cell_id'}"/>
                 </group>

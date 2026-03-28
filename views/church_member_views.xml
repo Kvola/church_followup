@@ -90,11 +90,11 @@
                 <separator/>
                 <filter name="filter_male" string="Hommes" domain="[('gender', '=', 'male')]"/>
                 <filter name="filter_female" string="Femmes" domain="[('gender', '=', 'female')]"/>
-                <group expand="0" string="Regrouper par">
+                <group string="Regrouper par">
                     <filter name="group_church" string="Église" context="{'group_by': 'church_id'}"/>
                     <filter name="group_district" string="Quartier" context="{'group_by': 'district_id'}"/>
                     <filter name="group_cell" string="Cellule" context="{'group_by': 'prayer_cell_id'}"/>
-                    <filter name="group_age" string="Groupe d'âge" context="{'group_by': 'age_group_id'}"/>
+                    <filter name="group_age" string="Groupe d&apos;âge" context="{'group_by': 'age_group_id'}"/>
                     <filter name="group_type" string="Type" context="{'group_by': 'member_type'}"/>
                 </group>
             </search>

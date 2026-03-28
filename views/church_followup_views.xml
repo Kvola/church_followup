@@ -86,7 +86,7 @@
                 <filter name="filter_active" string="En cours" domain="[('state', '=', 'in_progress')]"/>
                 <filter name="filter_integrated" string="Intégrés" domain="[('state', '=', 'integrated')]"/>
                 <filter name="filter_abandoned" string="Abandonnés" domain="[('state', '=', 'abandoned')]"/>
-                <group expand="0" string="Regrouper par">
+                <group string="Regrouper par">
                     <filter name="group_evangelist" string="Évangéliste" context="{'group_by': 'evangelist_id'}"/>
                     <filter name="group_state" string="État" context="{'group_by': 'state'}"/>
                     <filter name="group_church" string="Église" context="{'group_by': 'church_id'}"/>
