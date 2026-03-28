@@ -67,3 +67,18 @@ class ChurchMobileUser(models.Model):
             "PIN : %s\n\n"
             "Veuillez télécharger l'application et vous connecter."
         ) % (self.name, self.phone, self.pin)
+
+    def action_share_credentials(self):
+        """Affiche les identifiants dans une notification pour copier/partager."""
+        self.ensure_one()
+        message = self.get_share_message()
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': _('Identifiants de %s') % self.name,
+                'message': _('Téléphone : %s — PIN : %s') % (self.phone, self.pin),
+                'type': 'info',
+                'sticky': True,
+            },
+        }

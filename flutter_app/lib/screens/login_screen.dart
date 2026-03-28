@@ -10,9 +10,10 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  static const _serverUrl = 'https://iyf.kavola.site';
+  static const _database = 'iyf.kavola.site';
+
   final _formKey = GlobalKey<FormState>();
-  final _urlController = TextEditingController(text: 'https://iyf.kavola.site');
-  final _dbController = TextEditingController(text: 'iyf.kavola.site');
   final _phoneController = TextEditingController();
   final _pinController = TextEditingController();
   bool _loading = false;
@@ -20,26 +21,7 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _obscurePin = true;
 
   @override
-  void initState() {
-    super.initState();
-    _loadLastConnection();
-  }
-
-  Future<void> _loadLastConnection() async {
-    final service = context.read<ChurchService>();
-    final info = await service.getLastConnectionInfo();
-    if (info['url']!.isNotEmpty) {
-      _urlController.text = info['url']!;
-    }
-    if (info['db']!.isNotEmpty) {
-      _dbController.text = info['db']!;
-    }
-  }
-
-  @override
   void dispose() {
-    _urlController.dispose();
-    _dbController.dispose();
     _phoneController.dispose();
     _pinController.dispose();
     super.dispose();
@@ -55,8 +37,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
     final service = context.read<ChurchService>();
     final result = await service.login(
-      _urlController.text.trim(),
-      _dbController.text.trim(),
+      _serverUrl,
+      _database,
       _phoneController.text.trim(),
       _pinController.text.trim(),
     );
@@ -110,28 +92,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                 ),
                 const SizedBox(height: 32),
-                TextFormField(
-                  controller: _urlController,
-                  decoration: const InputDecoration(
-                    labelText: 'URL du serveur',
-                    hintText: 'http://votre-serveur.com:8069',
-                    prefixIcon: Icon(Icons.link),
-                    border: OutlineInputBorder(),
-                  ),
-                  keyboardType: TextInputType.url,
-                  validator: (v) => v == null || v.isEmpty ? 'URL requise' : null,
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _dbController,
-                  decoration: const InputDecoration(
-                    labelText: 'Base de données',
-                    prefixIcon: Icon(Icons.storage),
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: (v) => v == null || v.isEmpty ? 'Base de données requise' : null,
-                ),
-                const SizedBox(height: 16),
                 TextFormField(
                   controller: _phoneController,
                   decoration: const InputDecoration(

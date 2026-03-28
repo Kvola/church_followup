@@ -6,6 +6,7 @@
         <field name="arch" type="xml">
             <form string="Utilisateur mobile">
                 <header>
+                    <button name="action_share_credentials" string="📋 Partager identifiants" type="object" class="btn-primary" invisible="not pin"/>
                     <button name="action_regenerate_pin" string="Régénérer le PIN" type="object" class="btn-secondary" confirm="Êtes-vous sûr de vouloir régénérer le PIN ?"/>
                 </header>
                 <sheet>
@@ -15,7 +16,7 @@
                     <group>
                         <group string="Connexion">
                             <field name="phone"/>
-                            <field name="pin" password="True"/>
+                            <field name="pin"/>
                             <field name="role"/>
                         </group>
                         <group string="Affectation">
