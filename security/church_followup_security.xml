@@ -31,60 +31,33 @@
         <field name="implied_ids" eval="[(4, ref('group_church_manager'))]"/>
     </record>
 
-    <!-- Multi-church rules -->
-    <record id="rule_church_church_manager" model="ir.rule">
-        <field name="name">Église : Responsable ne voit que son église</field>
-        <field name="model_id" ref="model_church_church"/>
-        <field name="domain_force">[('id', 'in', user.church_ids.ids)]</field>
-        <field name="groups" eval="[(4, ref('group_church_manager'))]"/>
-    </record>
-
-    <record id="rule_church_church_admin" model="ir.rule">
-        <field name="name">Église : Admin voit toutes les églises</field>
+    <!-- Access rules: all data visible to all church groups -->
+    <!-- Fine-grained access is enforced at the mobile API level (cross-church validation) -->
+    <record id="rule_church_church_global" model="ir.rule">
+        <field name="name">Église : accès global</field>
         <field name="model_id" ref="model_church_church"/>
         <field name="domain_force">[(1, '=', 1)]</field>
-        <field name="groups" eval="[(4, ref('group_church_admin'))]"/>
+        <field name="groups" eval="[(4, ref('group_church_user'))]"/>
     </record>
 
-    <record id="rule_church_member_manager" model="ir.rule">
-        <field name="name">Membre : Responsable ne voit que son église</field>
-        <field name="model_id" ref="model_church_member"/>
-        <field name="domain_force">[('church_id', 'in', user.church_ids.ids)]</field>
-        <field name="groups" eval="[(4, ref('group_church_manager'))]"/>
-    </record>
-
-    <record id="rule_church_member_admin" model="ir.rule">
-        <field name="name">Membre : Admin voit tout</field>
+    <record id="rule_church_member_global" model="ir.rule">
+        <field name="name">Membre : accès global</field>
         <field name="model_id" ref="model_church_member"/>
         <field name="domain_force">[(1, '=', 1)]</field>
-        <field name="groups" eval="[(4, ref('group_church_admin'))]"/>
+        <field name="groups" eval="[(4, ref('group_church_user'))]"/>
     </record>
 
-    <record id="rule_church_followup_manager" model="ir.rule">
-        <field name="name">Suivi : Responsable ne voit que son église</field>
-        <field name="model_id" ref="model_church_followup"/>
-        <field name="domain_force">[('church_id', 'in', user.church_ids.ids)]</field>
-        <field name="groups" eval="[(4, ref('group_church_manager'))]"/>
-    </record>
-
-    <record id="rule_church_followup_admin" model="ir.rule">
-        <field name="name">Suivi : Admin voit tout</field>
+    <record id="rule_church_followup_global" model="ir.rule">
+        <field name="name">Suivi : accès global</field>
         <field name="model_id" ref="model_church_followup"/>
         <field name="domain_force">[(1, '=', 1)]</field>
-        <field name="groups" eval="[(4, ref('group_church_admin'))]"/>
+        <field name="groups" eval="[(4, ref('group_church_user'))]"/>
     </record>
 
-    <record id="rule_church_evangelist_manager" model="ir.rule">
-        <field name="name">Évangéliste : Responsable ne voit que son église</field>
-        <field name="model_id" ref="model_church_evangelist"/>
-        <field name="domain_force">[('church_id', 'in', user.church_ids.ids)]</field>
-        <field name="groups" eval="[(4, ref('group_church_manager'))]"/>
-    </record>
-
-    <record id="rule_church_evangelist_admin" model="ir.rule">
-        <field name="name">Évangéliste : Admin voit tout</field>
+    <record id="rule_church_evangelist_global" model="ir.rule">
+        <field name="name">Évangéliste : accès global</field>
         <field name="model_id" ref="model_church_evangelist"/>
         <field name="domain_force">[(1, '=', 1)]</field>
-        <field name="groups" eval="[(4, ref('group_church_admin'))]"/>
+        <field name="groups" eval="[(4, ref('group_church_user'))]"/>
     </record>
 </odoo>
