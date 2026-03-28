@@ -79,22 +79,23 @@
         <field name="name">church.member.search</field>
         <field name="model">church.member</field>
         <field name="arch" type="xml">
-            <search>
+            <search string="Rechercher un membre">
                 <field name="name"/>
                 <field name="first_name"/>
                 <field name="phone"/>
                 <field name="district_id"/>
+                <separator/>
                 <filter name="filter_new" string="Nouvelles personnes" domain="[('member_type', '=', 'new')]"/>
                 <filter name="filter_in_followup" string="En suivi" domain="[('member_type', '=', 'in_followup')]"/>
                 <filter name="filter_integrated" string="Intégrés" domain="[('member_type', '=', 'integrated')]"/>
                 <separator/>
                 <filter name="filter_male" string="Hommes" domain="[('gender', '=', 'male')]"/>
                 <filter name="filter_female" string="Femmes" domain="[('gender', '=', 'female')]"/>
-                <group string="Regrouper par">
+                <group>
                     <filter name="group_church" string="Église" context="{'group_by': 'church_id'}"/>
                     <filter name="group_district" string="Quartier" context="{'group_by': 'district_id'}"/>
                     <filter name="group_cell" string="Cellule" context="{'group_by': 'prayer_cell_id'}"/>
-                    <filter name="group_age" string="Groupe d&apos;âge" context="{'group_by': 'age_group_id'}"/>
+                    <filter name="group_age" string="Groupe Age" context="{'group_by': 'age_group_id'}"/>
                     <filter name="group_type" string="Type" context="{'group_by': 'member_type'}"/>
                 </group>
             </search>

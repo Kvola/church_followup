@@ -79,14 +79,15 @@
         <field name="name">church.followup.search</field>
         <field name="model">church.followup</field>
         <field name="arch" type="xml">
-            <search>
+            <search string="Rechercher un suivi">
                 <field name="name"/>
                 <field name="evangelist_id"/>
                 <field name="member_id"/>
+                <separator/>
                 <filter name="filter_active" string="En cours" domain="[('state', '=', 'in_progress')]"/>
                 <filter name="filter_integrated" string="Intégrés" domain="[('state', '=', 'integrated')]"/>
                 <filter name="filter_abandoned" string="Abandonnés" domain="[('state', '=', 'abandoned')]"/>
-                <group string="Regrouper par">
+                <group>
                     <filter name="group_evangelist" string="Évangéliste" context="{'group_by': 'evangelist_id'}"/>
                     <filter name="group_state" string="État" context="{'group_by': 'state'}"/>
                     <filter name="group_church" string="Église" context="{'group_by': 'church_id'}"/>
