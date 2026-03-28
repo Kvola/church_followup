@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="action_report_cell_members" model="ir.actions.report">
+        <field name="name">Liste des cellules et membres</field>
+        <field name="model">church.prayer.cell</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">church_followup.report_cell_members_template</field>
+        <field name="report_file">church_followup.report_cell_members_template</field>
+        <field name="binding_model_id" ref="model_church_prayer_cell"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <template id="report_cell_members_template">
+        <t t-call="web.html_container">
+            <t t-call="web.external_layout">
+                <div class="page">
+                    <h2 class="text-center">Liste des Cellules de Prière et Membres</h2>
+                    <hr/>
+
+                    <t t-foreach="docs" t-as="cell">
+                        <div class="mb-4">
+                            <h4>
+                                <t t-esc="cell.name"/>
+                                <small class="text-muted">
+                                    (<t t-esc="cell.member_count"/> membres)
+                                </small>
+                            </h4>
+                            <div class="row mb-2">
+                                <div class="col-4">
+                                    <strong>Responsable :</strong> <t t-esc="cell.leader_name or '-'"/>
+                                </div>
+                                <div class="col-4">
+                                    <strong>Jour :</strong> <t t-esc="dict(cell._fields['meeting_day'].selection).get(cell.meeting_day, '-')"/>
+                                </div>
+                                <div class="col-4">
+                                    <strong>Heure :</strong> <t t-esc="cell.meeting_time or '-'"/>
+                                </div>
+                            </div>
+
+                            <table class="table table-bordered table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Nom</th>
+                                        <th>Prénom</th>
+                                        <th>Téléphone</th>
+                                        <th>Quartier</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <t t-foreach="cell.member_ids" t-as="member">
+                                        <tr>
+                                            <td><t t-esc="member_index + 1"/></td>
+                                            <td><t t-esc="member.name"/></td>
+                                            <td><t t-esc="member.first_name"/></td>
+                                            <td><t t-esc="member.phone or '-'"/></td>
+                                            <td><t t-esc="member.district_id.name if member.district_id else '-'"/></td>
+                                        </tr>
+                                    </t>
+                                </tbody>
+                            </table>
+                        </div>
+                    </t>
+                </div>
+            </t>
+        </t>
+    </template>
+</odoo>

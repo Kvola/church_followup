@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="view_church_evangelist_form" model="ir.ui.view">
+        <field name="name">church.evangelist.form</field>
+        <field name="model">church.evangelist</field>
+        <field name="arch" type="xml">
+            <form string="Évangéliste">
+                <sheet>
+                    <field name="photo" widget="image" class="oe_avatar"/>
+                    <div class="oe_button_box" name="button_box">
+                        <button class="oe_stat_button" icon="fa-line-chart" type="object" name="action_view_followups">
+                            <field name="total_followup_count" widget="statinfo" string="Suivis"/>
+                        </button>
+                        <button class="oe_stat_button" icon="fa-check-circle" type="object" name="action_view_followups">
+                            <field name="integrated_count" widget="statinfo" string="Intégrés"/>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <h1><field name="name" placeholder="Nom complet"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="phone"/>
+                            <field name="email"/>
+                            <field name="church_id"/>
+                        </group>
+                        <group>
+                            <field name="mobile_user_id"/>
+                            <field name="active_followup_count"/>
+                            <field name="integration_rate" widget="progressbar"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Suivis en cours">
+                            <field name="followup_ids" domain="[('state', '=', 'in_progress')]">
+                                <list>
+                                    <field name="name"/>
+                                    <field name="member_id"/>
+                                    <field name="start_date"/>
+                                    <field name="end_date"/>
+                                    <field name="week_count"/>
+                                    <field name="state" widget="badge"
+                                           decoration-info="state == 'in_progress'"
+                                           decoration-success="state == 'integrated'"
+                                           decoration-danger="state == 'abandoned'"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_church_evangelist_list" model="ir.ui.view">
+        <field name="name">church.evangelist.list</field>
+        <field name="model">church.evangelist</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+                <field name="phone"/>
+                <field name="church_id"/>
+                <field name="active_followup_count"/>
+                <field name="integrated_count"/>
+                <field name="integration_rate" widget="progressbar"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_church_evangelist" model="ir.actions.act_window">
+        <field name="name">Évangélistes</field>
+        <field name="res_model">church.evangelist</field>
+        <field name="view_mode">list,form</field>
+    </record>
+</odoo>

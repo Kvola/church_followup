@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="view_church_prayer_cell_form" model="ir.ui.view">
+        <field name="name">church.prayer.cell.form</field>
+        <field name="model">church.prayer.cell</field>
+        <field name="arch" type="xml">
+            <form string="Cellule de prière">
+                <header>
+                    <button name="action_create_leader_account" string="Créer compte mobile responsable" type="object" class="btn-primary" invisible="mobile_user_id"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button class="oe_stat_button" icon="fa-users" type="object" name="action_view_members">
+                            <field name="member_count" widget="statinfo" string="Membres"/>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <h1><field name="name" placeholder="Nom de la cellule"/></h1>
+                    </div>
+                    <group>
+                        <group string="Informations">
+                            <field name="church_id"/>
+                            <field name="district_ids" widget="many2many_tags" domain="[('church_id', '=', church_id)]"/>
+                            <field name="leader_name"/>
+                            <field name="leader_phone"/>
+                            <field name="mobile_user_id"/>
+                        </group>
+                        <group string="Réunion">
+                            <field name="meeting_day"/>
+                            <field name="meeting_time"/>
+                            <field name="meeting_location"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Membres">
+                            <field name="member_ids">
+                                <list>
+                                    <field name="name"/>
+                                    <field name="first_name"/>
+                                    <field name="phone"/>
+                                    <field name="district_id"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Notes">
+                            <field name="notes"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_church_prayer_cell_list" model="ir.ui.view">
+        <field name="name">church.prayer.cell.list</field>
+        <field name="model">church.prayer.cell</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+                <field name="church_id"/>
+                <field name="leader_name"/>
+                <field name="meeting_day"/>
+                <field name="meeting_time"/>
+                <field name="member_count"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_church_prayer_cell" model="ir.actions.act_window">
+        <field name="name">Cellules de prière</field>
+        <field name="res_model">church.prayer.cell</field>
+        <field name="view_mode">list,form</field>
+    </record>
+</odoo>

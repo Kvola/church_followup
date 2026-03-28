@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="view_church_followup_form" model="ir.ui.view">
+        <field name="name">church.followup.form</field>
+        <field name="model">church.followup</field>
+        <field name="arch" type="xml">
+            <form string="Suivi d'évangélisation">
+                <header>
+                    <button name="action_integrate" string="Intégrer" type="object" class="btn-primary" invisible="state != 'in_progress'"/>
+                    <button name="action_extend" string="Prolonger" type="object" class="btn-secondary" invisible="state != 'in_progress'"/>
+                    <button name="action_transfer" string="Transférer" type="object" class="btn-secondary" invisible="state != 'in_progress'"/>
+                    <button name="action_abandon" string="Abandonner" type="object" class="btn-danger" invisible="state != 'in_progress'" confirm="Êtes-vous sûr de vouloir abandonner ce suivi ?"/>
+                    <field name="state" widget="statusbar" statusbar_visible="in_progress,integrated"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group string="Suivi">
+                            <field name="church_id"/>
+                            <field name="evangelist_id" domain="[('church_id', '=', church_id)]"/>
+                            <field name="member_id" domain="[('church_id', '=', church_id)]"/>
+                            <field name="start_date"/>
+                            <field name="duration_weeks"/>
+                            <field name="end_date"/>
+                        </group>
+                        <group string="Intégration" invisible="state == 'in_progress'">
+                            <field name="target_cell_id" domain="[('church_id', '=', church_id)]"
+                                   invisible="state not in ('in_progress', 'integrated')"/>
+                            <field name="target_age_group_id" domain="[('church_id', '=', church_id)]"
+                                   invisible="state not in ('in_progress', 'integrated')"/>
+                            <field name="transferred_to_id" domain="[('church_id', '=', church_id)]"
+                                   invisible="state != 'transferred'"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Rapports hebdomadaires">
+                            <field name="week_ids">
+                                <list editable="bottom">
+                                    <field name="week_number"/>
+                                    <field name="date"/>
+                                    <field name="sunday_attendance"/>
+                                    <field name="call_made"/>
+                                    <field name="visit_made"/>
+                                    <field name="spiritual_state"/>
+                                    <field name="score"/>
+                                    <field name="notes"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Notes">
+                            <field name="notes" placeholder="Notes générales sur le suivi..."/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_church_followup_list" model="ir.ui.view">
+        <field name="name">church.followup.list</field>
+        <field name="model">church.followup</field>
+        <field name="arch" type="xml">
+            <list decoration-info="state == 'in_progress'" decoration-success="state == 'integrated'" decoration-danger="state == 'abandoned'" decoration-warning="state == 'extended'">
+                <field name="name"/>
+                <field name="evangelist_id"/>
+                <field name="member_id"/>
+                <field name="start_date"/>
+                <field name="end_date"/>
+                <field name="week_count"/>
+                <field name="state" widget="badge"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_church_followup_search" model="ir.ui.view">
+        <field name="name">church.followup.search</field>
+        <field name="model">church.followup</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="evangelist_id"/>
+                <field name="member_id"/>
+                <filter name="filter_active" string="En cours" domain="[('state', '=', 'in_progress')]"/>
+                <filter name="filter_integrated" string="Intégrés" domain="[('state', '=', 'integrated')]"/>
+                <filter name="filter_abandoned" string="Abandonnés" domain="[('state', '=', 'abandoned')]"/>
+                <group expand="0" string="Regrouper par">
+                    <filter name="group_evangelist" string="Évangéliste" context="{'group_by': 'evangelist_id'}"/>
+                    <filter name="group_state" string="État" context="{'group_by': 'state'}"/>
+                    <filter name="group_church" string="Église" context="{'group_by': 'church_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_church_followup" model="ir.actions.act_window">
+        <field name="name">Suivis</field>
+        <field name="res_model">church.followup</field>
+        <field name="view_mode">list,form</field>
+    </record>
+</odoo>

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Tranches d'âge par défaut pour les mariés -->
+        <record id="age_range_married_25_35" model="church.age.range">
+            <field name="name">Mariés 25-35 ans</field>
+            <field name="sequence">10</field>
+            <field name="age_min">25</field>
+            <field name="age_max">35</field>
+            <field name="for_married">True</field>
+        </record>
+
+        <record id="age_range_married_36_50" model="church.age.range">
+            <field name="name">Mariés 36-50 ans</field>
+            <field name="sequence">20</field>
+            <field name="age_min">36</field>
+            <field name="age_max">50</field>
+            <field name="for_married">True</field>
+        </record>
+
+        <record id="age_range_married_50_plus" model="church.age.range">
+            <field name="name">Mariés 50+ ans</field>
+            <field name="sequence">30</field>
+            <field name="age_min">51</field>
+            <field name="age_max">999</field>
+            <field name="for_married">True</field>
+        </record>
+    </data>
+</odoo>

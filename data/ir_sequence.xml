@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <data noupdate="1">
+        <record id="seq_church_followup" model="ir.sequence">
+            <field name="name">Suivi Évangélisation</field>
+            <field name="code">church.followup</field>
+            <field name="prefix">SUV/%(year)s/</field>
+            <field name="padding">4</field>
+        </record>
+    </data>
+</odoo>

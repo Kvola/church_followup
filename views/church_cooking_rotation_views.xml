@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="view_church_cooking_rotation_form" model="ir.ui.view">
+        <field name="name">church.cooking.rotation.form</field>
+        <field name="model">church.cooking.rotation</field>
+        <field name="arch" type="xml">
+            <form string="Rotation cuisine">
+                <header>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="church_id"/>
+                            <field name="prayer_cell_id" domain="[('church_id', '=', church_id)]"/>
+                            <field name="date"/>
+                        </group>
+                        <group>
+                            <field name="description"/>
+                            <field name="notes"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_church_cooking_rotation_list" model="ir.ui.view">
+        <field name="name">church.cooking.rotation.list</field>
+        <field name="model">church.cooking.rotation</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="date"/>
+                <field name="prayer_cell_id"/>
+                <field name="church_id"/>
+                <field name="description"/>
+                <field name="state" widget="badge"
+                       decoration-info="state == 'planned'"
+                       decoration-success="state == 'done'"
+                       decoration-danger="state == 'cancelled'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_church_cooking_rotation_calendar" model="ir.ui.view">
+        <field name="name">church.cooking.rotation.calendar</field>
+        <field name="model">church.cooking.rotation</field>
+        <field name="arch" type="xml">
+            <calendar string="Rotation cuisine" date_start="date" color="prayer_cell_id">
+                <field name="prayer_cell_id"/>
+                <field name="description"/>
+            </calendar>
+        </field>
+    </record>
+
+    <record id="action_church_cooking_rotation" model="ir.actions.act_window">
+        <field name="name">Rotation cuisine</field>
+        <field name="res_model">church.cooking.rotation</field>
+        <field name="view_mode">list,calendar,form</field>
+    </record>
+</odoo>

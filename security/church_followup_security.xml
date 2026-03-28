@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!-- Privilege -->
+    <record id="privilege_church_followup" model="ir.module.category">
+        <field name="name">Suivi Évangélisation</field>
+        <field name="description">Gestion du suivi d'évangélisation des églises</field>
+        <field name="sequence">30</field>
+    </record>
+
+    <!-- Groups -->
+    <record id="group_church_user" model="res.groups">
+        <field name="name">Utilisateur Église</field>
+        <field name="category_id" ref="privilege_church_followup"/>
+    </record>
+
+    <record id="group_church_manager" model="res.groups">
+        <field name="name">Responsable Église</field>
+        <field name="category_id" ref="privilege_church_followup"/>
+        <field name="implied_ids" eval="[(4, ref('group_church_user'))]"/>
+    </record>
+
+    <record id="group_church_admin" model="res.groups">
+        <field name="name">Super Administrateur Église</field>
+        <field name="category_id" ref="privilege_church_followup"/>
+        <field name="implied_ids" eval="[(4, ref('group_church_manager'))]"/>
+    </record>
+
+    <!-- Multi-church rules -->
+    <record id="rule_church_church_manager" model="ir.rule">
+        <field name="name">Église : Responsable ne voit que son église</field>
+        <field name="model_id" ref="model_church_church"/>
+        <field name="domain_force">[('id', 'in', user.church_ids.ids)]</field>
+        <field name="groups" eval="[(4, ref('group_church_manager'))]"/>
+    </record>
+
+    <record id="rule_church_church_admin" model="ir.rule">
+        <field name="name">Église : Admin voit toutes les églises</field>
+        <field name="model_id" ref="model_church_church"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="groups" eval="[(4, ref('group_church_admin'))]"/>
+    </record>
+
+    <record id="rule_church_member_manager" model="ir.rule">
+        <field name="name">Membre : Responsable ne voit que son église</field>
+        <field name="model_id" ref="model_church_member"/>
+        <field name="domain_force">[('church_id', 'in', user.church_ids.ids)]</field>
+        <field name="groups" eval="[(4, ref('group_church_manager'))]"/>
+    </record>
+
+    <record id="rule_church_member_admin" model="ir.rule">
+        <field name="name">Membre : Admin voit tout</field>
+        <field name="model_id" ref="model_church_member"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="groups" eval="[(4, ref('group_church_admin'))]"/>
+    </record>
+
+    <record id="rule_church_followup_manager" model="ir.rule">
+        <field name="name">Suivi : Responsable ne voit que son église</field>
+        <field name="model_id" ref="model_church_followup"/>
+        <field name="domain_force">[('church_id', 'in', user.church_ids.ids)]</field>
+        <field name="groups" eval="[(4, ref('group_church_manager'))]"/>
+    </record>
+
+    <record id="rule_church_followup_admin" model="ir.rule">
+        <field name="name">Suivi : Admin voit tout</field>
+        <field name="model_id" ref="model_church_followup"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="groups" eval="[(4, ref('group_church_admin'))]"/>
+    </record>
+
+    <record id="rule_church_evangelist_manager" model="ir.rule">
+        <field name="name">Évangéliste : Responsable ne voit que son église</field>
+        <field name="model_id" ref="model_church_evangelist"/>
+        <field name="domain_force">[('church_id', 'in', user.church_ids.ids)]</field>
+        <field name="groups" eval="[(4, ref('group_church_manager'))]"/>
+    </record>
+
+    <record id="rule_church_evangelist_admin" model="ir.rule">
+        <field name="name">Évangéliste : Admin voit tout</field>
+        <field name="model_id" ref="model_church_evangelist"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="groups" eval="[(4, ref('group_church_admin'))]"/>
+    </record>
+</odoo>

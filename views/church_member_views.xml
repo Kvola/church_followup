@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="view_church_member_form" model="ir.ui.view">
+        <field name="name">church.member.form</field>
+        <field name="model">church.member</field>
+        <field name="arch" type="xml">
+            <form string="Membre">
+                <sheet>
+                    <field name="photo" widget="image" class="oe_avatar"/>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" placeholder="Nom"/>
+                            <field name="first_name" placeholder="Prénom(s)"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group string="Identité">
+                            <field name="phone"/>
+                            <field name="email"/>
+                            <field name="gender"/>
+                            <field name="date_of_birth"/>
+                            <field name="age"/>
+                            <field name="profession"/>
+                            <field name="marital_status"/>
+                        </group>
+                        <group string="Adresse">
+                            <field name="address"/>
+                            <field name="district_id" domain="[('church_id', '=', church_id)]"/>
+                            <field name="city"/>
+                            <field name="country_id"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Église">
+                            <field name="church_id"/>
+                            <field name="member_type"/>
+                            <field name="salvation_date"/>
+                            <field name="baptism_date"/>
+                            <field name="integration_date"/>
+                        </group>
+                        <group string="Affectation">
+                            <field name="prayer_cell_id" domain="[('church_id', '=', church_id)]"/>
+                            <field name="age_group_id" domain="[('church_id', '=', church_id)]"/>
+                            <field name="evangelist_id" domain="[('church_id', '=', church_id)]"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Notes">
+                            <field name="notes" placeholder="Notes sur le membre..."/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_church_member_list" model="ir.ui.view">
+        <field name="name">church.member.list</field>
+        <field name="model">church.member</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+                <field name="first_name"/>
+                <field name="phone"/>
+                <field name="gender"/>
+                <field name="district_id"/>
+                <field name="member_type" widget="badge"
+                       decoration-info="member_type == 'new'"
+                       decoration-warning="member_type == 'in_followup'"
+                       decoration-success="member_type == 'integrated'"/>
+                <field name="prayer_cell_id"/>
+                <field name="age_group_id"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_church_member_search" model="ir.ui.view">
+        <field name="name">church.member.search</field>
+        <field name="model">church.member</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="first_name"/>
+                <field name="phone"/>
+                <field name="district_id"/>
+                <filter name="filter_new" string="Nouvelles personnes" domain="[('member_type', '=', 'new')]"/>
+                <filter name="filter_in_followup" string="En suivi" domain="[('member_type', '=', 'in_followup')]"/>
+                <filter name="filter_integrated" string="Intégrés" domain="[('member_type', '=', 'integrated')]"/>
+                <separator/>
+                <filter name="filter_male" string="Hommes" domain="[('gender', '=', 'male')]"/>
+                <filter name="filter_female" string="Femmes" domain="[('gender', '=', 'female')]"/>
+                <group expand="0" string="Regrouper par">
+                    <filter name="group_church" string="Église" context="{'group_by': 'church_id'}"/>
+                    <filter name="group_district" string="Quartier" context="{'group_by': 'district_id'}"/>
+                    <filter name="group_cell" string="Cellule" context="{'group_by': 'prayer_cell_id'}"/>
+                    <filter name="group_age" string="Groupe d'âge" context="{'group_by': 'age_group_id'}"/>
+                    <filter name="group_type" string="Type" context="{'group_by': 'member_type'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_church_member" model="ir.actions.act_window">
+        <field name="name">Membres</field>
+        <field name="res_model">church.member</field>
+        <field name="view_mode">list,form</field>
+    </record>
+</odoo>

@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="action_report_dashboard" model="ir.actions.report">
+        <field name="name">Tableau de bord global</field>
+        <field name="model">church.church</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">church_followup.report_dashboard_template</field>
+        <field name="report_file">church_followup.report_dashboard_template</field>
+        <field name="binding_model_id" ref="model_church_church"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <template id="report_dashboard_template">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="church">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <h2 class="text-center">Tableau de Bord - <t t-esc="church.name"/></h2>
+                        <p class="text-center text-muted">
+                            Généré le <t t-esc="context_timestamp(datetime.datetime.now()).strftime('%d/%m/%Y %H:%M')"/>
+                        </p>
+                        <hr/>
+
+                        <!-- Stats générales -->
+                        <h4>Statistiques Générales</h4>
+                        <div class="row mb-4">
+                            <div class="col-3 text-center">
+                                <div class="border p-2">
+                                    <h3><t t-esc="church.member_count"/></h3>
+                                    <small>Membres</small>
+                                </div>
+                            </div>
+                            <div class="col-3 text-center">
+                                <div class="border p-2">
+                                    <h3><t t-esc="church.evangelist_count"/></h3>
+                                    <small>Évangélistes</small>
+                                </div>
+                            </div>
+                            <div class="col-3 text-center">
+                                <div class="border p-2">
+                                    <h3><t t-esc="church.cell_count"/></h3>
+                                    <small>Cellules</small>
+                                </div>
+                            </div>
+                            <div class="col-3 text-center">
+                                <div class="border p-2">
+                                    <h3><t t-esc="len(church.age_group_ids)"/></h3>
+                                    <small>Groupes d'âge</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Stats évangélistes -->
+                        <h4>Performance des Évangélistes</h4>
+                        <table class="table table-bordered table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Évangéliste</th>
+                                    <th>Suivis actifs</th>
+                                    <th>Intégrés</th>
+                                    <th>Total</th>
+                                    <th>Taux</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-foreach="church.evangelist_ids" t-as="ev">
+                                    <tr>
+                                        <td><t t-esc="ev.name"/></td>
+                                        <td><t t-esc="ev.active_followup_count"/></td>
+                                        <td><t t-esc="ev.integrated_count"/></td>
+                                        <td><t t-esc="ev.total_followup_count"/></td>
+                                        <td><t t-esc="'%.1f%%' % ev.integration_rate"/></td>
+                                    </tr>
+                                </t>
+                            </tbody>
+                        </table>
+
+                        <!-- Cellules -->
+                        <h4 class="mt-4">Cellules de Prière</h4>
+                        <table class="table table-bordered table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Cellule</th>
+                                    <th>Responsable</th>
+                                    <th>Membres</th>
+                                    <th>Jour</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-foreach="church.prayer_cell_ids" t-as="cell">
+                                    <tr>
+                                        <td><t t-esc="cell.name"/></td>
+                                        <td><t t-esc="cell.leader_name or '-'"/></td>
+                                        <td><t t-esc="cell.member_count"/></td>
+                                        <td><t t-esc="dict(cell._fields['meeting_day'].selection).get(cell.meeting_day, '-')"/></td>
+                                    </tr>
+                                </t>
+                            </tbody>
+                        </table>
+
+                        <!-- Groupes d'âge -->
+                        <h4 class="mt-4">Groupes d'Âge</h4>
+                        <table class="table table-bordered table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Groupe</th>
+                                    <th>Type</th>
+                                    <th>Sexe</th>
+                                    <th>Responsable</th>
+                                    <th>Membres</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-foreach="church.age_group_ids" t-as="group">
+                                    <tr>
+                                        <td><t t-esc="group.name"/></td>
+                                        <td><t t-esc="dict(group._fields['group_type'].selection).get(group.group_type, '-')"/></td>
+                                        <td><t t-esc="dict(group._fields['gender'].selection).get(group.gender, '-')"/></td>
+                                        <td><t t-esc="group.leader_name or '-'"/></td>
+                                        <td><t t-esc="group.member_count"/></td>
+                                    </tr>
+                                </t>
+                            </tbody>
+                        </table>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

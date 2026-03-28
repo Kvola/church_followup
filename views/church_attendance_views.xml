@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!-- Sunday Attendance -->
+    <record id="view_church_attendance_sunday_list" model="ir.ui.view">
+        <field name="name">church.attendance.sunday.list</field>
+        <field name="model">church.attendance.sunday</field>
+        <field name="arch" type="xml">
+            <list editable="bottom">
+                <field name="date"/>
+                <field name="age_group_id"/>
+                <field name="member_id"/>
+                <field name="present"/>
+                <field name="notes"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_church_attendance_sunday_search" model="ir.ui.view">
+        <field name="name">church.attendance.sunday.search</field>
+        <field name="model">church.attendance.sunday</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="member_id"/>
+                <field name="date"/>
+                <filter name="filter_present" string="Présents" domain="[('present', '=', True)]"/>
+                <group expand="0" string="Regrouper par">
+                    <filter name="group_date" string="Date" context="{'group_by': 'date'}"/>
+                    <filter name="group_age" string="Groupe d'âge" context="{'group_by': 'age_group_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_church_attendance_sunday" model="ir.actions.act_window">
+        <field name="name">Présences cultes</field>
+        <field name="res_model">church.attendance.sunday</field>
+        <field name="view_mode">list</field>
+    </record>
+
+    <!-- Cell Attendance -->
+    <record id="view_church_attendance_cell_list" model="ir.ui.view">
+        <field name="name">church.attendance.cell.list</field>
+        <field name="model">church.attendance.cell</field>
+        <field name="arch" type="xml">
+            <list editable="bottom">
+                <field name="date"/>
+                <field name="prayer_cell_id"/>
+                <field name="member_id"/>
+                <field name="present"/>
+                <field name="notes"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_church_attendance_cell_search" model="ir.ui.view">
+        <field name="name">church.attendance.cell.search</field>
+        <field name="model">church.attendance.cell</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="member_id"/>
+                <field name="date"/>
+                <filter name="filter_present" string="Présents" domain="[('present', '=', True)]"/>
+                <group expand="0" string="Regrouper par">
+                    <filter name="group_date" string="Date" context="{'group_by': 'date'}"/>
+                    <filter name="group_cell" string="Cellule" context="{'group_by': 'prayer_cell_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_church_attendance_cell" model="ir.actions.act_window">
+        <field name="name">Présences cellules</field>
+        <field name="res_model">church.attendance.cell</field>
+        <field name="view_mode">list</field>
+    </record>
+</odoo>
