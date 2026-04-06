@@ -331,6 +331,47 @@ class ApiService {
     );
   }
 
+  // ─── Churches (Super Admin) ───────────────────────────────────────
+
+  Future<List<Map<String, dynamic>>> getChurches() async {
+    final result = await call('/api/church/churches', {});
+    if (result['status'] == 'success') {
+      return _safeList(result['churches']);
+    }
+    return [];
+  }
+
+  Future<Map<String, dynamic>> createChurch(Map<String, dynamic> data) async {
+    return Map<String, dynamic>.from(
+      await call('/api/church/churches/create', data),
+    );
+  }
+
+  Future<Map<String, dynamic>> updateChurch(int churchId, Map<String, dynamic> data) async {
+    data['church_id'] = churchId;
+    return Map<String, dynamic>.from(
+      await call('/api/church/churches/update', data),
+    );
+  }
+
+  Future<Map<String, dynamic>?> getChurchDetail(int churchId) async {
+    final result = await call('/api/church/churches/detail', {'church_id': churchId});
+    if (result['status'] == 'success') {
+      return Map<String, dynamic>.from(result['church']);
+    }
+    return null;
+  }
+
+  Future<Map<String, dynamic>> createManager(String name, String phone, int churchId) async {
+    return Map<String, dynamic>.from(
+      await call('/api/church/manager/create', {
+        'name': name,
+        'phone': phone,
+        'church_id': churchId,
+      }),
+    );
+  }
+
   // ─── Reports ──────────────────────────────────────────────────────
 
   Future<Map<String, dynamic>> getFollowupReport(int evangelistId) async {

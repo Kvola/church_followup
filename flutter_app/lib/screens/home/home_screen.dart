@@ -14,6 +14,7 @@ import '../organization/cooking_rotation_screen.dart';
 import '../evangelists/evangelist_list_screen.dart';
 import '../admin/mobile_users_screen.dart';
 import '../admin/report_screen.dart';
+import '../admin/church_management_screen.dart';
 import '../settings/settings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -127,6 +128,12 @@ class _HomeScreenState extends State<HomeScreen> {
                       auth.churchName,
                       style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 12),
                     ),
+                  ] else if (auth.isSuperAdmin) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      'Multi-église',
+                      style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 12),
+                    ),
                   ],
                 ],
               ),
@@ -140,6 +147,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
                   if (auth.isManager) ...[
                     _drawerItem(Icons.dashboard_outlined, 'Tableau de bord', () => _navigateTo(const DashboardScreen())),
+                    if (auth.isSuperAdmin)
+                      _drawerItem(Icons.church_outlined, 'Églises', () => _navigateTo(const ChurchManagementScreen())),
                     _drawerItem(Icons.people_alt_outlined, 'Évangélistes', () => _navigateTo(const EvangelistListScreen())),
                     _drawerItem(Icons.supervisor_account_outlined, 'Utilisateurs', () => _navigateTo(const MobileUsersScreen())),
                     _drawerItem(Icons.assessment_outlined, 'Rapports', () => _navigateTo(const ReportScreen())),
@@ -212,6 +221,9 @@ class _MoreScreen extends StatelessWidget {
         _QuickAction('Rapports', Icons.assessment_outlined, AppColors.integrated, () => _nav(context, const ReportScreen())),
         _QuickAction('Rotation', Icons.restaurant_outlined, AppColors.extended, () => _nav(context, const CookingRotationScreen())),
       ]);
+      if (auth.isSuperAdmin) {
+        items.insert(0, _QuickAction('Églises', Icons.church_outlined, Colors.deepPurple, () => _nav(context, const ChurchManagementScreen())));
+      }
     }
 
     items.addAll([

@@ -23,7 +23,7 @@
                             <field name="active" widget="boolean_toggle"/>
                         </group>
                         <group string="Affectation">
-                            <field name="church_id"/>
+                            <field name="church_id" required="role != 'super_admin'"/>
                             <field name="evangelist_id" invisible="role != 'evangelist'"/>
                             <field name="prayer_cell_id" invisible="role != 'cell_leader'"/>
                             <field name="age_group_id" invisible="role != 'group_leader'"/>
@@ -47,7 +47,7 @@
                        decoration-success="role == 'super_admin'"
                        decoration-warning="role in ('cell_leader', 'group_leader')"
                        decoration-primary="role == 'manager'"/>
-                <field name="church_id" optional="hide"/>
+                <field name="church_id" optional="show"/>
                 <field name="active" widget="boolean_toggle"/>
             </list>
         </field>

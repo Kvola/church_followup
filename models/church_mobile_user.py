@@ -25,7 +25,8 @@ class ChurchMobileUser(models.Model):
         ('cell_leader', 'Responsable de cellule'),
         ('group_leader', 'Responsable de groupe d\'âge'),
     ], string='Rôle', required=True, tracking=True)
-    church_id = fields.Many2one('church.church', string='Église', required=True, ondelete='cascade')
+    church_id = fields.Many2one('church.church', string='Église', ondelete='cascade',
+                                help='Optionnel pour le Super Administrateur (accès multi-église)')
     active = fields.Boolean(default=True)
 
     # Link to related records
@@ -37,6 +38,17 @@ class ChurchMobileUser(models.Model):
         ('unique_phone_church', 'UNIQUE(phone, church_id)',
          'Ce numéro de téléphone est déjà utilisé dans cette église.'),
     ]
+
+    @api.constrains('role', 'church_id')
+    def _check_church_required(self):
+        """church_id is required for all roles except super_admin."""
+        for rec in self:
+            if rec.role != 'super_admin' and not rec.church_id:
+                raise ValidationError(_('L\'église est obligatoire pour le rôle %s.') % rec.get_role_label())
+
+    def get_role_label(self):
+        """Return the human-readable role label."""
+        return dict(self._fields['role'].selection).get(self.role, self.role)
 
     @api.model_create_multi
     def create(self, vals_list):

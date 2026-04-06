@@ -27,6 +27,7 @@ class AuthProvider extends ChangeNotifier {
   int get churchId => _currentUser?['church_id'] ?? 0;
   String get churchName => _currentUser?['church_name'] ?? '';
   String get userName => _currentUser?['name'] ?? '';
+  bool get isMultiChurch => _currentUser?['is_multi_church'] == true;
 
   bool get isManager => userRole == 'manager' || userRole == 'super_admin';
   bool get isSuperAdmin => userRole == 'super_admin';

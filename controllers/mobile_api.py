@@ -67,8 +67,9 @@ class ChurchMobileApi(http.Controller):
                 'name': user.name,
                 'phone': user.phone,
                 'role': user.role,
-                'church_id': user.church_id.id,
-                'church_name': user.church_id.name,
+                'church_id': user.church_id.id if user.church_id else False,
+                'church_name': user.church_id.name if user.church_id else '',
+                'is_multi_church': user.role == 'super_admin' and not user.church_id,
             }
 
             if user.role == 'evangelist' and user.evangelist_id:
@@ -118,6 +119,57 @@ class ChurchMobileApi(http.Controller):
         """Check if the user has manager or super_admin privileges."""
         return user and user.role in ('super_admin', 'manager')
 
+    @staticmethod
+    def _is_super_admin(user):
+        """Check if the user is a super_admin."""
+        return user and user.role == 'super_admin'
+
+    def _get_church_domain(self, user, kwargs):
+        """Build church domain filter.
+
+        Super admin without church_id sees all churches.
+        Super admin can optionally filter by church_id via kwargs.
+        Other roles are locked to their church_id.
+        """
+        if self._is_super_admin(user):
+            # Super admin can optionally filter by a specific church
+            filter_church = kwargs.get('filter_church_id')
+            if filter_church:
+                try:
+                    return [('church_id', '=', int(filter_church))]
+                except (ValueError, TypeError):
+                    pass
+            if user.church_id:
+                return [('church_id', '=', user.church_id.id)]
+            # No church filter — see everything
+            return []
+        return [('church_id', '=', user.church_id.id)]
+
+    def _check_record_access(self, user, record_church_id):
+        """Check if user can access a record from a given church.
+
+        Super admin can access any church. Others must match their church_id.
+        """
+        if self._is_super_admin(user):
+            return True
+        return record_church_id == user.church_id.id
+
+    def _resolve_church_id(self, user, kwargs):
+        """Resolve which church_id to use for record creation.
+
+        Super admin can specify church_id in kwargs. Others use their own.
+        Returns int or False.
+        """
+        if self._is_super_admin(user):
+            cid = kwargs.get('church_id')
+            if cid:
+                try:
+                    return int(cid)
+                except (ValueError, TypeError):
+                    return False
+            return user.church_id.id if user.church_id else False
+        return user.church_id.id if user.church_id else False
+
     # ─── Dashboard ────────────────────────────────────────────────────
 
     @http.route('/api/church/dashboard', type='json', auth='public', methods=['POST'], csrf=False)
@@ -128,14 +180,18 @@ class ChurchMobileApi(http.Controller):
             return {'status': 'error', 'message': 'Non authentifié'}
 
         try:
-            church_id = user.church_id.id
-            church_name = user.church_id.name
+            church_domain = self._get_church_domain(user, kwargs)
+            # Determine church name for display
+            if user.church_id:
+                church_name = user.church_id.name
+            else:
+                church_name = 'Toutes les églises'
 
-            followups = request.env['church.followup'].sudo().search([('church_id', '=', church_id)])
-            evangelists = request.env['church.evangelist'].sudo().search([('church_id', '=', church_id)])
-            members = request.env['church.member'].sudo().search([('church_id', '=', church_id)])
-            cells = request.env['church.prayer.cell'].sudo().search([('church_id', '=', church_id)])
-            groups = request.env['church.age.group'].sudo().search([('church_id', '=', church_id)])
+            followups = request.env['church.followup'].sudo().search(church_domain)
+            evangelists = request.env['church.evangelist'].sudo().search(church_domain)
+            members = request.env['church.member'].sudo().search(church_domain)
+            cells = request.env['church.prayer.cell'].sudo().search(church_domain)
+            groups = request.env['church.age.group'].sudo().search(church_domain)
 
             active_followups = followups.filtered(lambda f: f.state == 'in_progress')
             integrated = followups.filtered(lambda f: f.state == 'integrated')
@@ -189,9 +245,9 @@ class ChurchMobileApi(http.Controller):
         if not user:
             return {'status': 'error', 'message': 'Non authentifié'}
 
-        evangelists = request.env['church.evangelist'].sudo().search([
-            ('church_id', '=', user.church_id.id),
-        ])
+        evangelists = request.env['church.evangelist'].sudo().search(
+            self._get_church_domain(user, kwargs),
+        )
 
         return {
             'status': 'success',
@@ -218,10 +274,15 @@ class ChurchMobileApi(http.Controller):
         if not name or not phone:
             return {'status': 'error', 'message': 'Nom et téléphone requis'}
 
+        # Super admin can specify church_id; others use their own
+        church_id = self._resolve_church_id(user, kwargs)
+        if not church_id:
+            return {'status': 'error', 'message': 'Église requise'}
+
         evangelist = request.env['church.evangelist'].sudo().create({
             'name': name,
             'phone': phone,
-            'church_id': user.church_id.id,
+            'church_id': church_id,
         })
 
         return {
@@ -244,7 +305,7 @@ class ChurchMobileApi(http.Controller):
         if not user:
             return {'status': 'error', 'message': 'Non authentifié'}
 
-        domain = [('church_id', '=', user.church_id.id)]
+        domain = self._get_church_domain(user, kwargs)
         member_type = kwargs.get('member_type')
         if member_type:
             domain.append(('member_type', '=', member_type))
@@ -291,7 +352,7 @@ class ChurchMobileApi(http.Controller):
             'name': kwargs['name'].strip(),
             'first_name': kwargs['first_name'].strip(),
             'gender': kwargs['gender'],
-            'church_id': user.church_id.id,
+            'church_id': self._resolve_church_id(user, kwargs),
             'phone': kwargs.get('phone', '').strip() or False,
             'address': kwargs.get('address', '').strip() or False,
             'city': kwargs.get('city', '').strip() or False,
@@ -360,7 +421,7 @@ class ChurchMobileApi(http.Controller):
             member = request.env['church.member'].sudo().browse(int(member_id))
         except (ValueError, TypeError):
             return {'status': 'error', 'message': 'member_id invalide'}
-        if not member.exists() or member.church_id.id != user.church_id.id:
+        if not member.exists() or not self._check_record_access(user, member.church_id.id):
             return {'status': 'error', 'message': 'Membre non trouvé'}
 
         return {
@@ -402,7 +463,7 @@ class ChurchMobileApi(http.Controller):
             member = request.env['church.member'].sudo().browse(int(member_id))
         except (ValueError, TypeError):
             return {'status': 'error', 'message': 'member_id invalide'}
-        if not member.exists() or member.church_id.id != user.church_id.id:
+        if not member.exists() or not self._check_record_access(user, member.church_id.id):
             return {'status': 'error', 'message': 'Membre non trouvé'}
 
         allowed_fields = [
@@ -436,7 +497,7 @@ class ChurchMobileApi(http.Controller):
         if not user:
             return {'status': 'error', 'message': 'Non authentifié'}
 
-        domain = [('church_id', '=', user.church_id.id)]
+        domain = self._get_church_domain(user, kwargs)
 
         # Évangéliste ne voit que ses propres suivis
         my_only = kwargs.get('my_only', False)
@@ -504,8 +565,11 @@ class ChurchMobileApi(http.Controller):
             return {'status': 'error', 'message': 'Évangéliste requis'}
 
         try:
+            church_id = self._resolve_church_id(user, kwargs)
+            if not church_id:
+                return {'status': 'error', 'message': 'Église requise'}
             vals = {
-                'church_id': user.church_id.id,
+                'church_id': church_id,
                 'evangelist_id': int(evangelist_id),
                 'member_id': int(member_id),
             }
@@ -545,7 +609,7 @@ class ChurchMobileApi(http.Controller):
             f = request.env['church.followup'].sudo().browse(int(followup_id))
         except (ValueError, TypeError):
             return {'status': 'error', 'message': 'followup_id invalide'}
-        if not f.exists() or f.church_id.id != user.church_id.id:
+        if not f.exists() or not self._check_record_access(user, f.church_id.id):
             return {'status': 'error', 'message': 'Suivi non trouvé'}
 
         return {
@@ -593,7 +657,7 @@ class ChurchMobileApi(http.Controller):
             followup = request.env['church.followup'].sudo().browse(int(followup_id))
         except (ValueError, TypeError):
             return {'status': 'error', 'message': 'followup_id invalide'}
-        if not followup.exists() or followup.church_id.id != user.church_id.id:
+        if not followup.exists() or not self._check_record_access(user, followup.church_id.id):
             return {'status': 'error', 'message': 'Suivi introuvable'}
 
         # Chercher ou créer le rapport de semaine
@@ -641,7 +705,7 @@ class ChurchMobileApi(http.Controller):
             followup = request.env['church.followup'].sudo().browse(int(followup_id))
         except (ValueError, TypeError):
             return {'status': 'error', 'message': 'followup_id invalide'}
-        if not followup.exists() or followup.church_id.id != user.church_id.id:
+        if not followup.exists() or not self._check_record_access(user, followup.church_id.id):
             return {'status': 'error', 'message': 'Suivi introuvable'}
 
         try:
@@ -682,7 +746,7 @@ class ChurchMobileApi(http.Controller):
         if not user:
             return {'status': 'error', 'message': 'Non authentifié'}
 
-        domain = [('church_id', '=', user.church_id.id)]
+        domain = self._get_church_domain(user, kwargs)
         if user.role == 'cell_leader' and user.prayer_cell_id:
             domain.append(('id', '=', user.prayer_cell_id.id))
 
@@ -716,7 +780,7 @@ class ChurchMobileApi(http.Controller):
         if not user:
             return {'status': 'error', 'message': 'Non authentifié'}
 
-        domain = [('church_id', '=', user.church_id.id)]
+        domain = self._get_church_domain(user, kwargs)
         if user.role == 'group_leader' and user.age_group_id:
             domain.append(('id', '=', user.age_group_id.id))
 
@@ -749,9 +813,9 @@ class ChurchMobileApi(http.Controller):
         if not user:
             return {'status': 'error', 'message': 'Non authentifié'}
 
-        districts = request.env['church.district'].sudo().search([
-            ('church_id', '=', user.church_id.id),
-        ])
+        districts = request.env['church.district'].sudo().search(
+            self._get_church_domain(user, kwargs),
+        )
 
         return {
             'status': 'success',
@@ -788,7 +852,7 @@ class ChurchMobileApi(http.Controller):
             if not existing:
                 member = request.env['church.member'].sudo().browse(mid_int)
                 vals = {
-                    'church_id': user.church_id.id,
+                    'church_id': self._resolve_church_id(user, kwargs) or (member.church_id.id if member.exists() else False),
                     'member_id': mid_int,
                     'date': date,
                     'present': True,
@@ -832,7 +896,7 @@ class ChurchMobileApi(http.Controller):
 
             if not existing:
                 AttCell.create({
-                    'church_id': user.church_id.id,
+                    'church_id': self._resolve_church_id(user, kwargs) or cell_id_int and request.env['church.prayer.cell'].sudo().browse(cell_id_int).church_id.id,
                     'prayer_cell_id': cell_id_int,
                     'member_id': mid_int,
                     'date': date,
@@ -850,9 +914,9 @@ class ChurchMobileApi(http.Controller):
         if not user:
             return {'status': 'error', 'message': 'Non authentifié'}
 
-        rotations = request.env['church.cooking.rotation'].sudo().search([
-            ('church_id', '=', user.church_id.id),
-        ], order='date')
+        rotations = request.env['church.cooking.rotation'].sudo().search(
+            self._get_church_domain(user, kwargs), order='date',
+        )
 
         return {
             'status': 'success',
@@ -883,7 +947,7 @@ class ChurchMobileApi(http.Controller):
             target = request.env['church.mobile.user'].sudo().browse(int(target_user_id))
         except (ValueError, TypeError):
             return {'status': 'error', 'message': 'target_user_id invalide'}
-        if not target.exists() or target.church_id.id != user.church_id.id:
+        if not target.exists() or not self._check_record_access(user, target.church_id.id if target.church_id else 0):
             return {'status': 'error', 'message': 'Utilisateur introuvable'}
 
         message = target.get_share_message()
@@ -910,7 +974,7 @@ class ChurchMobileApi(http.Controller):
             evangelist = request.env['church.evangelist'].sudo().browse(int(evangelist_id))
         except (ValueError, TypeError):
             return {'status': 'error', 'message': 'evangelist_id invalide'}
-        if not evangelist.exists() or evangelist.church_id.id != user.church_id.id:
+        if not evangelist.exists() or not self._check_record_access(user, evangelist.church_id.id):
             return {'status': 'error', 'message': 'Évangéliste introuvable'}
 
         followups = request.env['church.followup'].sudo().search([
@@ -956,9 +1020,9 @@ class ChurchMobileApi(http.Controller):
         if not self._is_admin_or_manager(user):
             return {'status': 'error', 'message': 'Non autorisé'}
 
-        users = request.env['church.mobile.user'].sudo().search([
-            ('church_id', '=', user.church_id.id),
-        ])
+        # Super admin sees all users; manager sees own church only
+        domain = self._get_church_domain(user, kwargs)
+        users = request.env['church.mobile.user'].sudo().search(domain)
 
         return {
             'status': 'success',
@@ -968,6 +1032,8 @@ class ChurchMobileApi(http.Controller):
                 'phone': u.phone,
                 'role': u.role,
                 'active': u.active,
+                'church_id': u.church_id.id if u.church_id else False,
+                'church_name': u.church_id.name if u.church_id else '',
             } for u in users],
         }
 
@@ -989,7 +1055,7 @@ class ChurchMobileApi(http.Controller):
             cell = request.env['church.prayer.cell'].sudo().browse(int(cell_id))
         except (ValueError, TypeError):
             return {'status': 'error', 'message': 'prayer_cell_id invalide'}
-        if not cell.exists() or cell.church_id.id != user.church_id.id:
+        if not cell.exists() or not self._check_record_access(user, cell.church_id.id):
             return {'status': 'error', 'message': 'Cellule introuvable'}
 
         cell.write({
@@ -1022,7 +1088,7 @@ class ChurchMobileApi(http.Controller):
             group = request.env['church.age.group'].sudo().browse(int(group_id))
         except (ValueError, TypeError):
             return {'status': 'error', 'message': 'age_group_id invalide'}
-        if not group.exists() or group.church_id.id != user.church_id.id:
+        if not group.exists() or not self._check_record_access(user, group.church_id.id):
             return {'status': 'error', 'message': 'Groupe introuvable'}
 
         group.write({
@@ -1057,10 +1123,15 @@ class ChurchMobileApi(http.Controller):
         if role not in valid_roles:
             return {'status': 'error', 'message': f'Rôle invalide. Valeurs possibles : {", ".join(valid_roles)}'}
 
+        # Resolve church_id — super_admin can specify it
+        church_id = self._resolve_church_id(user, kwargs)
+        if not church_id:
+            return {'status': 'error', 'message': 'Église requise pour cet utilisateur'}
+
         MobileUser = request.env['church.mobile.user'].sudo()
         existing = MobileUser.search([
             ('phone', '=', phone),
-            ('church_id', '=', user.church_id.id),
+            ('church_id', '=', church_id),
         ], limit=1)
         if existing:
             return {'status': 'error', 'message': 'Ce numéro est déjà utilisé dans cette église'}
@@ -1069,7 +1140,7 @@ class ChurchMobileApi(http.Controller):
             'name': name,
             'phone': phone,
             'role': role,
-            'church_id': user.church_id.id,
+            'church_id': church_id,
         }
 
         # Optional links
@@ -1123,7 +1194,7 @@ class ChurchMobileApi(http.Controller):
             target = request.env['church.mobile.user'].sudo().browse(int(target_user_id))
         except (ValueError, TypeError):
             return {'status': 'error', 'message': 'target_user_id invalide'}
-        if not target.exists() or target.church_id.id != user.church_id.id:
+        if not target.exists() or not self._check_record_access(user, target.church_id.id if target.church_id else 0):
             return {'status': 'error', 'message': 'Utilisateur introuvable'}
 
         # Prevent modifying self
@@ -1173,7 +1244,7 @@ class ChurchMobileApi(http.Controller):
             target = request.env['church.mobile.user'].sudo().browse(int(target_user_id))
         except (ValueError, TypeError):
             return {'status': 'error', 'message': 'target_user_id invalide'}
-        if not target.exists() or target.church_id.id != user.church_id.id:
+        if not target.exists() or not self._check_record_access(user, target.church_id.id if target.church_id else 0):
             return {'status': 'error', 'message': 'Utilisateur introuvable'}
 
         target.action_regenerate_pin()
@@ -1182,4 +1253,217 @@ class ChurchMobileApi(http.Controller):
             'status': 'success',
             'message': f'PIN régénéré pour {target.name}',
             'pin': target.pin,
+        }
+
+    # ─── Church Management (super_admin only) ─────────────────────────
+
+    @http.route('/api/church/churches', type='json', auth='public', methods=['POST'], csrf=False)
+    def get_churches(self, **kwargs):
+        """Liste de toutes les églises (super_admin uniquement)."""
+        user = self._get_mobile_user(kwargs)
+        if not self._is_super_admin(user):
+            return {'status': 'error', 'message': 'Non autorisé. Réservé au super administrateur.'}
+
+        churches = request.env['church.church'].sudo().search([])
+
+        return {
+            'status': 'success',
+            'churches': [{
+                'id': c.id,
+                'name': c.name,
+                'code': c.code or '',
+                'address': c.address or '',
+                'city': c.city or '',
+                'phone': c.phone or '',
+                'email': c.email or '',
+                'pastor_name': c.pastor_name or '',
+                'active': c.active,
+                'member_count': c.member_count,
+                'evangelist_count': c.evangelist_count,
+                'cell_count': c.cell_count,
+            } for c in churches],
+        }
+
+    @http.route('/api/church/churches/create', type='json', auth='public', methods=['POST'], csrf=False)
+    def create_church(self, **kwargs):
+        """Créer une nouvelle église (super_admin uniquement)."""
+        user = self._get_mobile_user(kwargs)
+        if not self._is_super_admin(user):
+            return {'status': 'error', 'message': 'Non autorisé. Réservé au super administrateur.'}
+
+        name = kwargs.get('name', '').strip()
+        code = kwargs.get('code', '').strip()
+
+        if not name:
+            return {'status': 'error', 'message': 'Le nom est requis'}
+
+        Church = request.env['church.church'].sudo()
+        if code and Church.search_count([('code', '=', code)]):
+            return {'status': 'error', 'message': 'Ce code est déjà utilisé par une autre église'}
+
+        vals = {
+            'name': name,
+            'code': code or False,
+            'address': kwargs.get('address', '').strip() or False,
+            'city': kwargs.get('city', '').strip() or False,
+            'phone': kwargs.get('phone', '').strip() or False,
+            'email': kwargs.get('email', '').strip() or False,
+            'pastor_name': kwargs.get('pastor_name', '').strip() or False,
+        }
+
+        church = Church.create(vals)
+
+        return {
+            'status': 'success',
+            'message': f'Église "{church.name}" créée avec succès',
+            'church': {
+                'id': church.id,
+                'name': church.name,
+                'code': church.code or '',
+            },
+        }
+
+    @http.route('/api/church/churches/update', type='json', auth='public', methods=['POST'], csrf=False)
+    def update_church(self, **kwargs):
+        """Mettre à jour une église (super_admin uniquement)."""
+        user = self._get_mobile_user(kwargs)
+        if not self._is_super_admin(user):
+            return {'status': 'error', 'message': 'Non autorisé. Réservé au super administrateur.'}
+
+        church_id = kwargs.get('church_id')
+        if not church_id:
+            return {'status': 'error', 'message': 'church_id requis'}
+
+        try:
+            church = request.env['church.church'].sudo().browse(int(church_id))
+        except (ValueError, TypeError):
+            return {'status': 'error', 'message': 'church_id invalide'}
+        if not church.exists():
+            return {'status': 'error', 'message': 'Église non trouvée'}
+
+        allowed_fields = ['name', 'code', 'address', 'city', 'phone', 'email', 'pastor_name']
+        vals = {}
+        for f in allowed_fields:
+            if f in kwargs:
+                vals[f] = kwargs[f].strip() if isinstance(kwargs[f], str) else kwargs[f]
+
+        if 'active' in kwargs:
+            vals['active'] = bool(kwargs['active'])
+
+        if vals:
+            church.write(vals)
+
+        return {
+            'status': 'success',
+            'message': 'Église mise à jour',
+            'church': {
+                'id': church.id,
+                'name': church.name,
+                'code': church.code or '',
+            },
+        }
+
+    @http.route('/api/church/churches/detail', type='json', auth='public', methods=['POST'], csrf=False)
+    def get_church_detail(self, **kwargs):
+        """Détail d'une église avec statistiques (super_admin uniquement)."""
+        user = self._get_mobile_user(kwargs)
+        if not self._is_super_admin(user):
+            return {'status': 'error', 'message': 'Non autorisé. Réservé au super administrateur.'}
+
+        church_id = kwargs.get('church_id')
+        if not church_id:
+            return {'status': 'error', 'message': 'church_id requis'}
+
+        try:
+            church = request.env['church.church'].sudo().browse(int(church_id))
+        except (ValueError, TypeError):
+            return {'status': 'error', 'message': 'church_id invalide'}
+        if not church.exists():
+            return {'status': 'error', 'message': 'Église non trouvée'}
+
+        # Stats
+        followups = request.env['church.followup'].sudo().search([('church_id', '=', church.id)])
+        active_followups = followups.filtered(lambda f: f.state == 'in_progress')
+        integrated = followups.filtered(lambda f: f.state == 'integrated')
+
+        # Managers of this church
+        managers = request.env['church.mobile.user'].sudo().search([
+            ('church_id', '=', church.id),
+            ('role', '=', 'manager'),
+            ('active', '=', True),
+        ])
+
+        return {
+            'status': 'success',
+            'church': {
+                'id': church.id,
+                'name': church.name,
+                'code': church.code or '',
+                'address': church.address or '',
+                'city': church.city or '',
+                'phone': church.phone or '',
+                'email': church.email or '',
+                'pastor_name': church.pastor_name or '',
+                'active': church.active,
+                'member_count': church.member_count,
+                'evangelist_count': church.evangelist_count,
+                'cell_count': church.cell_count,
+                'age_group_count': church.age_group_count,
+                'active_followups': len(active_followups),
+                'total_integrated': len(integrated),
+                'managers': [{
+                    'id': m.id,
+                    'name': m.name,
+                    'phone': m.phone,
+                } for m in managers],
+            },
+        }
+
+    @http.route('/api/church/manager/create', type='json', auth='public', methods=['POST'], csrf=False)
+    def create_manager(self, **kwargs):
+        """Créer un responsable des évangélistes pour une église (super_admin uniquement)."""
+        user = self._get_mobile_user(kwargs)
+        if not self._is_super_admin(user):
+            return {'status': 'error', 'message': 'Non autorisé. Réservé au super administrateur.'}
+
+        name = kwargs.get('name', '').strip()
+        phone = kwargs.get('phone', '').strip()
+        church_id = kwargs.get('church_id')
+
+        if not name or not phone or not church_id:
+            return {'status': 'error', 'message': 'Nom, téléphone et église sont requis'}
+
+        try:
+            church = request.env['church.church'].sudo().browse(int(church_id))
+        except (ValueError, TypeError):
+            return {'status': 'error', 'message': 'church_id invalide'}
+        if not church.exists():
+            return {'status': 'error', 'message': 'Église non trouvée'}
+
+        MobileUser = request.env['church.mobile.user'].sudo()
+        existing = MobileUser.search([
+            ('phone', '=', phone),
+            ('church_id', '=', church.id),
+        ], limit=1)
+        if existing:
+            return {'status': 'error', 'message': 'Ce numéro est déjà utilisé dans cette église'}
+
+        new_manager = MobileUser.create({
+            'name': name,
+            'phone': phone,
+            'role': 'manager',
+            'church_id': church.id,
+        })
+
+        return {
+            'status': 'success',
+            'message': f'Responsable "{name}" créé pour {church.name}',
+            'user': {
+                'id': new_manager.id,
+                'name': new_manager.name,
+                'phone': new_manager.phone,
+                'role': new_manager.role,
+                'pin': new_manager.pin,
+                'church_name': church.name,
+            },
         }
