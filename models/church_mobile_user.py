@@ -19,6 +19,7 @@ class ChurchMobileUser(models.Model):
     login_attempts = fields.Integer(string='Tentatives de connexion', default=0)
     last_login_attempt = fields.Datetime(string='Dernière tentative')
     role = fields.Selection([
+        ('super_admin', 'Super Administrateur'),
         ('manager', 'Responsable des évangélistes'),
         ('evangelist', 'Évangéliste'),
         ('cell_leader', 'Responsable de cellule'),

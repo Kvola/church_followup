@@ -42,6 +42,8 @@
                             <field name="prayer_cell_id" domain="[('church_id', '=', church_id)]"/>
                             <field name="age_group_id" domain="[('church_id', '=', church_id)]"/>
                             <field name="evangelist_id" domain="[('church_id', '=', church_id)]"/>
+                            <field name="invited_by_id" domain="[('church_id', '=', church_id)]"/>
+                            <field name="mentor_id" domain="[('church_id', '=', church_id)]"/>
                         </group>
                     </group>
                     <notebook>
@@ -71,6 +73,8 @@
                        decoration-success="member_type == 'integrated'"/>
                 <field name="prayer_cell_id"/>
                 <field name="age_group_id"/>
+                <field name="invited_by_id" optional="hide"/>
+                <field name="mentor_id" optional="hide"/>
             </list>
         </field>
     </record>
@@ -84,6 +88,8 @@
                 <field name="first_name"/>
                 <field name="phone"/>
                 <field name="district_id"/>
+                <field name="invited_by_id"/>
+                <field name="mentor_id"/>
                 <separator/>
                 <filter name="filter_new" string="Nouvelles personnes" domain="[('member_type', '=', 'new')]"/>
                 <filter name="filter_in_followup" string="En suivi" domain="[('member_type', '=', 'in_followup')]"/>

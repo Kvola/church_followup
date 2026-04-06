@@ -55,6 +55,12 @@ class ChurchMember(models.Model):
     age_group_id = fields.Many2one('church.age.group', string='Groupe d\'âge', tracking=True, ondelete='set null')
     evangelist_id = fields.Many2one('church.evangelist', string='Évangéliste référent', ondelete='set null')
 
+    # Inviter & Mentor
+    invited_by_id = fields.Many2one('church.member', string='Invité(e) par', tracking=True, ondelete='set null',
+                                     help='La personne qui a invité ce membre à l\'église')
+    mentor_id = fields.Many2one('church.member', string='Mentor', tracking=True, ondelete='set null',
+                                 help='Le mentor qui suit ce membre dans sa vie chrétienne')
+
     # Notes
     notes = fields.Text(string='Notes')
     active = fields.Boolean(default=True)

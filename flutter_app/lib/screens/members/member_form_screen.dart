@@ -32,6 +32,8 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
   int? _districtId;
   int? _cellId;
   int? _ageGroupId;
+  int? _invitedById;
+  int? _mentorId;
   DateTime? _birthday;
   DateTime? _salvationDate;
 
@@ -51,6 +53,8 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
     _districtId = AppConstants.safeId(d['district_id']);
     _cellId = AppConstants.safeId(d['prayer_cell_id']);
     _ageGroupId = AppConstants.safeId(d['age_group_id']);
+    _invitedById = AppConstants.safeId(d['invited_by_id']);
+    _mentorId = AppConstants.safeId(d['mentor_id']);
 
     if (d['birthday'] != null && d['birthday'] != false) {
       _birthday = DateTime.tryParse(d['birthday'].toString());
@@ -64,6 +68,9 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
       org.loadDistricts();
       org.loadCells();
       org.loadAgeGroups();
+
+      // Load members for invited_by and mentor dropdowns
+      context.read<MemberProvider>().loadMembers();
 
       if (_isEdit && widget.memberId != null) {
         context.read<MemberProvider>().loadDetail(widget.memberId!).then((_) {
@@ -81,6 +88,8 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
               _districtId = AppConstants.safeId(detail['district_id']) ?? _districtId;
               _cellId = AppConstants.safeId(detail['prayer_cell_id']) ?? _cellId;
               _ageGroupId = AppConstants.safeId(detail['age_group_id']) ?? _ageGroupId;
+              _invitedById = AppConstants.safeId(detail['invited_by_id']) ?? _invitedById;
+              _mentorId = AppConstants.safeId(detail['mentor_id']) ?? _mentorId;
 
               if (detail['birthday'] != null && detail['birthday'] != false) {
                 _birthday = DateTime.tryParse(detail['birthday'].toString()) ?? _birthday;
@@ -130,6 +139,8 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
     if (_districtId != null) data['district_id'] = _districtId;
     if (_cellId != null) data['prayer_cell_id'] = _cellId;
     if (_ageGroupId != null) data['age_group_id'] = _ageGroupId;
+    if (_invitedById != null) data['invited_by_id'] = _invitedById;
+    if (_mentorId != null) data['mentor_id'] = _mentorId;
     if (_birthday != null) data['birthday'] = _birthday!.toIso8601String().split('T')[0];
     if (_salvationDate != null) data['salvation_date'] = _salvationDate!.toIso8601String().split('T')[0];
 
@@ -274,6 +285,36 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
               value: _validDropdownValue(_ageGroupId, org.ageGroups),
               items: org.ageGroups.where((g) => g['id'] is int).map((g) => DropdownMenuItem(value: g['id'] as int, child: Text(AppConstants.safeStr(g['name'], '—')))).toList(),
               onChanged: (v) => setState(() => _ageGroupId = v),
+            ),
+            const SizedBox(height: 20),
+
+            // Inviter & Mentor
+            _SectionTitle('Parrainage'),
+            const SizedBox(height: 8),
+            Consumer<MemberProvider>(
+              builder: (_, memberProv, __) {
+                final memberItems = memberProv.allMembers
+                    .where((m) => m['id'] is int && m['id'] != widget.memberId)
+                    .map((m) => <String, dynamic>{'id': m['id'] as int, 'name': '${m['name'] ?? ''} ${m['first_name'] ?? ''}'.trim()})
+                    .toList();
+                return Column(
+                  children: [
+                    DropdownButtonFormField<int>(
+                      decoration: const InputDecoration(labelText: 'Invité(e) par', prefixIcon: Icon(Icons.person_add_outlined)),
+                      value: memberItems.any((m) => m['id'] == _invitedById) ? _invitedById : null,
+                      items: memberItems.map((m) => DropdownMenuItem(value: m['id'] as int, child: Text((m['name'] as String?) ?? '—'))).toList(),
+                      onChanged: (v) => setState(() => _invitedById = v),
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<int>(
+                      decoration: const InputDecoration(labelText: 'Mentor', prefixIcon: Icon(Icons.supervisor_account_outlined)),
+                      value: memberItems.any((m) => m['id'] == _mentorId) ? _mentorId : null,
+                      items: memberItems.map((m) => DropdownMenuItem(value: m['id'] as int, child: Text((m['name'] as String?) ?? '—'))).toList(),
+                      onChanged: (v) => setState(() => _mentorId = v),
+                    ),
+                  ],
+                );
+              },
             ),
             const SizedBox(height: 20),
 

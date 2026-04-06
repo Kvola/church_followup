@@ -16,7 +16,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   final _phoneCtrl = TextEditingController();
   final _pinCtrl = TextEditingController();
   final _urlCtrl = TextEditingController(text: AppConstants.defaultUrl);
-  final _dbCtrl = TextEditingController();
+  final _dbCtrl = TextEditingController(text: AppConstants.defaultDatabase);
 
   bool _showAdvanced = false;
   bool _isLoading = false;

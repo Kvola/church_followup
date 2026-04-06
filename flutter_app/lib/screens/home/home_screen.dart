@@ -49,6 +49,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   List<_TabItem> _buildTabs(AuthProvider auth) {
     switch (auth.userRole) {
+      case 'super_admin':
       case 'manager':
         return [
           _TabItem('Accueil', Icons.dashboard_outlined, Icons.dashboard, const DashboardScreen()),

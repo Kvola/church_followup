@@ -310,6 +310,27 @@ class ApiService {
     );
   }
 
+  // ─── Super Admin ──────────────────────────────────────────────────
+
+  Future<Map<String, dynamic>> adminCreateUser(Map<String, dynamic> data) async {
+    return Map<String, dynamic>.from(
+      await call('/api/church/admin/create_user', data),
+    );
+  }
+
+  Future<Map<String, dynamic>> adminUpdateUser(int targetUserId, Map<String, dynamic> data) async {
+    data['target_user_id'] = targetUserId;
+    return Map<String, dynamic>.from(
+      await call('/api/church/admin/update_user', data),
+    );
+  }
+
+  Future<Map<String, dynamic>> adminResetPin(int targetUserId) async {
+    return Map<String, dynamic>.from(
+      await call('/api/church/admin/reset_pin', {'target_user_id': targetUserId}),
+    );
+  }
+
   // ─── Reports ──────────────────────────────────────────────────────
 
   Future<Map<String, dynamic>> getFollowupReport(int evangelistId) async {

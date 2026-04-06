@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../core/constants.dart';
 import '../../core/theme.dart';
 import '../../providers/auth_provider.dart';
@@ -87,7 +88,7 @@ class SettingsScreen extends StatelessWidget {
                 ListTile(
                   leading: const Icon(Icons.info_outline),
                   title: const Text('Version'),
-                  trailing: const Text('2.0.0', style: TextStyle(color: Colors.grey)),
+                  trailing: const Text('2.1.0', style: TextStyle(color: Colors.grey)),
                 ),
                 const Divider(height: 1),
                 ListTile(
@@ -99,6 +100,44 @@ class SettingsScreen extends StatelessWidget {
                       const SnackBar(content: Text('Cache vidé')),
                     );
                   },
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // Developer section
+          _SectionTitle('Développeur'),
+          Card(
+            child: Column(
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.person_outline, color: AppColors.primary),
+                  title: const Text(AppConstants.developerName),
+                  subtitle: const Text('Développeur'),
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.phone_outlined, color: AppColors.primary),
+                  title: const Text(AppConstants.developerPhone),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.phone, color: Colors.green, size: 20),
+                        onPressed: () => launchUrl(Uri.parse('tel:${AppConstants.developerPhone}')),
+                        tooltip: 'Appeler',
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.message, color: Colors.blue, size: 20),
+                        onPressed: () {
+                          final phone = AppConstants.developerPhone.replaceAll(RegExp(r'[^0-9+]'), '').replaceFirst('+', '');
+                          launchUrl(Uri.parse('https://wa.me/$phone'), mode: LaunchMode.externalApplication);
+                        },
+                        tooltip: 'WhatsApp',
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -147,6 +186,8 @@ class SettingsScreen extends StatelessWidget {
 
   String _roleLabel(String role) {
     switch (role) {
+      case 'super_admin':
+        return 'Super Administrateur';
       case 'manager':
         return 'Responsable';
       case 'evangelist':

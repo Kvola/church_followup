@@ -159,6 +159,36 @@ class OrganizationProvider extends ChangeNotifier {
     }
   }
 
+  // ─── Super Admin ──────────────────────────────────────────────────
+
+  Future<Map<String, dynamic>> adminCreateUser(Map<String, dynamic> data) async {
+    try {
+      final result = await _api.adminCreateUser(data);
+      if (result['status'] == 'success') await loadMobileUsers();
+      return result;
+    } catch (e) {
+      return {'status': 'error', 'message': '$e'};
+    }
+  }
+
+  Future<Map<String, dynamic>> adminUpdateUser(int targetUserId, Map<String, dynamic> data) async {
+    try {
+      final result = await _api.adminUpdateUser(targetUserId, data);
+      if (result['status'] == 'success') await loadMobileUsers();
+      return result;
+    } catch (e) {
+      return {'status': 'error', 'message': '$e'};
+    }
+  }
+
+  Future<Map<String, dynamic>> adminResetPin(int targetUserId) async {
+    try {
+      return await _api.adminResetPin(targetUserId);
+    } catch (e) {
+      return {'status': 'error', 'message': '$e'};
+    }
+  }
+
   // Reports
   Future<Map<String, dynamic>> getFollowupReport(int evangelistId) async {
     return await _api.getFollowupReport(evangelistId);

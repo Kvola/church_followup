@@ -113,6 +113,11 @@ class ChurchMobileApi(http.Controller):
         except (ValueError, TypeError):
             raise ValueError(_('Valeur invalide pour %s') % field_name)
 
+    @staticmethod
+    def _is_admin_or_manager(user):
+        """Check if the user has manager or super_admin privileges."""
+        return user and user.role in ('super_admin', 'manager')
+
     # ─── Dashboard ────────────────────────────────────────────────────
 
     @http.route('/api/church/dashboard', type='json', auth='public', methods=['POST'], csrf=False)
@@ -202,9 +207,9 @@ class ChurchMobileApi(http.Controller):
 
     @http.route('/api/church/evangelist/create', type='json', auth='public', methods=['POST'], csrf=False)
     def create_evangelist(self, **kwargs):
-        """Créer un évangéliste (rôle manager uniquement)."""
+        """Créer un évangéliste (rôle manager/super_admin uniquement)."""
         user = self._get_mobile_user(kwargs)
-        if not user or user.role != 'manager':
+        if not self._is_admin_or_manager(user):
             return {'status': 'error', 'message': 'Non autorisé'}
 
         name = kwargs.get('name', '').strip()
@@ -263,6 +268,10 @@ class ChurchMobileApi(http.Controller):
                 'age_group_name': m.age_group_id.name if m.age_group_id else '',
                 'age': m.age,
                 'marital_status': m.marital_status,
+                'invited_by_id': m.invited_by_id.id if m.invited_by_id else False,
+                'invited_by_name': m.invited_by_id.display_name_custom if m.invited_by_id else '',
+                'mentor_id': m.mentor_id.id if m.mentor_id else False,
+                'mentor_name': m.mentor_id.display_name_custom if m.mentor_id else '',
             } for m in members],
         }
 
@@ -299,6 +308,21 @@ class ChurchMobileApi(http.Controller):
                 vals['district_id'] = int(district_id)
             except (ValueError, TypeError):
                 return {'status': 'error', 'message': 'district_id invalide'}
+
+        # Inviter & Mentor
+        invited_by_id = kwargs.get('invited_by_id')
+        if invited_by_id:
+            try:
+                vals['invited_by_id'] = int(invited_by_id)
+            except (ValueError, TypeError):
+                return {'status': 'error', 'message': 'invited_by_id invalide'}
+
+        mentor_id = kwargs.get('mentor_id')
+        if mentor_id:
+            try:
+                vals['mentor_id'] = int(mentor_id)
+            except (ValueError, TypeError):
+                return {'status': 'error', 'message': 'mentor_id invalide'}
 
         member_type = kwargs.get('member_type', 'new')
         vals['member_type'] = member_type
@@ -356,6 +380,10 @@ class ChurchMobileApi(http.Controller):
                 'district_id': member.district_id.id if member.district_id else False,
                 'prayer_cell_id': member.prayer_cell_id.id if member.prayer_cell_id else False,
                 'age_group_id': member.age_group_id.id if member.age_group_id else False,
+                'invited_by_id': member.invited_by_id.id if member.invited_by_id else False,
+                'invited_by_name': member.invited_by_id.display_name_custom if member.invited_by_id else '',
+                'mentor_id': member.mentor_id.id if member.mentor_id else False,
+                'mentor_name': member.mentor_id.display_name_custom if member.mentor_id else '',
             },
         }
 
@@ -386,7 +414,7 @@ class ChurchMobileApi(http.Controller):
             if f in kwargs:
                 vals[f] = kwargs[f] if kwargs[f] else False
 
-        int_fields = ['district_id', 'prayer_cell_id', 'age_group_id']
+        int_fields = ['district_id', 'prayer_cell_id', 'age_group_id', 'invited_by_id', 'mentor_id']
         for f in int_fields:
             if f in kwargs:
                 try:
@@ -740,7 +768,7 @@ class ChurchMobileApi(http.Controller):
     def save_sunday_attendance(self, **kwargs):
         """Enregistrer la présence au culte du dimanche."""
         user = self._get_mobile_user(kwargs)
-        if not user or user.role not in ('manager', 'group_leader', 'evangelist'):
+        if not user or user.role not in ('super_admin', 'manager', 'group_leader', 'evangelist'):
             return {'status': 'error', 'message': 'Non autorisé'}
 
         date = kwargs.get('date', str(fields.Date.today()))
@@ -775,7 +803,7 @@ class ChurchMobileApi(http.Controller):
     def save_cell_attendance(self, **kwargs):
         """Enregistrer la présence à la cellule de prière."""
         user = self._get_mobile_user(kwargs)
-        if not user or user.role not in ('manager', 'cell_leader'):
+        if not user or user.role not in ('super_admin', 'manager', 'cell_leader'):
             return {'status': 'error', 'message': 'Non autorisé'}
 
         date = kwargs.get('date', str(fields.Date.today()))
@@ -844,7 +872,7 @@ class ChurchMobileApi(http.Controller):
     def get_share_message(self, **kwargs):
         """Obtenir le message de partage des credentials."""
         user = self._get_mobile_user(kwargs)
-        if not user or user.role != 'manager':
+        if not self._is_admin_or_manager(user):
             return {'status': 'error', 'message': 'Non autorisé'}
 
         target_user_id = kwargs.get('target_user_id')
@@ -923,9 +951,9 @@ class ChurchMobileApi(http.Controller):
 
     @http.route('/api/church/mobile_users', type='json', auth='public', methods=['POST'], csrf=False)
     def get_mobile_users(self, **kwargs):
-        """Liste des utilisateurs mobiles (manager uniquement)."""
+        """Liste des utilisateurs mobiles (manager/super_admin uniquement)."""
         user = self._get_mobile_user(kwargs)
-        if not user or user.role != 'manager':
+        if not self._is_admin_or_manager(user):
             return {'status': 'error', 'message': 'Non autorisé'}
 
         users = request.env['church.mobile.user'].sudo().search([
@@ -945,9 +973,9 @@ class ChurchMobileApi(http.Controller):
 
     @http.route('/api/church/cell_leader/create', type='json', auth='public', methods=['POST'], csrf=False)
     def create_cell_leader(self, **kwargs):
-        """Créer un responsable de cellule (manager uniquement)."""
+        """Créer un responsable de cellule (manager/super_admin uniquement)."""
         user = self._get_mobile_user(kwargs)
-        if not user or user.role != 'manager':
+        if not self._is_admin_or_manager(user):
             return {'status': 'error', 'message': 'Non autorisé'}
 
         name = kwargs.get('name', '').strip()
@@ -978,9 +1006,9 @@ class ChurchMobileApi(http.Controller):
 
     @http.route('/api/church/group_leader/create', type='json', auth='public', methods=['POST'], csrf=False)
     def create_group_leader(self, **kwargs):
-        """Créer un responsable de groupe d'âge (manager uniquement)."""
+        """Créer un responsable de groupe d'âge (manager/super_admin uniquement)."""
         user = self._get_mobile_user(kwargs)
-        if not user or user.role != 'manager':
+        if not self._is_admin_or_manager(user):
             return {'status': 'error', 'message': 'Non autorisé'}
 
         name = kwargs.get('name', '').strip()
@@ -1007,4 +1035,151 @@ class ChurchMobileApi(http.Controller):
             'status': 'success',
             'message': 'Responsable de groupe créé',
             'pin': group.mobile_user_id.pin if group.mobile_user_id else '',
+        }
+
+    # ─── Super Admin: User Management ─────────────────────────────────
+
+    @http.route('/api/church/admin/create_user', type='json', auth='public', methods=['POST'], csrf=False)
+    def admin_create_user(self, **kwargs):
+        """Créer un utilisateur mobile (super_admin uniquement)."""
+        user = self._get_mobile_user(kwargs)
+        if not user or user.role != 'super_admin':
+            return {'status': 'error', 'message': 'Non autorisé. Réservé au super administrateur.'}
+
+        name = kwargs.get('name', '').strip()
+        phone = kwargs.get('phone', '').strip()
+        role = kwargs.get('role', '').strip()
+
+        if not name or not phone or not role:
+            return {'status': 'error', 'message': 'Nom, téléphone et rôle requis'}
+
+        valid_roles = ('manager', 'evangelist', 'cell_leader', 'group_leader')
+        if role not in valid_roles:
+            return {'status': 'error', 'message': f'Rôle invalide. Valeurs possibles : {", ".join(valid_roles)}'}
+
+        MobileUser = request.env['church.mobile.user'].sudo()
+        existing = MobileUser.search([
+            ('phone', '=', phone),
+            ('church_id', '=', user.church_id.id),
+        ], limit=1)
+        if existing:
+            return {'status': 'error', 'message': 'Ce numéro est déjà utilisé dans cette église'}
+
+        vals = {
+            'name': name,
+            'phone': phone,
+            'role': role,
+            'church_id': user.church_id.id,
+        }
+
+        # Optional links
+        evangelist_id = kwargs.get('evangelist_id')
+        if evangelist_id:
+            try:
+                vals['evangelist_id'] = int(evangelist_id)
+            except (ValueError, TypeError):
+                pass
+
+        cell_id = kwargs.get('prayer_cell_id')
+        if cell_id:
+            try:
+                vals['prayer_cell_id'] = int(cell_id)
+            except (ValueError, TypeError):
+                pass
+
+        group_id = kwargs.get('age_group_id')
+        if group_id:
+            try:
+                vals['age_group_id'] = int(group_id)
+            except (ValueError, TypeError):
+                pass
+
+        new_user = MobileUser.create(vals)
+
+        return {
+            'status': 'success',
+            'message': f'Utilisateur {name} créé avec le rôle {role}',
+            'user': {
+                'id': new_user.id,
+                'name': new_user.name,
+                'phone': new_user.phone,
+                'role': new_user.role,
+                'pin': new_user.pin,
+            },
+        }
+
+    @http.route('/api/church/admin/update_user', type='json', auth='public', methods=['POST'], csrf=False)
+    def admin_update_user(self, **kwargs):
+        """Modifier un utilisateur mobile (super_admin uniquement) : changer rôle, activer/désactiver."""
+        user = self._get_mobile_user(kwargs)
+        if not user or user.role != 'super_admin':
+            return {'status': 'error', 'message': 'Non autorisé. Réservé au super administrateur.'}
+
+        target_user_id = kwargs.get('target_user_id')
+        if not target_user_id:
+            return {'status': 'error', 'message': 'target_user_id requis'}
+
+        try:
+            target = request.env['church.mobile.user'].sudo().browse(int(target_user_id))
+        except (ValueError, TypeError):
+            return {'status': 'error', 'message': 'target_user_id invalide'}
+        if not target.exists() or target.church_id.id != user.church_id.id:
+            return {'status': 'error', 'message': 'Utilisateur introuvable'}
+
+        # Prevent modifying self
+        if target.id == user.id:
+            return {'status': 'error', 'message': 'Vous ne pouvez pas modifier votre propre compte'}
+
+        vals = {}
+        new_role = kwargs.get('role')
+        if new_role:
+            valid_roles = ('super_admin', 'manager', 'evangelist', 'cell_leader', 'group_leader')
+            if new_role not in valid_roles:
+                return {'status': 'error', 'message': 'Rôle invalide'}
+            vals['role'] = new_role
+
+        if 'active' in kwargs:
+            vals['active'] = bool(kwargs['active'])
+
+        if 'name' in kwargs and kwargs['name']:
+            vals['name'] = kwargs['name'].strip()
+
+        if vals:
+            target.write(vals)
+
+        return {
+            'status': 'success',
+            'message': 'Utilisateur mis à jour',
+            'user': {
+                'id': target.id,
+                'name': target.name,
+                'role': target.role,
+                'active': target.active,
+            },
+        }
+
+    @http.route('/api/church/admin/reset_pin', type='json', auth='public', methods=['POST'], csrf=False)
+    def admin_reset_pin(self, **kwargs):
+        """Régénérer le PIN d'un utilisateur (super_admin uniquement)."""
+        user = self._get_mobile_user(kwargs)
+        if not user or user.role != 'super_admin':
+            return {'status': 'error', 'message': 'Non autorisé. Réservé au super administrateur.'}
+
+        target_user_id = kwargs.get('target_user_id')
+        if not target_user_id:
+            return {'status': 'error', 'message': 'target_user_id requis'}
+
+        try:
+            target = request.env['church.mobile.user'].sudo().browse(int(target_user_id))
+        except (ValueError, TypeError):
+            return {'status': 'error', 'message': 'target_user_id invalide'}
+        if not target.exists() or target.church_id.id != user.church_id.id:
+            return {'status': 'error', 'message': 'Utilisateur introuvable'}
+
+        target.action_regenerate_pin()
+
+        return {
+            'status': 'success',
+            'message': f'PIN régénéré pour {target.name}',
+            'pin': target.pin,
         }

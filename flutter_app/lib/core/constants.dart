@@ -1,6 +1,9 @@
 class AppConstants {
   static const String appName = 'Suivi Évangélisation';
   static const String defaultUrl = 'https://iyf.kavola.site';
+  static const String defaultDatabase = 'iyf.kavola.site';
+  static const String developerName = 'DIBI Bi Kavola Augustin';
+  static const String developerPhone = '+225 07 49 94 33 27';
   static const Duration requestTimeout = Duration(seconds: 30);
   static const int maxRetries = 2;
   static const int cacheDurationMinutes = 30;
@@ -31,6 +34,7 @@ class AppConstants {
   };
 
   static const Map<String, String> roleLabels = {
+    'super_admin': 'Super Admin',
     'manager': 'Gestionnaire',
     'evangelist': 'Évangéliste',
     'cell_leader': 'Chef de cellule',
