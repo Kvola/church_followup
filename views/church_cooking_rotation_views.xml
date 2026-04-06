@@ -6,8 +6,11 @@
         <field name="arch" type="xml">
             <form string="Rotation cuisine">
                 <header>
-                    <button name="action_done" string="Marquer effectué" type="object" class="btn-primary" invisible="state != 'planned'"/>
-                    <button name="action_cancel" string="Annuler" type="object" class="btn-secondary" invisible="state == 'done'" confirm="Êtes-vous sûr de vouloir annuler cette rotation ?"/>
+                    <button name="action_done" string="Marquer effectué" type="object" class="btn-primary"
+                            invisible="state != 'planned'" icon="fa-check"/>
+                    <button name="action_cancel" string="Annuler" type="object" class="btn-secondary"
+                            invisible="state == 'done'" confirm="Êtes-vous sûr de vouloir annuler cette rotation ?"
+                            icon="fa-times"/>
                     <field name="state" widget="statusbar"/>
                 </header>
                 <sheet>
@@ -19,7 +22,7 @@
                         </group>
                         <group>
                             <field name="description"/>
-                            <field name="notes"/>
+                            <field name="notes" placeholder="Notes supplémentaires..."/>
                         </group>
                     </group>
                 </sheet>
@@ -31,10 +34,10 @@
         <field name="name">church.cooking.rotation.list</field>
         <field name="model">church.cooking.rotation</field>
         <field name="arch" type="xml">
-            <list>
+            <list decoration-muted="state == 'cancelled'">
                 <field name="date"/>
                 <field name="prayer_cell_id"/>
-                <field name="church_id"/>
+                <field name="church_id" optional="hide"/>
                 <field name="description"/>
                 <field name="state" widget="badge"
                        decoration-info="state == 'planned'"
@@ -48,10 +51,36 @@
         <field name="name">church.cooking.rotation.calendar</field>
         <field name="model">church.cooking.rotation</field>
         <field name="arch" type="xml">
-            <calendar string="Rotation cuisine" date_start="date" color="prayer_cell_id">
+            <calendar string="Rotation cuisine" date_start="date" color="prayer_cell_id" mode="month">
                 <field name="prayer_cell_id"/>
                 <field name="description"/>
+                <field name="state"/>
             </calendar>
+        </field>
+    </record>
+
+    <record id="view_church_cooking_rotation_search" model="ir.ui.view">
+        <field name="name">church.cooking.rotation.search</field>
+        <field name="model">church.cooking.rotation</field>
+        <field name="arch" type="xml">
+            <search string="Rechercher une rotation">
+                <field name="prayer_cell_id"/>
+                <field name="date"/>
+                <field name="church_id"/>
+                <separator/>
+                <filter name="filter_planned" string="Planifiées" domain="[('state', '=', 'planned')]"/>
+                <filter name="filter_done" string="Effectuées" domain="[('state', '=', 'done')]"/>
+                <filter name="filter_cancelled" string="Annulées" domain="[('state', '=', 'cancelled')]"/>
+                <separator/>
+                <filter name="filter_upcoming" string="À venir" domain="[('date', '>=', context_today().strftime('%%Y-%%m-%%d')), ('state', '=', 'planned')]"/>
+                <filter name="filter_this_month" string="Ce mois" domain="[('date', '>=', context_today().strftime('%%Y-%%m-01'))]"/>
+                <group>
+                    <filter name="group_cell" string="Cellule" context="{'group_by': 'prayer_cell_id'}"/>
+                    <filter name="group_state" string="État" context="{'group_by': 'state'}"/>
+                    <filter name="group_date_month" string="Mois" context="{'group_by': 'date:month'}"/>
+                    <filter name="group_church" string="Église" context="{'group_by': 'church_id'}"/>
+                </group>
+            </search>
         </field>
     </record>
 
@@ -59,5 +88,15 @@
         <field name="name">Rotation cuisine</field>
         <field name="res_model">church.cooking.rotation</field>
         <field name="view_mode">list,calendar,form</field>
+        <field name="search_view_id" ref="view_church_cooking_rotation_search"/>
+        <field name="context">{'search_default_filter_planned': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Aucune rotation planifiée
+            </p>
+            <p>
+                Planifiez les rotations de cuisine entre les cellules de prière.
+            </p>
+        </field>
     </record>
 </odoo>

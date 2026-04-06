@@ -7,16 +7,23 @@
             <form string="Membre">
                 <sheet>
                     <field name="photo" widget="image" class="oe_avatar"/>
+                    <div class="oe_button_box" name="button_box">
+                        <button class="oe_stat_button" icon="fa-line-chart" type="object" name="action_view_followups">
+                            <field name="followup_count" widget="statinfo" string="Suivis"/>
+                        </button>
+                    </div>
                     <div class="oe_title">
                         <h1>
                             <field name="name" placeholder="Nom"/>
-                            <field name="first_name" placeholder="Prénom(s)"/>
                         </h1>
+                        <h2>
+                            <field name="first_name" placeholder="Prénom(s)"/>
+                        </h2>
                     </div>
                     <group>
                         <group string="Identité">
-                            <field name="phone"/>
-                            <field name="email"/>
+                            <field name="phone" widget="phone"/>
+                            <field name="email" widget="email"/>
                             <field name="gender"/>
                             <field name="date_of_birth"/>
                             <field name="age"/>
@@ -33,7 +40,10 @@
                     <group>
                         <group string="Église">
                             <field name="church_id"/>
-                            <field name="member_type"/>
+                            <field name="member_type" widget="badge"
+                                   decoration-info="member_type == 'new'"
+                                   decoration-warning="member_type == 'in_followup'"
+                                   decoration-success="member_type == 'integrated'"/>
                             <field name="salvation_date"/>
                             <field name="baptism_date"/>
                             <field name="integration_date"/>
@@ -47,7 +57,7 @@
                         </group>
                     </group>
                     <notebook>
-                        <page string="Notes">
+                        <page string="Notes" name="page_notes">
                             <field name="notes" placeholder="Notes sur le membre..."/>
                         </page>
                     </notebook>
@@ -61,21 +71,65 @@
         <field name="name">church.member.list</field>
         <field name="model">church.member</field>
         <field name="arch" type="xml">
-            <list>
+            <list multi_edit="1">
                 <field name="name"/>
                 <field name="first_name"/>
-                <field name="phone"/>
+                <field name="phone" widget="phone"/>
                 <field name="gender"/>
-                <field name="district_id"/>
+                <field name="church_id" optional="hide"/>
+                <field name="district_id" optional="show"/>
                 <field name="member_type" widget="badge"
                        decoration-info="member_type == 'new'"
                        decoration-warning="member_type == 'in_followup'"
                        decoration-success="member_type == 'integrated'"/>
-                <field name="prayer_cell_id"/>
-                <field name="age_group_id"/>
+                <field name="prayer_cell_id" optional="show"/>
+                <field name="age_group_id" optional="show"/>
+                <field name="evangelist_id" optional="hide"/>
                 <field name="invited_by_id" optional="hide"/>
                 <field name="mentor_id" optional="hide"/>
+                <field name="salvation_date" optional="hide"/>
+                <field name="integration_date" optional="hide"/>
             </list>
+        </field>
+    </record>
+
+    <record id="view_church_member_kanban" model="ir.ui.view">
+        <field name="name">church.member.kanban</field>
+        <field name="model">church.member</field>
+        <field name="arch" type="xml">
+            <kanban>
+                <field name="name"/>
+                <field name="first_name"/>
+                <field name="phone"/>
+                <field name="photo"/>
+                <field name="member_type"/>
+                <field name="prayer_cell_id"/>
+                <field name="age_group_id"/>
+                <templates>
+                    <t t-name="card">
+                        <aside>
+                            <field name="photo" widget="image" class="o_kanban_image"/>
+                        </aside>
+                        <main>
+                            <div class="fw-bold">
+                                <field name="name"/> <field name="first_name"/>
+                            </div>
+                            <div class="text-muted small" t-if="record.phone.value">
+                                <i class="fa fa-phone me-1"/><field name="phone" widget="phone"/>
+                            </div>
+                            <div class="mt-1">
+                                <field name="member_type" widget="badge"
+                                       decoration-info="member_type == 'new'"
+                                       decoration-warning="member_type == 'in_followup'"
+                                       decoration-success="member_type == 'integrated'"/>
+                            </div>
+                            <div class="text-muted small mt-1" t-if="record.prayer_cell_id.value">
+                                <i class="fa fa-home me-1"/><field name="prayer_cell_id"/>
+                            </div>
+                        </main>
+                    </t>
+                </templates>
+            </kanban>
         </field>
     </record>
 
@@ -84,25 +138,33 @@
         <field name="model">church.member</field>
         <field name="arch" type="xml">
             <search string="Rechercher un membre">
-                <field name="name"/>
-                <field name="first_name"/>
+                <field name="name" filter_domain="['|', ('name', 'ilike', self), ('first_name', 'ilike', self)]" string="Nom / Prénom"/>
                 <field name="phone"/>
                 <field name="district_id"/>
+                <field name="prayer_cell_id"/>
+                <field name="age_group_id"/>
+                <field name="evangelist_id"/>
                 <field name="invited_by_id"/>
                 <field name="mentor_id"/>
                 <separator/>
                 <filter name="filter_new" string="Nouvelles personnes" domain="[('member_type', '=', 'new')]"/>
                 <filter name="filter_in_followup" string="En suivi" domain="[('member_type', '=', 'in_followup')]"/>
                 <filter name="filter_integrated" string="Intégrés" domain="[('member_type', '=', 'integrated')]"/>
+                <filter name="filter_old_member" string="Anciens membres" domain="[('member_type', '=', 'old_member')]"/>
                 <separator/>
                 <filter name="filter_male" string="Hommes" domain="[('gender', '=', 'male')]"/>
                 <filter name="filter_female" string="Femmes" domain="[('gender', '=', 'female')]"/>
+                <separator/>
+                <filter name="filter_no_cell" string="Sans cellule" domain="[('prayer_cell_id', '=', False)]"/>
+                <filter name="filter_no_group" string="Sans groupe" domain="[('age_group_id', '=', False)]"/>
                 <group>
                     <filter name="group_church" string="Église" context="{'group_by': 'church_id'}"/>
                     <filter name="group_district" string="Quartier" context="{'group_by': 'district_id'}"/>
                     <filter name="group_cell" string="Cellule" context="{'group_by': 'prayer_cell_id'}"/>
-                    <filter name="group_age" string="Groupe Age" context="{'group_by': 'age_group_id'}"/>
+                    <filter name="group_age" string="Groupe d'âge" context="{'group_by': 'age_group_id'}"/>
                     <filter name="group_type" string="Type" context="{'group_by': 'member_type'}"/>
+                    <filter name="group_gender" string="Sexe" context="{'group_by': 'gender'}"/>
+                    <filter name="group_marital" string="Statut matrimonial" context="{'group_by': 'marital_status'}"/>
                 </group>
             </search>
         </field>
@@ -111,6 +173,32 @@
     <record id="action_church_member" model="ir.actions.act_window">
         <field name="name">Membres</field>
         <field name="res_model">church.member</field>
-        <field name="view_mode">list,form</field>
+        <field name="view_mode">list,kanban,form</field>
+        <field name="search_view_id" ref="view_church_member_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Aucun membre enregistré
+            </p>
+            <p>
+                Ajoutez les personnes de votre communauté pour suivre leur parcours.
+            </p>
+        </field>
+    </record>
+
+    <!-- Action for new persons only (quick access from menu) -->
+    <record id="action_church_member_new" model="ir.actions.act_window">
+        <field name="name">Nouvelles personnes</field>
+        <field name="res_model">church.member</field>
+        <field name="view_mode">list,kanban,form</field>
+        <field name="search_view_id" ref="view_church_member_search"/>
+        <field name="context">{'search_default_filter_new': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Aucune nouvelle personne
+            </p>
+            <p>
+                Les nouvelles personnes apparaîtront ici en attente de suivi.
+            </p>
+        </field>
     </record>
 </odoo>

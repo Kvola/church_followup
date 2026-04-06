@@ -18,3 +18,9 @@ class ChurchAttendanceCell(models.Model):
         ('unique_member_cell_date', 'UNIQUE(member_id, prayer_cell_id, date)',
          'La présence de ce membre est déjà enregistrée pour cette date.'),
     ]
+
+    @api.onchange('member_id')
+    def _onchange_member_id(self):
+        if self.member_id:
+            self.church_id = self.member_id.church_id
+            self.prayer_cell_id = self.member_id.prayer_cell_id

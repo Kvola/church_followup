@@ -16,6 +16,12 @@
                         <button class="oe_stat_button" icon="fa-home" type="object" name="action_view_cells">
                             <field name="cell_count" widget="statinfo" string="Cellules"/>
                         </button>
+                        <button class="oe_stat_button" icon="fa-th-large" type="object" name="action_view_age_groups">
+                            <field name="age_group_count" widget="statinfo" string="Groupes"/>
+                        </button>
+                        <button class="oe_stat_button" icon="fa-line-chart" type="object" name="action_view_active_followups">
+                            <field name="followup_active_count" widget="statinfo" string="Suivis actifs"/>
+                        </button>
                     </div>
                     <div class="oe_title">
                         <h1><field name="name" placeholder="Nom de l'église"/></h1>
@@ -24,8 +30,8 @@
                         <group string="Informations générales">
                             <field name="code"/>
                             <field name="pastor_name"/>
-                            <field name="phone"/>
-                            <field name="email"/>
+                            <field name="phone" widget="phone"/>
+                            <field name="email" widget="email"/>
                         </group>
                         <group string="Adresse">
                             <field name="address"/>
@@ -34,7 +40,7 @@
                         </group>
                     </group>
                     <notebook>
-                        <page string="Quartiers">
+                        <page string="Quartiers" name="page_districts">
                             <field name="district_ids">
                                 <list editable="bottom">
                                     <field name="name"/>
@@ -56,12 +62,35 @@
         <field name="arch" type="xml">
             <list>
                 <field name="name"/>
+                <field name="code" optional="show"/>
                 <field name="city"/>
                 <field name="pastor_name"/>
+                <field name="phone" widget="phone" optional="show"/>
                 <field name="member_count"/>
                 <field name="evangelist_count"/>
                 <field name="cell_count"/>
+                <field name="age_group_count"/>
+                <field name="followup_active_count" string="Suivis actifs"/>
             </list>
+        </field>
+    </record>
+
+    <record id="view_church_church_search" model="ir.ui.view">
+        <field name="name">church.church.search</field>
+        <field name="model">church.church</field>
+        <field name="arch" type="xml">
+            <search string="Rechercher une église">
+                <field name="name"/>
+                <field name="code"/>
+                <field name="city"/>
+                <field name="pastor_name"/>
+                <separator/>
+                <filter name="filter_archived" string="Archivées" domain="[('active', '=', False)]"/>
+                <group>
+                    <filter name="group_city" string="Ville" context="{'group_by': 'city'}"/>
+                    <filter name="group_country" string="Pays" context="{'group_by': 'country_id'}"/>
+                </group>
+            </search>
         </field>
     </record>
 
@@ -69,5 +98,14 @@
         <field name="name">Églises</field>
         <field name="res_model">church.church</field>
         <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_church_church_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Aucune église enregistrée
+            </p>
+            <p>
+                Créez votre première église pour commencer la gestion du suivi.
+            </p>
+        </field>
     </record>
 </odoo>

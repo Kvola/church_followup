@@ -1,82 +1,76 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <odoo>
-    <!-- Top menu -->
+    <!-- ==================== Top Menu ==================== -->
     <menuitem id="menu_church_followup_root"
               name="Suivi Évangélisation"
               web_icon="church_followup,static/description/icon.png"
               sequence="30"/>
 
-    <!-- Sub menus -->
-    <menuitem id="menu_church_management"
-              name="Gestion Église"
-              parent="menu_church_followup_root"
-              sequence="10"/>
-
-    <menuitem id="menu_church_church"
-              name="Églises"
-              parent="menu_church_management"
-              action="action_church_church"
-              sequence="10"/>
-
-    <menuitem id="menu_church_district"
-              name="Quartiers"
-              parent="menu_church_management"
-              action="action_church_district"
-              sequence="20"/>
-
-    <!-- Évangélisation -->
+    <!-- ==================== 1. Évangélisation (Core Workflow) ==================== -->
     <menuitem id="menu_church_evangelism"
               name="Évangélisation"
               parent="menu_church_followup_root"
-              sequence="20"/>
-
-    <menuitem id="menu_church_evangelist"
-              name="Évangélistes"
-              parent="menu_church_evangelism"
-              action="action_church_evangelist"
               sequence="10"/>
 
     <menuitem id="menu_church_followup"
               name="Suivis"
               parent="menu_church_evangelism"
               action="action_church_followup"
+              sequence="10"/>
+
+    <menuitem id="menu_church_followup_all"
+              name="Historique des suivis"
+              parent="menu_church_evangelism"
+              action="action_church_followup_all"
+              sequence="15"/>
+
+    <menuitem id="menu_church_evangelist"
+              name="Évangélistes"
+              parent="menu_church_evangelism"
+              action="action_church_evangelist"
               sequence="20"/>
 
-    <menuitem id="menu_church_member"
-              name="Membres"
+    <menuitem id="menu_church_member_new"
+              name="Nouvelles personnes"
               parent="menu_church_evangelism"
-              action="action_church_member"
+              action="action_church_member_new"
               sequence="30"/>
 
-    <!-- Cellules & Groupes -->
+    <!-- ==================== 2. Communauté ==================== -->
     <menuitem id="menu_church_community"
               name="Communauté"
               parent="menu_church_followup_root"
-              sequence="30"/>
+              sequence="20"/>
+
+    <menuitem id="menu_church_member"
+              name="Tous les membres"
+              parent="menu_church_community"
+              action="action_church_member"
+              sequence="10"/>
 
     <menuitem id="menu_church_prayer_cell"
               name="Cellules de prière"
               parent="menu_church_community"
               action="action_church_prayer_cell"
-              sequence="10"/>
+              sequence="20"/>
 
     <menuitem id="menu_church_age_group"
               name="Groupes d'âge"
               parent="menu_church_community"
               action="action_church_age_group"
-              sequence="20"/>
-
-    <menuitem id="menu_church_cooking_rotation"
-              name="Rotation cuisine"
-              parent="menu_church_community"
-              action="action_church_cooking_rotation"
               sequence="30"/>
 
-    <!-- Présences -->
-    <menuitem id="menu_church_attendance"
-              name="Présences"
-              parent="menu_church_followup_root"
+    <menuitem id="menu_church_district"
+              name="Quartiers"
+              parent="menu_church_community"
+              action="action_church_district"
               sequence="40"/>
+
+    <!-- ==================== 3. Présences & Activités ==================== -->
+    <menuitem id="menu_church_attendance"
+              name="Présences &amp; Activités"
+              parent="menu_church_followup_root"
+              sequence="30"/>
 
     <menuitem id="menu_church_attendance_sunday"
               name="Présences cultes"
@@ -90,21 +84,34 @@
               action="action_church_attendance_cell"
               sequence="20"/>
 
-    <!-- Configuration -->
+    <menuitem id="menu_church_cooking_rotation"
+              name="Rotation cuisine"
+              parent="menu_church_attendance"
+              action="action_church_cooking_rotation"
+              sequence="30"/>
+
+    <!-- ==================== 4. Configuration ==================== -->
     <menuitem id="menu_church_config"
               name="Configuration"
               parent="menu_church_followup_root"
+              groups="group_church_manager"
               sequence="90"/>
+
+    <menuitem id="menu_church_church"
+              name="Églises"
+              parent="menu_church_config"
+              action="action_church_church"
+              sequence="10"/>
 
     <menuitem id="menu_church_mobile_user"
               name="Utilisateurs mobiles"
               parent="menu_church_config"
               action="action_church_mobile_user"
-              sequence="10"/>
+              sequence="20"/>
 
     <menuitem id="menu_church_age_range"
               name="Tranches d'âge"
               parent="menu_church_config"
               action="action_church_age_range"
-              sequence="20"/>
+              sequence="30"/>
 </odoo>

@@ -65,11 +65,19 @@ class ChurchMember(models.Model):
     notes = fields.Text(string='Notes')
     active = fields.Boolean(default=True)
 
+    # Computed followup stats
+    followup_count = fields.Integer(compute='_compute_followup_count', string='Suivis')
+
     @api.depends('name', 'first_name')
     def _compute_display_name_custom(self):
         for rec in self:
             parts = [rec.name or '', rec.first_name or '']
             rec.display_name_custom = ' '.join(p for p in parts if p)
+
+    def _compute_followup_count(self):
+        followup_model = self.env['church.followup']
+        for rec in self:
+            rec.followup_count = followup_model.search_count([('member_id', '=', rec.id)])
 
     @api.depends('date_of_birth')
     def _compute_age(self):
@@ -79,3 +87,12 @@ class ChurchMember(models.Model):
                 rec.age = relativedelta(today, rec.date_of_birth).years
             else:
                 rec.age = 0
+
+    def action_view_followups(self):
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Suivis'),
+            'res_model': 'church.followup',
+            'view_mode': 'list,form',
+            'domain': [('member_id', '=', self.id)],
+        }

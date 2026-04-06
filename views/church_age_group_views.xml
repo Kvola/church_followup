@@ -6,7 +6,8 @@
         <field name="arch" type="xml">
             <form string="Groupe d'âge">
                 <header>
-                    <button name="action_create_leader_account" string="Créer compte mobile responsable" type="object" class="btn-primary" invisible="mobile_user_id"/>
+                    <button name="action_create_leader_account" string="Créer compte mobile responsable" type="object"
+                            class="btn-primary" invisible="mobile_user_id" icon="fa-mobile"/>
                 </header>
                 <sheet>
                     <div class="oe_button_box" name="button_box">
@@ -22,27 +23,32 @@
                             <field name="church_id"/>
                             <field name="group_type"/>
                             <field name="gender"/>
-                            <field name="age_range_id" invisible="group_type != 'married'"/>
+                            <field name="age_range_id" invisible="group_type != 'married'"
+                                   domain="[('for_married', '=', True)]"/>
                         </group>
                         <group string="Responsable">
                             <field name="leader_name"/>
-                            <field name="leader_phone"/>
+                            <field name="leader_phone" widget="phone"/>
                             <field name="mobile_user_id"/>
                         </group>
                     </group>
                     <notebook>
-                        <page string="Membres">
+                        <page string="Membres" name="page_members">
                             <field name="member_ids">
                                 <list>
                                     <field name="name"/>
                                     <field name="first_name"/>
-                                    <field name="phone"/>
+                                    <field name="phone" widget="phone"/>
                                     <field name="age"/>
                                     <field name="gender"/>
+                                    <field name="member_type" widget="badge"
+                                           decoration-info="member_type == 'new'"
+                                           decoration-warning="member_type == 'in_followup'"
+                                           decoration-success="member_type == 'integrated'"/>
                                 </list>
                             </field>
                         </page>
-                        <page string="Notes">
+                        <page string="Notes" name="page_notes">
                             <field name="notes"/>
                         </page>
                     </notebook>
@@ -58,13 +64,44 @@
         <field name="arch" type="xml">
             <list>
                 <field name="name"/>
-                <field name="church_id"/>
-                <field name="group_type" widget="badge"/>
+                <field name="church_id" optional="hide"/>
+                <field name="group_type" widget="badge"
+                       decoration-info="group_type == 'youth'"
+                       decoration-success="group_type == 'married'"
+                       decoration-warning="group_type == 'college'"
+                       decoration-primary="group_type == 'highschool'"/>
                 <field name="gender"/>
-                <field name="age_range_id"/>
+                <field name="age_range_id" optional="show"/>
                 <field name="leader_name"/>
                 <field name="member_count"/>
             </list>
+        </field>
+    </record>
+
+    <record id="view_church_age_group_search" model="ir.ui.view">
+        <field name="name">church.age.group.search</field>
+        <field name="model">church.age.group</field>
+        <field name="arch" type="xml">
+            <search string="Rechercher un groupe d'âge">
+                <field name="name"/>
+                <field name="leader_name"/>
+                <field name="church_id"/>
+                <separator/>
+                <filter name="filter_married" string="Mariés" domain="[('group_type', '=', 'married')]"/>
+                <filter name="filter_youth" string="Jeunes" domain="[('group_type', '=', 'youth')]"/>
+                <filter name="filter_college" string="Collégiens" domain="[('group_type', '=', 'college')]"/>
+                <filter name="filter_highschool" string="Lycéens" domain="[('group_type', '=', 'highschool')]"/>
+                <filter name="filter_children" string="Enfants" domain="[('group_type', '=', 'children')]"/>
+                <separator/>
+                <filter name="filter_male" string="Hommes" domain="[('gender', '=', 'male')]"/>
+                <filter name="filter_female" string="Femmes" domain="[('gender', '=', 'female')]"/>
+                <filter name="filter_mixed" string="Mixte" domain="[('gender', '=', 'mixed')]"/>
+                <group>
+                    <filter name="group_church" string="Église" context="{'group_by': 'church_id'}"/>
+                    <filter name="group_type" string="Type" context="{'group_by': 'group_type'}"/>
+                    <filter name="group_gender" string="Sexe" context="{'group_by': 'gender'}"/>
+                </group>
+            </search>
         </field>
     </record>
 
@@ -87,6 +124,15 @@
         <field name="name">Groupes d'âge</field>
         <field name="res_model">church.age.group</field>
         <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_church_age_group_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Aucun groupe d'âge
+            </p>
+            <p>
+                Créez des groupes pour organiser les membres par tranche d'âge et genre.
+            </p>
+        </field>
     </record>
 
     <record id="action_church_age_range" model="ir.actions.act_window">

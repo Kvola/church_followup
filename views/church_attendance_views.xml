@@ -1,17 +1,65 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <odoo>
-    <!-- Sunday Attendance -->
+    <!-- ==================== Sunday Attendance ==================== -->
+
+    <record id="view_church_attendance_sunday_form" model="ir.ui.view">
+        <field name="name">church.attendance.sunday.form</field>
+        <field name="model">church.attendance.sunday</field>
+        <field name="arch" type="xml">
+            <form string="Présence au culte">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="date"/>
+                            <field name="member_id"/>
+                            <field name="church_id"/>
+                        </group>
+                        <group>
+                            <field name="age_group_id" domain="[('church_id', '=', church_id)]"/>
+                            <field name="present"/>
+                        </group>
+                    </group>
+                    <field name="notes" placeholder="Notes..."/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
     <record id="view_church_attendance_sunday_list" model="ir.ui.view">
         <field name="name">church.attendance.sunday.list</field>
         <field name="model">church.attendance.sunday</field>
         <field name="arch" type="xml">
-            <list editable="bottom">
+            <list editable="bottom" default_order="date desc, member_id">
                 <field name="date"/>
-                <field name="age_group_id"/>
+                <field name="church_id" optional="hide" column_invisible="1"/>
+                <field name="age_group_id" optional="show"/>
                 <field name="member_id"/>
-                <field name="present"/>
-                <field name="notes"/>
+                <field name="present" widget="boolean_toggle"/>
+                <field name="notes" optional="hide"/>
             </list>
+        </field>
+    </record>
+
+    <record id="view_church_attendance_sunday_pivot" model="ir.ui.view">
+        <field name="name">church.attendance.sunday.pivot</field>
+        <field name="model">church.attendance.sunday</field>
+        <field name="arch" type="xml">
+            <pivot string="Analyse des présences cultes">
+                <field name="date" type="row" interval="week"/>
+                <field name="age_group_id" type="col"/>
+                <field name="present" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="view_church_attendance_sunday_graph" model="ir.ui.view">
+        <field name="name">church.attendance.sunday.graph</field>
+        <field name="model">church.attendance.sunday</field>
+        <field name="arch" type="xml">
+            <graph string="Évolution des présences" type="line">
+                <field name="date" interval="week"/>
+                <field name="present" type="measure"/>
+            </graph>
         </field>
     </record>
 
@@ -22,11 +70,21 @@
             <search string="Rechercher une présence">
                 <field name="member_id"/>
                 <field name="date"/>
+                <field name="age_group_id"/>
+                <field name="church_id"/>
                 <separator/>
                 <filter name="filter_present" string="Présents" domain="[('present', '=', True)]"/>
+                <filter name="filter_absent" string="Absents" domain="[('present', '=', False)]"/>
+                <separator/>
+                <filter name="filter_this_week" string="Cette semaine" domain="[('date', '>=', (context_today() - datetime.timedelta(days=context_today().weekday())).strftime('%%Y-%%m-%%d'))]"/>
+                <filter name="filter_this_month" string="Ce mois" domain="[('date', '>=', context_today().strftime('%%Y-%%m-01'))]"/>
                 <group>
                     <filter name="group_date" string="Date" context="{'group_by': 'date'}"/>
-                    <filter name="group_age" string="Groupe Age" context="{'group_by': 'age_group_id'}"/>
+                    <filter name="group_date_week" string="Semaine" context="{'group_by': 'date:week'}"/>
+                    <filter name="group_date_month" string="Mois" context="{'group_by': 'date:month'}"/>
+                    <filter name="group_age" string="Groupe d'âge" context="{'group_by': 'age_group_id'}"/>
+                    <filter name="group_church" string="Église" context="{'group_by': 'church_id'}"/>
+                    <filter name="group_member" string="Membre" context="{'group_by': 'member_id'}"/>
                 </group>
             </search>
         </field>
@@ -35,21 +93,78 @@
     <record id="action_church_attendance_sunday" model="ir.actions.act_window">
         <field name="name">Présences cultes</field>
         <field name="res_model">church.attendance.sunday</field>
-        <field name="view_mode">list</field>
+        <field name="view_mode">list,pivot,graph,form</field>
+        <field name="search_view_id" ref="view_church_attendance_sunday_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Aucune présence enregistrée
+            </p>
+            <p>
+                Enregistrez les présences au culte du dimanche pour suivre l'assiduité des membres.
+            </p>
+        </field>
     </record>
 
-    <!-- Cell Attendance -->
+    <!-- ==================== Cell Attendance ==================== -->
+
+    <record id="view_church_attendance_cell_form" model="ir.ui.view">
+        <field name="name">church.attendance.cell.form</field>
+        <field name="model">church.attendance.cell</field>
+        <field name="arch" type="xml">
+            <form string="Présence cellule">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="date"/>
+                            <field name="member_id"/>
+                            <field name="church_id"/>
+                        </group>
+                        <group>
+                            <field name="prayer_cell_id" domain="[('church_id', '=', church_id)]"/>
+                            <field name="present"/>
+                        </group>
+                    </group>
+                    <field name="notes" placeholder="Notes..."/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
     <record id="view_church_attendance_cell_list" model="ir.ui.view">
         <field name="name">church.attendance.cell.list</field>
         <field name="model">church.attendance.cell</field>
         <field name="arch" type="xml">
-            <list editable="bottom">
+            <list editable="bottom" default_order="date desc, prayer_cell_id, member_id">
                 <field name="date"/>
+                <field name="church_id" optional="hide" column_invisible="1"/>
                 <field name="prayer_cell_id"/>
                 <field name="member_id"/>
-                <field name="present"/>
-                <field name="notes"/>
+                <field name="present" widget="boolean_toggle"/>
+                <field name="notes" optional="hide"/>
             </list>
+        </field>
+    </record>
+
+    <record id="view_church_attendance_cell_pivot" model="ir.ui.view">
+        <field name="name">church.attendance.cell.pivot</field>
+        <field name="model">church.attendance.cell</field>
+        <field name="arch" type="xml">
+            <pivot string="Analyse présences cellules">
+                <field name="date" type="row" interval="week"/>
+                <field name="prayer_cell_id" type="col"/>
+                <field name="present" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="view_church_attendance_cell_graph" model="ir.ui.view">
+        <field name="name">church.attendance.cell.graph</field>
+        <field name="model">church.attendance.cell</field>
+        <field name="arch" type="xml">
+            <graph string="Évolution présences cellules" type="line">
+                <field name="date" interval="week"/>
+                <field name="present" type="measure"/>
+            </graph>
         </field>
     </record>
 
@@ -60,11 +175,21 @@
             <search string="Rechercher une présence cellule">
                 <field name="member_id"/>
                 <field name="date"/>
+                <field name="prayer_cell_id"/>
+                <field name="church_id"/>
                 <separator/>
                 <filter name="filter_present" string="Présents" domain="[('present', '=', True)]"/>
+                <filter name="filter_absent" string="Absents" domain="[('present', '=', False)]"/>
+                <separator/>
+                <filter name="filter_this_week" string="Cette semaine" domain="[('date', '>=', (context_today() - datetime.timedelta(days=context_today().weekday())).strftime('%%Y-%%m-%%d'))]"/>
+                <filter name="filter_this_month" string="Ce mois" domain="[('date', '>=', context_today().strftime('%%Y-%%m-01'))]"/>
                 <group>
                     <filter name="group_date" string="Date" context="{'group_by': 'date'}"/>
+                    <filter name="group_date_week" string="Semaine" context="{'group_by': 'date:week'}"/>
+                    <filter name="group_date_month" string="Mois" context="{'group_by': 'date:month'}"/>
                     <filter name="group_cell" string="Cellule" context="{'group_by': 'prayer_cell_id'}"/>
+                    <filter name="group_church" string="Église" context="{'group_by': 'church_id'}"/>
+                    <filter name="group_member" string="Membre" context="{'group_by': 'member_id'}"/>
                 </group>
             </search>
         </field>
@@ -73,6 +198,15 @@
     <record id="action_church_attendance_cell" model="ir.actions.act_window">
         <field name="name">Présences cellules</field>
         <field name="res_model">church.attendance.cell</field>
-        <field name="view_mode">list</field>
+        <field name="view_mode">list,pivot,graph,form</field>
+        <field name="search_view_id" ref="view_church_attendance_cell_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Aucune présence cellule enregistrée
+            </p>
+            <p>
+                Enregistrez les présences aux cellules de prière pour suivre la participation.
+            </p>
+        </field>
     </record>
 </odoo>

@@ -6,7 +6,8 @@
         <field name="arch" type="xml">
             <form string="Cellule de prière">
                 <header>
-                    <button name="action_create_leader_account" string="Créer compte mobile responsable" type="object" class="btn-primary" invisible="mobile_user_id"/>
+                    <button name="action_create_leader_account" string="Créer compte mobile responsable" type="object"
+                            class="btn-primary" invisible="mobile_user_id" icon="fa-mobile"/>
                 </header>
                 <sheet>
                     <div class="oe_button_box" name="button_box">
@@ -22,7 +23,7 @@
                             <field name="church_id"/>
                             <field name="district_ids" widget="many2many_tags" domain="[('church_id', '=', church_id)]"/>
                             <field name="leader_name"/>
-                            <field name="leader_phone"/>
+                            <field name="leader_phone" widget="phone"/>
                             <field name="mobile_user_id"/>
                         </group>
                         <group string="Réunion">
@@ -32,17 +33,21 @@
                         </group>
                     </group>
                     <notebook>
-                        <page string="Membres">
+                        <page string="Membres" name="page_members">
                             <field name="member_ids">
                                 <list>
                                     <field name="name"/>
                                     <field name="first_name"/>
-                                    <field name="phone"/>
+                                    <field name="phone" widget="phone"/>
                                     <field name="district_id"/>
+                                    <field name="member_type" widget="badge"
+                                           decoration-info="member_type == 'new'"
+                                           decoration-warning="member_type == 'in_followup'"
+                                           decoration-success="member_type == 'integrated'"/>
                                 </list>
                             </field>
                         </page>
-                        <page string="Notes">
+                        <page string="Notes" name="page_notes">
                             <field name="notes"/>
                         </page>
                     </notebook>
@@ -58,12 +63,36 @@
         <field name="arch" type="xml">
             <list>
                 <field name="name"/>
-                <field name="church_id"/>
+                <field name="church_id" optional="hide"/>
                 <field name="leader_name"/>
+                <field name="leader_phone" widget="phone" optional="show"/>
                 <field name="meeting_day"/>
                 <field name="meeting_time"/>
+                <field name="meeting_location" optional="hide"/>
                 <field name="member_count"/>
             </list>
+        </field>
+    </record>
+
+    <record id="view_church_prayer_cell_search" model="ir.ui.view">
+        <field name="name">church.prayer.cell.search</field>
+        <field name="model">church.prayer.cell</field>
+        <field name="arch" type="xml">
+            <search string="Rechercher une cellule">
+                <field name="name"/>
+                <field name="leader_name"/>
+                <field name="church_id"/>
+                <field name="district_ids"/>
+                <separator/>
+                <filter name="filter_has_members" string="Avec membres" domain="[('member_count', '>', 0)]"/>
+                <filter name="filter_no_leader" string="Sans responsable" domain="[('leader_name', '=', False)]"/>
+                <separator/>
+                <filter name="filter_archived" string="Archivées" domain="[('active', '=', False)]"/>
+                <group>
+                    <filter name="group_church" string="Église" context="{'group_by': 'church_id'}"/>
+                    <filter name="group_meeting_day" string="Jour de réunion" context="{'group_by': 'meeting_day'}"/>
+                </group>
+            </search>
         </field>
     </record>
 
@@ -71,5 +100,14 @@
         <field name="name">Cellules de prière</field>
         <field name="res_model">church.prayer.cell</field>
         <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_church_prayer_cell_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Aucune cellule de prière
+            </p>
+            <p>
+                Créez des cellules de prière pour organiser la communauté par quartier.
+            </p>
+        </field>
     </record>
 </odoo>

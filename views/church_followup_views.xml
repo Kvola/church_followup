@@ -6,10 +6,19 @@
         <field name="arch" type="xml">
             <form string="Suivi d'évangélisation">
                 <header>
-                    <button name="action_integrate" string="Intégrer" type="object" class="btn-primary" invisible="state not in ('in_progress', 'extended')"/>
-                    <button name="action_extend" string="Prolonger" type="object" class="btn-secondary" invisible="state not in ('in_progress', 'extended')"/>
-                    <button name="action_transfer" string="Transférer" type="object" class="btn-secondary" invisible="state not in ('in_progress', 'extended')"/>
-                    <button name="action_abandon" string="Abandonner" type="object" class="btn-danger" invisible="state not in ('in_progress', 'extended')" confirm="Êtes-vous sûr de vouloir abandonner ce suivi ?"/>
+                    <button name="action_integrate" string="Intégrer" type="object" class="btn-primary"
+                            invisible="state not in ('in_progress', 'extended')"
+                            icon="fa-check-circle"/>
+                    <button name="action_extend" string="Prolonger" type="object" class="btn-secondary"
+                            invisible="state not in ('in_progress', 'extended')"
+                            icon="fa-clock-o"/>
+                    <button name="action_transfer" string="Transférer" type="object" class="btn-secondary"
+                            invisible="state not in ('in_progress', 'extended')"
+                            icon="fa-exchange"/>
+                    <button name="action_abandon" string="Abandonner" type="object" class="btn-danger"
+                            invisible="state not in ('in_progress', 'extended')"
+                            confirm="Êtes-vous sûr de vouloir abandonner ce suivi ?"
+                            icon="fa-times-circle"/>
                     <field name="state" widget="statusbar" statusbar_visible="in_progress,extended,integrated"/>
                 </header>
                 <sheet>
@@ -35,7 +44,7 @@
                         </group>
                     </group>
                     <notebook>
-                        <page string="Rapports hebdomadaires">
+                        <page string="Rapports hebdomadaires" name="page_weeks">
                             <field name="week_ids" readonly="state not in ('in_progress', 'extended')">
                                 <list editable="bottom">
                                     <field name="week_number"/>
@@ -43,13 +52,16 @@
                                     <field name="sunday_attendance"/>
                                     <field name="call_made"/>
                                     <field name="visit_made"/>
-                                    <field name="spiritual_state"/>
+                                    <field name="spiritual_state" widget="badge"
+                                           decoration-success="spiritual_state in ('excellent', 'good')"
+                                           decoration-warning="spiritual_state == 'average'"
+                                           decoration-danger="spiritual_state in ('poor', 'critical')"/>
                                     <field name="score"/>
                                     <field name="notes"/>
                                 </list>
                             </field>
                         </page>
-                        <page string="Notes">
+                        <page string="Notes" name="page_notes">
                             <field name="notes" placeholder="Notes générales sur le suivi..."/>
                         </page>
                     </notebook>
@@ -63,15 +75,98 @@
         <field name="name">church.followup.list</field>
         <field name="model">church.followup</field>
         <field name="arch" type="xml">
-            <list decoration-info="state == 'in_progress'" decoration-success="state == 'integrated'" decoration-danger="state == 'abandoned'" decoration-warning="state == 'extended'">
+            <list decoration-info="state == 'in_progress'"
+                  decoration-success="state == 'integrated'"
+                  decoration-danger="state == 'abandoned'"
+                  decoration-warning="state == 'extended'"
+                  decoration-muted="state == 'transferred'">
+                <field name="name"/>
+                <field name="evangelist_id"/>
+                <field name="member_id"/>
+                <field name="church_id" optional="hide"/>
+                <field name="start_date"/>
+                <field name="end_date"/>
+                <field name="duration_weeks" optional="hide"/>
+                <field name="week_count" string="Sem."/>
+                <field name="state" widget="badge"
+                       decoration-info="state == 'in_progress'"
+                       decoration-success="state == 'integrated'"
+                       decoration-danger="state == 'abandoned'"
+                       decoration-warning="state == 'extended'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_church_followup_kanban" model="ir.ui.view">
+        <field name="name">church.followup.kanban</field>
+        <field name="model">church.followup</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="state" class="o_kanban_small_column">
                 <field name="name"/>
                 <field name="evangelist_id"/>
                 <field name="member_id"/>
                 <field name="start_date"/>
                 <field name="end_date"/>
                 <field name="week_count"/>
-                <field name="state" widget="badge"/>
-            </list>
+                <field name="state"/>
+                <progressbar field="state" colors='{"in_progress": "primary", "extended": "warning", "integrated": "success", "abandoned": "danger", "transferred": "muted"}'/>
+                <templates>
+                    <t t-name="card">
+                        <div class="fw-bold fs-5 mb-1">
+                            <field name="name"/>
+                        </div>
+                        <div class="text-muted small mb-1">
+                            <i class="fa fa-user me-1"/><field name="member_id"/>
+                        </div>
+                        <div class="text-muted small mb-1">
+                            <i class="fa fa-book me-1"/><field name="evangelist_id"/>
+                        </div>
+                        <div class="d-flex justify-content-between small mt-2">
+                            <span><i class="fa fa-calendar me-1"/><field name="start_date"/></span>
+                            <span class="badge rounded-pill bg-info">
+                                <field name="week_count"/> sem.
+                            </span>
+                        </div>
+                        <div class="small text-muted mt-1" t-if="record.end_date.value">
+                            <i class="fa fa-flag-checkered me-1"/>Fin: <field name="end_date"/>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <record id="view_church_followup_calendar" model="ir.ui.view">
+        <field name="name">church.followup.calendar</field>
+        <field name="model">church.followup</field>
+        <field name="arch" type="xml">
+            <calendar string="Suivis" date_start="start_date" date_stop="end_date" color="evangelist_id" mode="month">
+                <field name="member_id"/>
+                <field name="evangelist_id"/>
+                <field name="state"/>
+            </calendar>
+        </field>
+    </record>
+
+    <record id="view_church_followup_pivot" model="ir.ui.view">
+        <field name="name">church.followup.pivot</field>
+        <field name="model">church.followup</field>
+        <field name="arch" type="xml">
+            <pivot string="Analyse des suivis">
+                <field name="evangelist_id" type="row"/>
+                <field name="state" type="col"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="view_church_followup_graph" model="ir.ui.view">
+        <field name="name">church.followup.graph</field>
+        <field name="model">church.followup</field>
+        <field name="arch" type="xml">
+            <graph string="Analyse des suivis" type="bar">
+                <field name="state"/>
+                <field name="evangelist_id"/>
+            </graph>
         </field>
     </record>
 
@@ -83,14 +178,23 @@
                 <field name="name"/>
                 <field name="evangelist_id"/>
                 <field name="member_id"/>
+                <field name="church_id"/>
                 <separator/>
                 <filter name="filter_active" string="En cours" domain="[('state', '=', 'in_progress')]"/>
+                <filter name="filter_extended" string="Prolongés" domain="[('state', '=', 'extended')]"/>
                 <filter name="filter_integrated" string="Intégrés" domain="[('state', '=', 'integrated')]"/>
                 <filter name="filter_abandoned" string="Abandonnés" domain="[('state', '=', 'abandoned')]"/>
+                <filter name="filter_transferred" string="Transférés" domain="[('state', '=', 'transferred')]"/>
+                <separator/>
+                <filter name="filter_expired" string="Échéance dépassée"
+                        domain="[('state', 'in', ('in_progress', 'extended')), ('end_date', '&lt;', context_today().strftime('%%Y-%%m-%%d'))]"/>
+                <separator/>
+                <filter name="filter_this_month" string="Ce mois" domain="[('start_date', '&gt;=', (context_today() - datetime.timedelta(days=30)).strftime('%%Y-%%m-%%d'))]"/>
                 <group>
                     <filter name="group_evangelist" string="Évangéliste" context="{'group_by': 'evangelist_id'}"/>
                     <filter name="group_state" string="État" context="{'group_by': 'state'}"/>
                     <filter name="group_church" string="Église" context="{'group_by': 'church_id'}"/>
+                    <filter name="group_start_date" string="Date de début" context="{'group_by': 'start_date:month'}"/>
                 </group>
             </search>
         </field>
@@ -99,6 +203,24 @@
     <record id="action_church_followup" model="ir.actions.act_window">
         <field name="name">Suivis</field>
         <field name="res_model">church.followup</field>
-        <field name="view_mode">list,form</field>
+        <field name="view_mode">kanban,list,calendar,pivot,graph,form</field>
+        <field name="search_view_id" ref="view_church_followup_search"/>
+        <field name="context">{'search_default_filter_active': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Aucun suivi en cours
+            </p>
+            <p>
+                Créez un nouveau suivi pour commencer à accompagner une personne vers l'intégration.
+            </p>
+        </field>
+    </record>
+
+    <!-- Action for "all followups" without default filter -->
+    <record id="action_church_followup_all" model="ir.actions.act_window">
+        <field name="name">Tous les suivis</field>
+        <field name="res_model">church.followup</field>
+        <field name="view_mode">list,kanban,calendar,pivot,graph,form</field>
+        <field name="search_view_id" ref="view_church_followup_search"/>
     </record>
 </odoo>

@@ -18,3 +18,9 @@ class ChurchAttendanceSunday(models.Model):
         ('unique_member_date', 'UNIQUE(member_id, date)',
          'La présence de ce membre est déjà enregistrée pour cette date.'),
     ]
+
+    @api.onchange('member_id')
+    def _onchange_member_id(self):
+        if self.member_id:
+            self.church_id = self.member_id.church_id
+            self.age_group_id = self.member_id.age_group_id

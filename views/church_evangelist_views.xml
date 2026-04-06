@@ -11,6 +11,9 @@
                         <button class="oe_stat_button" icon="fa-line-chart" type="object" name="action_view_followups">
                             <field name="total_followup_count" widget="statinfo" string="Suivis"/>
                         </button>
+                        <button class="oe_stat_button" icon="fa-spinner" type="object" name="action_view_followups">
+                            <field name="active_followup_count" widget="statinfo" string="En cours"/>
+                        </button>
                         <button class="oe_stat_button" icon="fa-check-circle" type="object" name="action_view_followups">
                             <field name="integrated_count" widget="statinfo" string="Intégrés"/>
                         </button>
@@ -19,20 +22,34 @@
                         <h1><field name="name" placeholder="Nom complet"/></h1>
                     </div>
                     <group>
-                        <group>
-                            <field name="phone"/>
-                            <field name="email"/>
+                        <group string="Contact">
+                            <field name="phone" widget="phone"/>
+                            <field name="email" widget="email"/>
                             <field name="church_id"/>
                         </group>
-                        <group>
+                        <group string="Performance">
                             <field name="mobile_user_id"/>
                             <field name="active_followup_count"/>
                             <field name="integration_rate" widget="progressbar"/>
                         </group>
                     </group>
                     <notebook>
-                        <page string="Suivis en cours">
-                            <field name="followup_ids" domain="[('state', '=', 'in_progress')]">
+                        <page string="Suivis en cours" name="page_active_followups">
+                            <field name="followup_ids" domain="[('state', 'in', ('in_progress', 'extended'))]">
+                                <list>
+                                    <field name="name"/>
+                                    <field name="member_id"/>
+                                    <field name="start_date"/>
+                                    <field name="end_date"/>
+                                    <field name="week_count"/>
+                                    <field name="state" widget="badge"
+                                           decoration-info="state == 'in_progress'"
+                                           decoration-warning="state == 'extended'"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Historique complet" name="page_all_followups">
+                            <field name="followup_ids">
                                 <list>
                                     <field name="name"/>
                                     <field name="member_id"/>
@@ -42,7 +59,8 @@
                                     <field name="state" widget="badge"
                                            decoration-info="state == 'in_progress'"
                                            decoration-success="state == 'integrated'"
-                                           decoration-danger="state == 'abandoned'"/>
+                                           decoration-danger="state == 'abandoned'"
+                                           decoration-warning="state == 'extended'"/>
                                 </list>
                             </field>
                         </page>
@@ -59,18 +77,85 @@
         <field name="arch" type="xml">
             <list>
                 <field name="name"/>
-                <field name="phone"/>
-                <field name="church_id"/>
+                <field name="phone" widget="phone"/>
+                <field name="church_id" optional="hide"/>
                 <field name="active_followup_count"/>
+                <field name="total_followup_count" optional="show"/>
                 <field name="integrated_count"/>
                 <field name="integration_rate" widget="progressbar"/>
             </list>
         </field>
     </record>
 
+    <record id="view_church_evangelist_kanban" model="ir.ui.view">
+        <field name="name">church.evangelist.kanban</field>
+        <field name="model">church.evangelist</field>
+        <field name="arch" type="xml">
+            <kanban>
+                <field name="name"/>
+                <field name="phone"/>
+                <field name="photo"/>
+                <field name="active_followup_count"/>
+                <field name="integrated_count"/>
+                <field name="integration_rate"/>
+                <templates>
+                    <t t-name="card">
+                        <aside>
+                            <field name="photo" widget="image" class="o_kanban_image"/>
+                        </aside>
+                        <main>
+                            <div class="fw-bold">
+                                <field name="name"/>
+                            </div>
+                            <div class="text-muted small" t-if="record.phone.value">
+                                <i class="fa fa-phone me-1"/><field name="phone"/>
+                            </div>
+                            <div class="d-flex gap-3 mt-2 small">
+                                <span title="Suivis en cours"><i class="fa fa-spinner me-1 text-primary"/><field name="active_followup_count"/></span>
+                                <span title="Intégrés"><i class="fa fa-check-circle me-1 text-success"/><field name="integrated_count"/></span>
+                            </div>
+                            <div class="mt-1">
+                                <field name="integration_rate" widget="progressbar"/>
+                            </div>
+                        </main>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <record id="view_church_evangelist_search" model="ir.ui.view">
+        <field name="name">church.evangelist.search</field>
+        <field name="model">church.evangelist</field>
+        <field name="arch" type="xml">
+            <search string="Rechercher un évangéliste">
+                <field name="name"/>
+                <field name="phone"/>
+                <field name="church_id"/>
+                <separator/>
+                <filter name="filter_has_active" string="Avec suivis actifs" domain="[('active_followup_count', '>', 0)]"/>
+                <filter name="filter_no_active" string="Sans suivi actif" domain="[('active_followup_count', '=', 0)]"/>
+                <separator/>
+                <filter name="filter_archived" string="Archivés" domain="[('active', '=', False)]"/>
+                <group>
+                    <filter name="group_church" string="Église" context="{'group_by': 'church_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
     <record id="action_church_evangelist" model="ir.actions.act_window">
         <field name="name">Évangélistes</field>
         <field name="res_model">church.evangelist</field>
-        <field name="view_mode">list,form</field>
+        <field name="view_mode">list,kanban,form</field>
+        <field name="search_view_id" ref="view_church_evangelist_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Aucun évangéliste enregistré
+            </p>
+            <p>
+                Ajoutez des évangélistes pour leur assigner des suivis de nouvelles personnes.
+            </p>
+        </field>
     </record>
 </odoo>
