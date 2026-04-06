@@ -17,10 +17,10 @@ class ChurchEvangelist(models.Model):
 
     # Suivi
     followup_ids = fields.One2many('church.followup', 'evangelist_id', string='Suivis')
-    active_followup_count = fields.Integer(compute='_compute_followup_stats', string='Suivis actifs')
-    total_followup_count = fields.Integer(compute='_compute_followup_stats', string='Total suivis')
-    integrated_count = fields.Integer(compute='_compute_followup_stats', string='Intégrés')
-    integration_rate = fields.Float(compute='_compute_followup_stats', string='Taux d\'intégration (%)')
+    active_followup_count = fields.Integer(compute='_compute_followup_stats', store=True, string='Suivis actifs')
+    total_followup_count = fields.Integer(compute='_compute_followup_stats', store=True, string='Total suivis')
+    integrated_count = fields.Integer(compute='_compute_followup_stats', store=True, string='Intégrés')
+    integration_rate = fields.Float(compute='_compute_followup_stats', store=True, string='Taux d\'intégration (%)')
 
     @api.depends('followup_ids', 'followup_ids.state')
     def _compute_followup_stats(self):
