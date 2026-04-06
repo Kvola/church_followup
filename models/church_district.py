@@ -13,7 +13,7 @@ class ChurchDistrict(models.Model):
     active = fields.Boolean(default=True)
 
     prayer_cell_id = fields.Many2one('church.prayer.cell', string='Cellule de prière', compute='_compute_prayer_cell', store=True)
-    member_count = fields.Integer(compute='_compute_member_count', string='Nombre de membres')
+    member_count = fields.Integer(compute='_compute_member_count', store=True, string='Nombre de membres')
     member_ids = fields.One2many('church.member', 'district_id', string='Membres')
 
     @api.depends('church_id.prayer_cell_ids.district_ids')

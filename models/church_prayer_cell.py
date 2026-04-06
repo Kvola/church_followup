@@ -30,7 +30,7 @@ class ChurchPrayerCell(models.Model):
 
     # Membres
     member_ids = fields.One2many('church.member', 'prayer_cell_id', string='Membres')
-    member_count = fields.Integer(compute='_compute_member_count', string='Nombre de membres')
+    member_count = fields.Integer(compute='_compute_member_count', store=True, string='Nombre de membres')
 
     active = fields.Boolean(default=True)
     notes = fields.Text(string='Notes')

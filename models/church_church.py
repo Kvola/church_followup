@@ -26,10 +26,10 @@ class ChurchChurch(models.Model):
     mobile_user_ids = fields.One2many('church.mobile.user', 'church_id', string='Utilisateurs mobiles')
 
     # Computed
-    member_count = fields.Integer(compute='_compute_counts', string='Nombre de membres')
-    evangelist_count = fields.Integer(compute='_compute_counts', string='Nombre d\'évangélistes')
-    cell_count = fields.Integer(compute='_compute_counts', string='Nombre de cellules')
-    age_group_count = fields.Integer(compute='_compute_counts', string='Nombre de groupes')
+    member_count = fields.Integer(compute='_compute_counts', store=True, string='Nombre de membres')
+    evangelist_count = fields.Integer(compute='_compute_counts', store=True, string='Nombre d\'évangélistes')
+    cell_count = fields.Integer(compute='_compute_counts', store=True, string='Nombre de cellules')
+    age_group_count = fields.Integer(compute='_compute_counts', store=True, string='Nombre de groupes')
     followup_active_count = fields.Integer(compute='_compute_followup_active_count', string='Suivis actifs')
 
     _sql_constraints = [
