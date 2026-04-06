@@ -123,4 +123,11 @@
         <field name="domain_force">[(1, '=', 1)]</field>
         <field name="groups" eval="[(4, ref('group_church_user'))]"/>
     </record>
+
+    <record id="rule_church_pastor_global" model="ir.rule">
+        <field name="name">Pasteur : accès global</field>
+        <field name="model_id" ref="model_church_pastor"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="groups" eval="[(4, ref('group_church_user'))]"/>
+    </record>
 </odoo>

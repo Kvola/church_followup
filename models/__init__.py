@@ -1,4 +1,5 @@
 from . import church_church
+from . import church_pastor
 from . import church_district
 from . import church_member
 from . import church_mobile_user

@@ -14,10 +14,14 @@ class ChurchChurch(models.Model):
     country_id = fields.Many2one('res.country', string='Pays')
     phone = fields.Char(string='Téléphone')
     email = fields.Char(string='Email')
-    pastor_name = fields.Char(string='Nom du pasteur')
+    pastor_name = fields.Char(
+        string='Pasteur principal', compute='_compute_pastor_name',
+        store=True, readonly=True,
+    )
     active = fields.Boolean(default=True)
 
     # Relations
+    pastor_ids = fields.One2many('church.pastor', 'church_id', string='Pasteurs')
     district_ids = fields.One2many('church.district', 'church_id', string='Quartiers')
     member_ids = fields.One2many('church.member', 'church_id', string='Membres')
     evangelist_ids = fields.One2many('church.evangelist', 'church_id', string='Évangélistes')
@@ -30,19 +34,29 @@ class ChurchChurch(models.Model):
     evangelist_count = fields.Integer(compute='_compute_counts', store=True, string='Nombre d\'évangélistes')
     cell_count = fields.Integer(compute='_compute_counts', store=True, string='Nombre de cellules')
     age_group_count = fields.Integer(compute='_compute_counts', store=True, string='Nombre de groupes')
+    pastor_count = fields.Integer(compute='_compute_counts', store=True, string='Nombre de pasteurs')
     followup_active_count = fields.Integer(compute='_compute_followup_active_count', string='Suivis actifs')
 
     _sql_constraints = [
         ('unique_code', 'UNIQUE(code)', 'Le code de l\'église doit être unique.'),
     ]
 
-    @api.depends('member_ids', 'evangelist_ids', 'prayer_cell_ids', 'age_group_ids')
+    @api.depends('pastor_ids', 'pastor_ids.pastor_type', 'pastor_ids.name', 'pastor_ids.active')
+    def _compute_pastor_name(self):
+        for rec in self:
+            principal = rec.pastor_ids.filtered(
+                lambda p: p.pastor_type == 'principal' and p.active
+            )
+            rec.pastor_name = principal[:1].name if principal else ''
+
+    @api.depends('member_ids', 'evangelist_ids', 'prayer_cell_ids', 'age_group_ids', 'pastor_ids')
     def _compute_counts(self):
         for rec in self:
             rec.member_count = len(rec.member_ids)
             rec.evangelist_count = len(rec.evangelist_ids)
             rec.cell_count = len(rec.prayer_cell_ids)
             rec.age_group_count = len(rec.age_group_ids)
+            rec.pastor_count = len(rec.pastor_ids)
 
     def _compute_followup_active_count(self):
         followup_model = self.env['church.followup']
@@ -95,4 +109,13 @@ class ChurchChurch(models.Model):
             'res_model': 'church.followup',
             'view_mode': 'list,form',
             'domain': [('church_id', '=', self.id), ('state', 'in', ('in_progress', 'extended'))],
+        }
+
+    def action_view_pastors(self):
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Pasteurs'),
+            'res_model': 'church.pastor',
+            'view_mode': 'list,kanban,form',
+            'domain': [('church_id', '=', self.id)],
         }

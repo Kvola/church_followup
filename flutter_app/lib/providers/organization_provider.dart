@@ -249,4 +249,40 @@ class OrganizationProvider extends ChangeNotifier {
       return {'status': 'error', 'message': '$e'};
     }
   }
+
+  // ─── Pastor Management ────────────────────────────────────────────
+
+  Future<List<Map<String, dynamic>>> getPastors({int? churchId}) async {
+    try {
+      return await _api.getPastors(churchId: churchId);
+    } catch (e) {
+      _error = e.toString();
+      return [];
+    }
+  }
+
+  Future<Map<String, dynamic>> createPastor(Map<String, dynamic> data) async {
+    try {
+      final result = await _api.createPastor(data);
+      return result;
+    } catch (e) {
+      return {'status': 'error', 'message': '$e'};
+    }
+  }
+
+  Future<Map<String, dynamic>> updatePastor(int pastorId, Map<String, dynamic> data) async {
+    try {
+      return await _api.updatePastor(pastorId, data);
+    } catch (e) {
+      return {'status': 'error', 'message': '$e'};
+    }
+  }
+
+  Future<Map<String, dynamic>> deletePastor(int pastorId) async {
+    try {
+      return await _api.deletePastor(pastorId);
+    } catch (e) {
+      return {'status': 'error', 'message': '$e'};
+    }
+  }
 }

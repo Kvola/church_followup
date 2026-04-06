@@ -38,3 +38,6 @@ access_church_attendance_cell_user,church.attendance.cell user,model_church_atte
 access_church_cooking_rotation_admin,church.cooking.rotation admin,model_church_cooking_rotation,group_church_admin,1,1,1,1
 access_church_cooking_rotation_manager,church.cooking.rotation manager,model_church_cooking_rotation,group_church_manager,1,1,1,1
 access_church_cooking_rotation_user,church.cooking.rotation user,model_church_cooking_rotation,group_church_user,1,0,0,0
+access_church_pastor_admin,church.pastor admin,model_church_pastor,group_church_admin,1,1,1,1
+access_church_pastor_manager,church.pastor manager,model_church_pastor,group_church_manager,1,1,1,0
+access_church_pastor_user,church.pastor user,model_church_pastor,group_church_user,1,0,0,0

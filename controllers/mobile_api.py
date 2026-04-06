@@ -1277,6 +1277,12 @@ class ChurchMobileApi(http.Controller):
                 'phone': c.phone or '',
                 'email': c.email or '',
                 'pastor_name': c.pastor_name or '',
+                'pastors': [{
+                    'id': p.id,
+                    'name': p.name,
+                    'pastor_type': p.pastor_type,
+                    'phone': p.phone or '',
+                } for p in c.pastor_ids.filtered('active')],
                 'active': c.active,
                 'member_count': c.member_count,
                 'evangelist_count': c.evangelist_count,
@@ -1308,10 +1314,22 @@ class ChurchMobileApi(http.Controller):
             'city': kwargs.get('city', '').strip() or False,
             'phone': kwargs.get('phone', '').strip() or False,
             'email': kwargs.get('email', '').strip() or False,
-            'pastor_name': kwargs.get('pastor_name', '').strip() or False,
         }
 
         church = Church.create(vals)
+
+        # Create pastors if provided
+        pastors_data = kwargs.get('pastors', [])
+        Pastor = request.env['church.pastor'].sudo()
+        for pd in pastors_data:
+            pname = (pd.get('name') or '').strip()
+            if pname:
+                Pastor.create({
+                    'name': pname,
+                    'phone': (pd.get('phone') or '').strip() or False,
+                    'pastor_type': pd.get('pastor_type', 'assistant'),
+                    'church_id': church.id,
+                })
 
         return {
             'status': 'success',
@@ -1341,7 +1359,7 @@ class ChurchMobileApi(http.Controller):
         if not church.exists():
             return {'status': 'error', 'message': 'Église non trouvée'}
 
-        allowed_fields = ['name', 'code', 'address', 'city', 'phone', 'email', 'pastor_name']
+        allowed_fields = ['name', 'code', 'address', 'city', 'phone', 'email']
         vals = {}
         for f in allowed_fields:
             if f in kwargs:
@@ -1404,6 +1422,13 @@ class ChurchMobileApi(http.Controller):
                 'phone': church.phone or '',
                 'email': church.email or '',
                 'pastor_name': church.pastor_name or '',
+                'pastors': [{
+                    'id': p.id,
+                    'name': p.name,
+                    'pastor_type': p.pastor_type,
+                    'phone': p.phone or '',
+                    'start_date': str(p.start_date) if p.start_date else '',
+                } for p in church.pastor_ids.filtered('active')],
                 'active': church.active,
                 'member_count': church.member_count,
                 'evangelist_count': church.evangelist_count,
@@ -1466,4 +1491,145 @@ class ChurchMobileApi(http.Controller):
                 'pin': new_manager.pin,
                 'church_name': church.name,
             },
+        }
+
+    # ─── Pastor Management ──────────────────────────────────────────
+
+    @http.route('/api/church/pastors', type='json', auth='public', methods=['POST'], csrf=False)
+    def get_pastors(self, **kwargs):
+        """Liste des pasteurs d'une église."""
+        user = self._get_mobile_user(kwargs)
+        church_id = kwargs.get('church_id')
+        if not church_id:
+            if user.church_id:
+                church_id = user.church_id.id
+            elif not self._is_super_admin(user):
+                return {'status': 'error', 'message': 'church_id requis'}
+
+        domain = [('active', '=', True)]
+        if church_id:
+            domain.append(('church_id', '=', int(church_id)))
+
+        pastors = request.env['church.pastor'].sudo().search(domain, order='pastor_type, name')
+        return {
+            'status': 'success',
+            'pastors': [{
+                'id': p.id,
+                'name': p.name,
+                'phone': p.phone or '',
+                'pastor_type': p.pastor_type,
+                'start_date': str(p.start_date) if p.start_date else '',
+                'church_id': p.church_id.id,
+                'church_name': p.church_id.name,
+            } for p in pastors],
+        }
+
+    @http.route('/api/church/pastors/create', type='json', auth='public', methods=['POST'], csrf=False)
+    def create_pastor(self, **kwargs):
+        """Créer un pasteur (super_admin uniquement)."""
+        user = self._get_mobile_user(kwargs)
+        if not self._is_super_admin(user):
+            return {'status': 'error', 'message': 'Non autorisé. Réservé au super administrateur.'}
+
+        name = kwargs.get('name', '').strip()
+        pastor_type = kwargs.get('pastor_type', 'assistant')
+        church_id = kwargs.get('church_id')
+
+        if not name:
+            return {'status': 'error', 'message': 'Le nom est requis'}
+        if not church_id:
+            return {'status': 'error', 'message': 'church_id requis'}
+        if pastor_type not in ('principal', 'assistant'):
+            return {'status': 'error', 'message': 'Type invalide (principal ou assistant)'}
+
+        try:
+            church = request.env['church.church'].sudo().browse(int(church_id))
+        except (ValueError, TypeError):
+            return {'status': 'error', 'message': 'church_id invalide'}
+        if not church.exists():
+            return {'status': 'error', 'message': 'Église non trouvée'}
+
+        vals = {
+            'name': name,
+            'phone': kwargs.get('phone', '').strip() or False,
+            'pastor_type': pastor_type,
+            'church_id': church.id,
+        }
+        start_date = kwargs.get('start_date', '').strip()
+        if start_date:
+            vals['start_date'] = start_date
+
+        pastor = request.env['church.pastor'].sudo().create(vals)
+
+        return {
+            'status': 'success',
+            'message': f'Pasteur "{pastor.name}" ajouté à {church.name}',
+            'pastor': {
+                'id': pastor.id,
+                'name': pastor.name,
+                'pastor_type': pastor.pastor_type,
+                'phone': pastor.phone or '',
+                'church_id': church.id,
+            },
+        }
+
+    @http.route('/api/church/pastors/update', type='json', auth='public', methods=['POST'], csrf=False)
+    def update_pastor(self, **kwargs):
+        """Mettre à jour un pasteur (super_admin uniquement)."""
+        user = self._get_mobile_user(kwargs)
+        if not self._is_super_admin(user):
+            return {'status': 'error', 'message': 'Non autorisé. Réservé au super administrateur.'}
+
+        pastor_id = kwargs.get('pastor_id')
+        if not pastor_id:
+            return {'status': 'error', 'message': 'pastor_id requis'}
+
+        try:
+            pastor = request.env['church.pastor'].sudo().browse(int(pastor_id))
+        except (ValueError, TypeError):
+            return {'status': 'error', 'message': 'pastor_id invalide'}
+        if not pastor.exists():
+            return {'status': 'error', 'message': 'Pasteur non trouvé'}
+
+        allowed = ['name', 'phone', 'pastor_type']
+        vals = {}
+        for f in allowed:
+            if f in kwargs:
+                v = kwargs[f]
+                vals[f] = v.strip() if isinstance(v, str) else v
+        if 'start_date' in kwargs:
+            vals['start_date'] = kwargs['start_date'] or False
+        if 'active' in kwargs:
+            vals['active'] = bool(kwargs['active'])
+
+        if vals:
+            pastor.write(vals)
+
+        return {
+            'status': 'success',
+            'message': 'Pasteur mis à jour',
+        }
+
+    @http.route('/api/church/pastors/delete', type='json', auth='public', methods=['POST'], csrf=False)
+    def delete_pastor(self, **kwargs):
+        """Archiver un pasteur (super_admin uniquement)."""
+        user = self._get_mobile_user(kwargs)
+        if not self._is_super_admin(user):
+            return {'status': 'error', 'message': 'Non autorisé. Réservé au super administrateur.'}
+
+        pastor_id = kwargs.get('pastor_id')
+        if not pastor_id:
+            return {'status': 'error', 'message': 'pastor_id requis'}
+
+        try:
+            pastor = request.env['church.pastor'].sudo().browse(int(pastor_id))
+        except (ValueError, TypeError):
+            return {'status': 'error', 'message': 'pastor_id invalide'}
+        if not pastor.exists():
+            return {'status': 'error', 'message': 'Pasteur non trouvé'}
+
+        pastor.write({'active': False})
+        return {
+            'status': 'success',
+            'message': f'Pasteur "{pastor.name}" archivé',
         }

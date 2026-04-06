@@ -34,6 +34,7 @@
         'reports/report_age_group_members.xml',
         'reports/report_dashboard.xml',
         # Views
+        'views/church_pastor_views.xml',
         'views/church_church_views.xml',
         'views/church_district_views.xml',
         'views/church_member_views.xml',

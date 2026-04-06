@@ -22,6 +22,9 @@
                         <button class="oe_stat_button" icon="fa-line-chart" type="object" name="action_view_active_followups">
                             <field name="followup_active_count" widget="statinfo" string="Suivis actifs"/>
                         </button>
+                        <button class="oe_stat_button" icon="fa-user-circle" type="object" name="action_view_pastors">
+                            <field name="pastor_count" widget="statinfo" string="Pasteurs"/>
+                        </button>
                     </div>
                     <div class="oe_title">
                         <h1><field name="name" placeholder="Nom de l'église"/></h1>
@@ -40,6 +43,19 @@
                         </group>
                     </group>
                     <notebook>
+                        <page string="Pasteurs" name="page_pastors">
+                            <field name="pastor_ids">
+                                <list editable="bottom">
+                                    <field name="name"/>
+                                    <field name="pastor_type" widget="badge"
+                                           decoration-success="pastor_type == 'principal'"
+                                           decoration-info="pastor_type == 'assistant'"/>
+                                    <field name="phone" widget="phone"/>
+                                    <field name="start_date"/>
+                                    <field name="active" widget="boolean_toggle" column_invisible="True"/>
+                                </list>
+                            </field>
+                        </page>
                         <page string="Quartiers" name="page_districts">
                             <field name="district_ids">
                                 <list editable="bottom">
@@ -70,6 +86,7 @@
                 <field name="evangelist_count"/>
                 <field name="cell_count"/>
                 <field name="age_group_count"/>
+                <field name="pastor_count" optional="show"/>
                 <field name="followup_active_count" string="Suivis actifs"/>
             </list>
         </field>

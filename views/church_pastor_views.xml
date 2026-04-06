@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="view_church_pastor_form" model="ir.ui.view">
+        <field name="name">church.pastor.form</field>
+        <field name="model">church.pastor</field>
+        <field name="arch" type="xml">
+            <form string="Pasteur">
+                <sheet>
+                    <field name="photo" widget="image" class="oe_avatar" options="{'preview_image': 'photo', 'size': [128, 128]}"/>
+                    <div class="oe_title">
+                        <h1><field name="name" placeholder="Nom complet"/></h1>
+                    </div>
+                    <group>
+                        <group string="Informations">
+                            <field name="pastor_type" widget="radio"/>
+                            <field name="phone" widget="phone"/>
+                            <field name="start_date"/>
+                            <field name="active" widget="boolean_toggle"/>
+                        </group>
+                        <group string="Affectation">
+                            <field name="church_id"/>
+                        </group>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_church_pastor_list" model="ir.ui.view">
+        <field name="name">church.pastor.list</field>
+        <field name="model">church.pastor</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+                <field name="pastor_type" widget="badge"
+                       decoration-success="pastor_type == 'principal'"
+                       decoration-info="pastor_type == 'assistant'"/>
+                <field name="church_id"/>
+                <field name="phone" widget="phone" optional="show"/>
+                <field name="start_date" optional="show"/>
+                <field name="active" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_church_pastor_search" model="ir.ui.view">
+        <field name="name">church.pastor.search</field>
+        <field name="model">church.pastor</field>
+        <field name="arch" type="xml">
+            <search string="Rechercher un pasteur">
+                <field name="name"/>
+                <field name="church_id"/>
+                <separator/>
+                <filter name="filter_principal" string="Principaux" domain="[('pastor_type', '=', 'principal')]"/>
+                <filter name="filter_assistant" string="Assistants" domain="[('pastor_type', '=', 'assistant')]"/>
+                <separator/>
+                <filter name="filter_active" string="Actifs" domain="[('active', '=', True)]"/>
+                <filter name="filter_inactive" string="Inactifs" domain="[('active', '=', False)]"/>
+                <group>
+                    <filter name="group_church" string="Église" context="{'group_by': 'church_id'}"/>
+                    <filter name="group_type" string="Type" context="{'group_by': 'pastor_type'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_church_pastor_kanban" model="ir.ui.view">
+        <field name="name">church.pastor.kanban</field>
+        <field name="model">church.pastor</field>
+        <field name="arch" type="xml">
+            <kanban>
+                <field name="name"/>
+                <field name="phone"/>
+                <field name="pastor_type"/>
+                <field name="photo"/>
+                <field name="church_id"/>
+                <templates>
+                    <t t-name="card">
+                        <aside>
+                            <field name="photo" widget="image" options="{'preview_image': 'photo', 'size': [64, 64]}"/>
+                        </aside>
+                        <main>
+                            <strong><field name="name"/></strong>
+                            <field name="pastor_type" widget="badge"
+                                   decoration-success="pastor_type == 'principal'"
+                                   decoration-info="pastor_type == 'assistant'"/>
+                            <field name="church_id"/>
+                            <field name="phone" widget="phone"/>
+                        </main>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <record id="action_church_pastor" model="ir.actions.act_window">
+        <field name="name">Pasteurs</field>
+        <field name="res_model">church.pastor</field>
+        <field name="view_mode">list,kanban,form</field>
+        <field name="search_view_id" ref="view_church_pastor_search"/>
+        <field name="context">{'search_default_filter_active': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Aucun pasteur enregistré
+            </p>
+            <p>
+                Ajoutez les pasteurs de vos églises depuis la fiche église ou ici.
+            </p>
+        </field>
+    </record>
+</odoo>

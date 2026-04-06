@@ -103,6 +103,12 @@
               action="action_church_church"
               sequence="10"/>
 
+    <menuitem id="menu_church_pastor"
+              name="Pasteurs"
+              parent="menu_church_config"
+              action="action_church_pastor"
+              sequence="15"/>
+
     <menuitem id="menu_church_mobile_user"
               name="Utilisateurs mobiles"
               parent="menu_church_config"

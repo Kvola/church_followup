@@ -372,6 +372,37 @@ class ApiService {
     );
   }
 
+  // ─── Pastors ──────────────────────────────────────────────────────
+
+  Future<List<Map<String, dynamic>>> getPastors({int? churchId}) async {
+    final result = await call('/api/church/pastors', {
+      if (churchId != null) 'church_id': churchId,
+    });
+    if (result['status'] == 'success') {
+      return _safeList(result['pastors']);
+    }
+    return [];
+  }
+
+  Future<Map<String, dynamic>> createPastor(Map<String, dynamic> data) async {
+    return Map<String, dynamic>.from(
+      await call('/api/church/pastors/create', data),
+    );
+  }
+
+  Future<Map<String, dynamic>> updatePastor(int pastorId, Map<String, dynamic> data) async {
+    data['pastor_id'] = pastorId;
+    return Map<String, dynamic>.from(
+      await call('/api/church/pastors/update', data),
+    );
+  }
+
+  Future<Map<String, dynamic>> deletePastor(int pastorId) async {
+    return Map<String, dynamic>.from(
+      await call('/api/church/pastors/delete', {'pastor_id': pastorId}),
+    );
+  }
+
   // ─── Reports ──────────────────────────────────────────────────────
 
   Future<Map<String, dynamic>> getFollowupReport(int evangelistId) async {
