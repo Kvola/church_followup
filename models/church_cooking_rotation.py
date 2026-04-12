@@ -1,4 +1,4 @@
-from odoo import api, fields, model, models, _
+from odoo import api, fields, models, _
 from odoo.exceptions import ValidationError, UserError
 
 
@@ -19,7 +19,7 @@ class ChurchCookingRotation(models.Model):
     notes = fields.Text(string='Notes')
 
     _constraints = [
-        model.Constraint(
+        models.Constraint(
             'UNIQUE(church_id, date)',
             'Une rotation est déjà planifiée pour cette date.',
         ),

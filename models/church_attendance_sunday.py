@@ -1,4 +1,4 @@
-from odoo import api, fields, model, models, _
+from odoo import api, fields, models, _
 from odoo.exceptions import ValidationError
 
 
@@ -15,7 +15,7 @@ class ChurchAttendanceSunday(models.Model):
     notes = fields.Text(string='Notes')
 
     _constraints = [
-        model.Constraint(
+        models.Constraint(
             'UNIQUE(member_id, date)',
             'La présence de ce membre est déjà enregistrée pour cette date.',
         ),

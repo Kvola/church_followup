@@ -1,4 +1,4 @@
-from odoo import api, fields, model, models, _
+from odoo import api, fields, models, _
 
 
 class ChurchChurch(models.Model):
@@ -38,7 +38,7 @@ class ChurchChurch(models.Model):
     followup_active_count = fields.Integer(compute='_compute_followup_active_count', string='Suivis actifs')
 
     _constraints = [
-        model.Constraint(
+        models.Constraint(
             'UNIQUE(code)',
             'Le code de l\'\u00e9glise doit \u00eatre unique.',
         ),

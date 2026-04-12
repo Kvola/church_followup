@@ -1,4 +1,4 @@
-from odoo import api, fields, model, models
+from odoo import api, fields, models
 
 
 class ChurchPastor(models.Model):
@@ -23,7 +23,7 @@ class ChurchPastor(models.Model):
     )
 
     _constraints = [
-        model.Constraint(
+        models.Constraint(
             'UNIQUE(name, church_id)',
             'Ce pasteur est déjà enregistré dans cette église.',
         ),
