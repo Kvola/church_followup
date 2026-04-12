@@ -1,4 +1,4 @@
-from odoo import api, fields, models, _
+from odoo import api, fields, model, models, _
 from odoo.exceptions import ValidationError
 
 
@@ -29,9 +29,11 @@ class ChurchFollowupWeek(models.Model):
     # Score calculé
     score = fields.Integer(compute='_compute_score', store=True, string='Score')
 
-    _sql_constraints = [
-        ('unique_followup_week', 'UNIQUE(followup_id, week_number)',
-         'Un rapport pour cette semaine existe déjà.'),
+    _constraints = [
+        model.Constraint(
+            'UNIQUE(followup_id, week_number)',
+            'Un rapport pour cette semaine existe d\u00e9j\u00e0.',
+        ),
     ]
 
     @api.constrains('week_number')

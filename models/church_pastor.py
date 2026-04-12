@@ -1,4 +1,4 @@
-from odoo import api, fields, models
+from odoo import api, fields, model, models
 
 
 class ChurchPastor(models.Model):
@@ -22,10 +22,11 @@ class ChurchPastor(models.Model):
         ondelete='cascade', tracking=True,
     )
 
-    _sql_constraints = [
-        ('unique_name_church',
-         'UNIQUE(name, church_id)',
-         'Ce pasteur est déjà enregistré dans cette église.'),
+    _constraints = [
+        model.Constraint(
+            'UNIQUE(name, church_id)',
+            'Ce pasteur est déjà enregistré dans cette église.',
+        ),
     ]
 
     @api.constrains('pastor_type', 'church_id')

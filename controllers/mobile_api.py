@@ -17,7 +17,7 @@ class ChurchMobileApi(http.Controller):
 
     # ─── Authentication ───────────────────────────────────────────────
 
-    @http.route('/api/church/auth/login', type='json', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/church/auth/login', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def login(self, **kwargs):
         """Connexion via téléphone + PIN."""
         phone = kwargs.get('phone', '').strip()
@@ -172,7 +172,7 @@ class ChurchMobileApi(http.Controller):
 
     # ─── Dashboard ────────────────────────────────────────────────────
 
-    @http.route('/api/church/dashboard', type='json', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/church/dashboard', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def get_dashboard(self, **kwargs):
         """Tableau de bord du responsable."""
         user = self._get_mobile_user(kwargs)
@@ -238,7 +238,7 @@ class ChurchMobileApi(http.Controller):
 
     # ─── Evangelists ──────────────────────────────────────────────────
 
-    @http.route('/api/church/evangelists', type='json', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/church/evangelists', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def get_evangelists(self, **kwargs):
         """Liste des évangélistes de l'église."""
         user = self._get_mobile_user(kwargs)
@@ -261,7 +261,7 @@ class ChurchMobileApi(http.Controller):
             } for e in evangelists],
         }
 
-    @http.route('/api/church/evangelist/create', type='json', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/church/evangelist/create', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def create_evangelist(self, **kwargs):
         """Créer un évangéliste (rôle manager/super_admin uniquement)."""
         user = self._get_mobile_user(kwargs)
@@ -298,7 +298,7 @@ class ChurchMobileApi(http.Controller):
 
     # ─── Members ──────────────────────────────────────────────────────
 
-    @http.route('/api/church/members', type='json', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/church/members', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def get_members(self, **kwargs):
         """Liste des membres de l'église."""
         user = self._get_mobile_user(kwargs)
@@ -336,7 +336,7 @@ class ChurchMobileApi(http.Controller):
             } for m in members],
         }
 
-    @http.route('/api/church/member/create', type='json', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/church/member/create', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def create_member(self, **kwargs):
         """Créer un nouveau membre/personne."""
         user = self._get_mobile_user(kwargs)
@@ -406,7 +406,7 @@ class ChurchMobileApi(http.Controller):
             'member': {'id': member.id, 'name': member.display_name_custom},
         }
 
-    @http.route('/api/church/member/detail', type='json', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/church/member/detail', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def get_member_detail(self, **kwargs):
         """Détail d'un membre."""
         user = self._get_mobile_user(kwargs)
@@ -448,7 +448,7 @@ class ChurchMobileApi(http.Controller):
             },
         }
 
-    @http.route('/api/church/member/update', type='json', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/church/member/update', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def update_member(self, **kwargs):
         """Mettre à jour un membre."""
         user = self._get_mobile_user(kwargs)
@@ -490,7 +490,7 @@ class ChurchMobileApi(http.Controller):
 
     # ─── Followups ────────────────────────────────────────────────────
 
-    @http.route('/api/church/followups', type='json', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/church/followups', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def get_followups(self, **kwargs):
         """Liste des suivis."""
         user = self._get_mobile_user(kwargs)
@@ -545,7 +545,7 @@ class ChurchMobileApi(http.Controller):
             } for f in followups],
         }
 
-    @http.route('/api/church/followup/create', type='json', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/church/followup/create', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def create_followup(self, **kwargs):
         """Créer un nouveau suivi."""
         user = self._get_mobile_user(kwargs)
@@ -594,7 +594,7 @@ class ChurchMobileApi(http.Controller):
             },
         }
 
-    @http.route('/api/church/followup/detail', type='json', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/church/followup/detail', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def get_followup_detail(self, **kwargs):
         """Détail d'un suivi."""
         user = self._get_mobile_user(kwargs)
@@ -640,7 +640,7 @@ class ChurchMobileApi(http.Controller):
             },
         }
 
-    @http.route('/api/church/followup/week/save', type='json', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/church/followup/week/save', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def save_followup_week(self, **kwargs):
         """Enregistrer un rapport hebdomadaire."""
         user = self._get_mobile_user(kwargs)
@@ -688,7 +688,7 @@ class ChurchMobileApi(http.Controller):
             'week': {'id': week.id, 'score': week.score},
         }
 
-    @http.route('/api/church/followup/action', type='json', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/church/followup/action', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def followup_action(self, **kwargs):
         """Effectuer une action sur un suivi (intégrer, abandonner, etc.)."""
         user = self._get_mobile_user(kwargs)
@@ -739,7 +739,7 @@ class ChurchMobileApi(http.Controller):
 
     # ─── Prayer Cells ─────────────────────────────────────────────────
 
-    @http.route('/api/church/cells', type='json', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/church/cells', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def get_prayer_cells(self, **kwargs):
         """Liste des cellules de prière."""
         user = self._get_mobile_user(kwargs)
@@ -773,7 +773,7 @@ class ChurchMobileApi(http.Controller):
 
     # ─── Age Groups ───────────────────────────────────────────────────
 
-    @http.route('/api/church/age_groups', type='json', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/church/age_groups', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def get_age_groups(self, **kwargs):
         """Liste des groupes d'âge."""
         user = self._get_mobile_user(kwargs)
@@ -806,7 +806,7 @@ class ChurchMobileApi(http.Controller):
 
     # ─── Districts ────────────────────────────────────────────────────
 
-    @http.route('/api/church/districts', type='json', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/church/districts', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def get_districts(self, **kwargs):
         """Liste des quartiers de l'église."""
         user = self._get_mobile_user(kwargs)
@@ -828,7 +828,7 @@ class ChurchMobileApi(http.Controller):
 
     # ─── Attendance ───────────────────────────────────────────────────
 
-    @http.route('/api/church/attendance/sunday/save', type='json', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/church/attendance/sunday/save', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def save_sunday_attendance(self, **kwargs):
         """Enregistrer la présence au culte du dimanche."""
         user = self._get_mobile_user(kwargs)
@@ -863,7 +863,7 @@ class ChurchMobileApi(http.Controller):
 
         return {'status': 'success', 'success': True, 'message': 'Présences enregistrées'}
 
-    @http.route('/api/church/attendance/cell/save', type='json', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/church/attendance/cell/save', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def save_cell_attendance(self, **kwargs):
         """Enregistrer la présence à la cellule de prière."""
         user = self._get_mobile_user(kwargs)
@@ -907,7 +907,7 @@ class ChurchMobileApi(http.Controller):
 
     # ─── Cooking Rotation ─────────────────────────────────────────────
 
-    @http.route('/api/church/cooking_rotation', type='json', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/church/cooking_rotation', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def get_cooking_rotation(self, **kwargs):
         """Programme de rotation cuisine."""
         user = self._get_mobile_user(kwargs)
@@ -932,7 +932,7 @@ class ChurchMobileApi(http.Controller):
 
     # ─── Credentials sharing ─────────────────────────────────────────
 
-    @http.route('/api/church/user/share_message', type='json', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/church/user/share_message', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def get_share_message(self, **kwargs):
         """Obtenir le message de partage des credentials."""
         user = self._get_mobile_user(kwargs)
@@ -959,7 +959,7 @@ class ChurchMobileApi(http.Controller):
 
     # ─── Report data ──────────────────────────────────────────────────
 
-    @http.route('/api/church/report/followup', type='json', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/church/report/followup', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def get_followup_report(self, **kwargs):
         """Données du rapport de suivi par évangéliste."""
         user = self._get_mobile_user(kwargs)
@@ -1013,7 +1013,7 @@ class ChurchMobileApi(http.Controller):
 
     # ─── Mobile user management (for manager) ────────────────────────
 
-    @http.route('/api/church/mobile_users', type='json', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/church/mobile_users', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def get_mobile_users(self, **kwargs):
         """Liste des utilisateurs mobiles (manager/super_admin uniquement)."""
         user = self._get_mobile_user(kwargs)
@@ -1037,7 +1037,7 @@ class ChurchMobileApi(http.Controller):
             } for u in users],
         }
 
-    @http.route('/api/church/cell_leader/create', type='json', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/church/cell_leader/create', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def create_cell_leader(self, **kwargs):
         """Créer un responsable de cellule (manager/super_admin uniquement)."""
         user = self._get_mobile_user(kwargs)
@@ -1070,7 +1070,7 @@ class ChurchMobileApi(http.Controller):
             'pin': cell.mobile_user_id.pin if cell.mobile_user_id else '',
         }
 
-    @http.route('/api/church/group_leader/create', type='json', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/church/group_leader/create', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def create_group_leader(self, **kwargs):
         """Créer un responsable de groupe d'âge (manager/super_admin uniquement)."""
         user = self._get_mobile_user(kwargs)
@@ -1105,7 +1105,7 @@ class ChurchMobileApi(http.Controller):
 
     # ─── Super Admin: User Management ─────────────────────────────────
 
-    @http.route('/api/church/admin/create_user', type='json', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/church/admin/create_user', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def admin_create_user(self, **kwargs):
         """Créer un utilisateur mobile (super_admin uniquement)."""
         user = self._get_mobile_user(kwargs)
@@ -1179,7 +1179,7 @@ class ChurchMobileApi(http.Controller):
             },
         }
 
-    @http.route('/api/church/admin/update_user', type='json', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/church/admin/update_user', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def admin_update_user(self, **kwargs):
         """Modifier un utilisateur mobile (super_admin uniquement) : changer rôle, activer/désactiver."""
         user = self._get_mobile_user(kwargs)
@@ -1229,7 +1229,7 @@ class ChurchMobileApi(http.Controller):
             },
         }
 
-    @http.route('/api/church/admin/reset_pin', type='json', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/church/admin/reset_pin', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def admin_reset_pin(self, **kwargs):
         """Régénérer le PIN d'un utilisateur (super_admin uniquement)."""
         user = self._get_mobile_user(kwargs)
@@ -1257,7 +1257,7 @@ class ChurchMobileApi(http.Controller):
 
     # ─── Church Management (super_admin only) ─────────────────────────
 
-    @http.route('/api/church/churches', type='json', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/church/churches', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def get_churches(self, **kwargs):
         """Liste de toutes les églises (super_admin uniquement)."""
         user = self._get_mobile_user(kwargs)
@@ -1290,7 +1290,7 @@ class ChurchMobileApi(http.Controller):
             } for c in churches],
         }
 
-    @http.route('/api/church/churches/create', type='json', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/church/churches/create', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def create_church(self, **kwargs):
         """Créer une nouvelle église (super_admin uniquement)."""
         user = self._get_mobile_user(kwargs)
@@ -1341,7 +1341,7 @@ class ChurchMobileApi(http.Controller):
             },
         }
 
-    @http.route('/api/church/churches/update', type='json', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/church/churches/update', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def update_church(self, **kwargs):
         """Mettre à jour une église (super_admin uniquement)."""
         user = self._get_mobile_user(kwargs)
@@ -1381,7 +1381,7 @@ class ChurchMobileApi(http.Controller):
             },
         }
 
-    @http.route('/api/church/churches/detail', type='json', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/church/churches/detail', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def get_church_detail(self, **kwargs):
         """Détail d'une église avec statistiques (super_admin uniquement)."""
         user = self._get_mobile_user(kwargs)
@@ -1444,7 +1444,7 @@ class ChurchMobileApi(http.Controller):
             },
         }
 
-    @http.route('/api/church/manager/create', type='json', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/church/manager/create', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def create_manager(self, **kwargs):
         """Créer un responsable des évangélistes pour une église (super_admin uniquement)."""
         user = self._get_mobile_user(kwargs)
@@ -1495,7 +1495,7 @@ class ChurchMobileApi(http.Controller):
 
     # ─── Pastor Management ──────────────────────────────────────────
 
-    @http.route('/api/church/pastors', type='json', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/church/pastors', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def get_pastors(self, **kwargs):
         """Liste des pasteurs d'une église."""
         user = self._get_mobile_user(kwargs)
@@ -1524,7 +1524,7 @@ class ChurchMobileApi(http.Controller):
             } for p in pastors],
         }
 
-    @http.route('/api/church/pastors/create', type='json', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/church/pastors/create', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def create_pastor(self, **kwargs):
         """Créer un pasteur (super_admin uniquement)."""
         user = self._get_mobile_user(kwargs)
@@ -1573,7 +1573,7 @@ class ChurchMobileApi(http.Controller):
             },
         }
 
-    @http.route('/api/church/pastors/update', type='json', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/church/pastors/update', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def update_pastor(self, **kwargs):
         """Mettre à jour un pasteur (super_admin uniquement)."""
         user = self._get_mobile_user(kwargs)
@@ -1610,7 +1610,7 @@ class ChurchMobileApi(http.Controller):
             'message': 'Pasteur mis à jour',
         }
 
-    @http.route('/api/church/pastors/delete', type='json', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/church/pastors/delete', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def delete_pastor(self, **kwargs):
         """Archiver un pasteur (super_admin uniquement)."""
         user = self._get_mobile_user(kwargs)

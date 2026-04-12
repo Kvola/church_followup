@@ -31,6 +31,17 @@ class AppColors {
         return extended;
       case 'transferred':
         return transferred;
+      // Role colors
+      case 'super_admin':
+        return const Color(0xFF5B4FCF);
+      case 'manager':
+        return const Color(0xFF7C6DD8);
+      case 'evangelist':
+        return inProgress;
+      case 'cell_leader':
+        return const Color(0xFF009688);
+      case 'group_leader':
+        return const Color(0xFFFF9800);
       default:
         return Colors.grey;
     }

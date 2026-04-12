@@ -21,7 +21,16 @@ class _MobileUsersScreenState extends State<MobileUsersScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<OrganizationProvider>().loadMobileUsers();
+      final org = context.read<OrganizationProvider>();
+      org.loadMobileUsers();
+
+      // Pre-load data for super_admin user creation dialogs
+      final auth = context.read<AuthProvider>();
+      if (auth.isSuperAdmin) {
+        org.loadChurches();
+      }
+      org.loadCells();
+      org.loadAgeGroups();
     });
   }
 
@@ -373,63 +382,93 @@ class _MobileUsersScreenState extends State<MobileUsersScreen> {
     final nameCtrl = TextEditingController();
     final phoneCtrl = TextEditingController();
     String? selectedRole;
+    int? selectedChurchId;
     final roles = AppConstants.roleLabels.entries
         .where((e) => e.key != 'super_admin')
         .toList();
+    final auth = context.read<AuthProvider>();
+    final org = context.read<OrganizationProvider>();
+
+    // Load churches for super_admin
+    if (auth.isSuperAdmin && org.churches.isEmpty) {
+      org.loadChurches();
+    }
 
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          title: const Text('Nouvel utilisateur'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameCtrl,
-                decoration: const InputDecoration(labelText: 'Nom complet', prefixIcon: Icon(Icons.person_outline)),
-                textCapitalization: TextCapitalization.words,
+        builder: (ctx, setDialogState) {
+          final churches = context.watch<OrganizationProvider>().churches;
+          return AlertDialog(
+            title: const Text('Nouvel utilisateur'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: nameCtrl,
+                    decoration: const InputDecoration(labelText: 'Nom complet', prefixIcon: Icon(Icons.person_outline)),
+                    textCapitalization: TextCapitalization.words,
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: phoneCtrl,
+                    decoration: const InputDecoration(labelText: 'Téléphone', prefixIcon: Icon(Icons.phone_outlined)),
+                    keyboardType: TextInputType.phone,
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    decoration: const InputDecoration(labelText: 'Rôle', prefixIcon: Icon(Icons.admin_panel_settings_outlined)),
+                    items: roles.map((e) => DropdownMenuItem(value: e.key, child: Text(e.value))).toList(),
+                    onChanged: (v) => setDialogState(() => selectedRole = v),
+                  ),
+                  if (auth.isSuperAdmin) ...[
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<int>(
+                      decoration: const InputDecoration(labelText: 'Église *', prefixIcon: Icon(Icons.church_outlined)),
+                      items: churches
+                          .where((c) => c['id'] is int)
+                          .map((c) => DropdownMenuItem<int>(value: c['id'] as int, child: Text(c['name'] ?? '')))
+                          .toList(),
+                      onChanged: (v) => setDialogState(() => selectedChurchId = v),
+                    ),
+                  ],
+                ],
               ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: phoneCtrl,
-                decoration: const InputDecoration(labelText: 'Téléphone', prefixIcon: Icon(Icons.phone_outlined)),
-                keyboardType: TextInputType.phone,
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                decoration: const InputDecoration(labelText: 'Rôle', prefixIcon: Icon(Icons.admin_panel_settings_outlined)),
-                items: roles.map((e) => DropdownMenuItem(value: e.key, child: Text(e.value))).toList(),
-                onChanged: (v) => setDialogState(() => selectedRole = v),
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler')),
+              FilledButton(
+                onPressed: () async {
+                  if (nameCtrl.text.trim().isEmpty || phoneCtrl.text.trim().isEmpty || selectedRole == null) return;
+                  if (auth.isSuperAdmin && selectedChurchId == null) return;
+                  Navigator.pop(ctx);
+
+                  final userData = <String, dynamic>{
+                    'name': nameCtrl.text.trim(),
+                    'phone': phoneCtrl.text.trim(),
+                    'role': selectedRole,
+                  };
+                  if (auth.isSuperAdmin && selectedChurchId != null) {
+                    userData['church_id'] = selectedChurchId;
+                  }
+
+                  final result = await context.read<OrganizationProvider>().adminCreateUser(userData);
+
+                  if (mounted) {
+                    if (result['status'] == 'success') {
+                      final pin = result['user']?['pin'] ?? '';
+                      _showPinWithShareOptions(pin, nameCtrl.text.trim(), phoneCtrl.text.trim());
+                    } else {
+                      showErrorSnackbar(context, result['message'] ?? 'Erreur');
+                    }
+                  }
+                },
+                child: const Text('Créer'),
               ),
             ],
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler')),
-            FilledButton(
-              onPressed: () async {
-                if (nameCtrl.text.trim().isEmpty || phoneCtrl.text.trim().isEmpty || selectedRole == null) return;
-                Navigator.pop(ctx);
-
-                final result = await context.read<OrganizationProvider>().adminCreateUser({
-                  'name': nameCtrl.text.trim(),
-                  'phone': phoneCtrl.text.trim(),
-                  'role': selectedRole,
-                });
-
-                if (mounted) {
-                  if (result['status'] == 'success') {
-                    final pin = result['user']?['pin'] ?? '';
-                    _showPinWithShareOptions(pin, nameCtrl.text.trim(), phoneCtrl.text.trim());
-                  } else {
-                    showErrorSnackbar(context, result['message'] ?? 'Erreur');
-                  }
-                }
-              },
-              child: const Text('Créer'),
-            ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
@@ -440,12 +479,20 @@ class _MobileUsersScreenState extends State<MobileUsersScreen> {
     final title = type == 'cell' ? 'Chef de cellule' : "Chef de groupe d'âge";
     int? selectedId;
     final provider = context.read<OrganizationProvider>();
-    final items = type == 'cell' ? provider.cells : provider.ageGroups;
+
+    // Ensure cells/age groups are loaded
+    if (type == 'cell' && provider.cells.isEmpty) {
+      provider.loadCells();
+    } else if (type != 'cell' && provider.ageGroups.isEmpty) {
+      provider.loadAgeGroups();
+    }
 
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
+        builder: (ctx, setDialogState) {
+          final items = type == 'cell' ? provider.cells : provider.ageGroups;
+          return AlertDialog(
           title: Text('Nouveau $title'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -512,7 +559,8 @@ class _MobileUsersScreenState extends State<MobileUsersScreen> {
               child: const Text('Créer'),
             ),
           ],
-        ),
+        );
+        },
       ),
     );
   }

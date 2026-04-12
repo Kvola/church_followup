@@ -56,8 +56,8 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
     _invitedById = AppConstants.safeId(d['invited_by_id']);
     _mentorId = AppConstants.safeId(d['mentor_id']);
 
-    if (d['birthday'] != null && d['birthday'] != false) {
-      _birthday = DateTime.tryParse(d['birthday'].toString());
+    if (d['date_of_birth'] != null && d['date_of_birth'] != false) {
+      _birthday = DateTime.tryParse(d['date_of_birth'].toString());
     }
     if (d['salvation_date'] != null && d['salvation_date'] != false) {
       _salvationDate = DateTime.tryParse(d['salvation_date'].toString());
@@ -91,8 +91,8 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
               _invitedById = AppConstants.safeId(detail['invited_by_id']) ?? _invitedById;
               _mentorId = AppConstants.safeId(detail['mentor_id']) ?? _mentorId;
 
-              if (detail['birthday'] != null && detail['birthday'] != false) {
-                _birthday = DateTime.tryParse(detail['birthday'].toString()) ?? _birthday;
+              if (detail['date_of_birth'] != null && detail['date_of_birth'] != false) {
+                _birthday = DateTime.tryParse(detail['date_of_birth'].toString()) ?? _birthday;
               }
               if (detail['salvation_date'] != null && detail['salvation_date'] != false) {
                 _salvationDate = DateTime.tryParse(detail['salvation_date'].toString()) ?? _salvationDate;
@@ -141,7 +141,7 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
     if (_ageGroupId != null) data['age_group_id'] = _ageGroupId;
     if (_invitedById != null) data['invited_by_id'] = _invitedById;
     if (_mentorId != null) data['mentor_id'] = _mentorId;
-    if (_birthday != null) data['birthday'] = _birthday!.toIso8601String().split('T')[0];
+    if (_birthday != null) data['date_of_birth'] = _birthday!.toIso8601String().split('T')[0];
     if (_salvationDate != null) data['salvation_date'] = _salvationDate!.toIso8601String().split('T')[0];
 
     final provider = context.read<MemberProvider>();

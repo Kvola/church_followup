@@ -1,7 +1,7 @@
 import hashlib
 import secrets
 import string
-from odoo import api, fields, models, _
+from odoo import api, fields, model, models, _
 from odoo.exceptions import ValidationError, UserError
 
 
@@ -34,9 +34,11 @@ class ChurchMobileUser(models.Model):
     prayer_cell_id = fields.Many2one('church.prayer.cell', string='Cellule liée', ondelete='set null')
     age_group_id = fields.Many2one('church.age.group', string='Groupe d\'âge lié', ondelete='set null')
 
-    _sql_constraints = [
-        ('unique_phone_church', 'UNIQUE(phone, church_id)',
-         'Ce numéro de téléphone est déjà utilisé dans cette église.'),
+    _constraints = [
+        model.Constraint(
+            'UNIQUE(phone, church_id)',
+            'Ce numéro de téléphone est déjà utilisé dans cette église.',
+        ),
     ]
 
     @api.constrains('role', 'church_id')

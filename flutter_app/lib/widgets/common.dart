@@ -160,7 +160,7 @@ class StateBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = AppColors.stateColor(state);
-    final label = AppConstants.stateLabels[state] ?? state;
+    final label = AppConstants.stateLabels[state] ?? AppConstants.roleLabels[state] ?? state;
     return Container(
       padding: EdgeInsets.symmetric(
         horizontal: small ? 8 : 12,

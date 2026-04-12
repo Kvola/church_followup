@@ -83,8 +83,8 @@ class DashboardProvider extends ChangeNotifier {
   int get totalCells => _dashboard?['total_cells'] ?? 0;
   int get totalGroups => _dashboard?['total_groups'] ?? 0;
   int get activeFollowups => _dashboard?['active_followups'] ?? 0;
-  int get integratedCount => _dashboard?['integrated_count'] ?? 0;
-  int get abandonedCount => _dashboard?['abandoned_count'] ?? 0;
+  int get integratedCount => _dashboard?['total_integrated'] ?? 0;
+  int get abandonedCount => _dashboard?['total_abandoned'] ?? 0;
 
   double get integrationRate {
     final total = integratedCount + abandonedCount;

@@ -164,7 +164,7 @@ class _FollowupCard extends StatelessWidget {
     final stateColor = AppColors.stateColor(state);
     final memberName = data['member_name'] ?? 'Inconnu';
     final evangelistName = data['evangelist_name'] ?? '';
-    final weeksCompleted = data['weeks_completed'] ?? 0;
+    final weeksCompleted = data['current_week'] ?? data['week_count'] ?? 0;
     final durationWeeks = data['duration_weeks'] ?? 0;
     final avgScore = (data['average_score'] ?? 0).toDouble();
 

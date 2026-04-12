@@ -110,17 +110,15 @@ class _EvangelistCard extends StatelessWidget {
     final theme = Theme.of(context);
     final name = data['name'] ?? '';
     final phone = data['phone'] ?? '';
-    final activeCount = data['active_followups'] ?? 0;
+    final activeCount = data['active_followup_count'] ?? 0;
     final integratedCount = data['integrated_count'] ?? 0;
-    final abandonedCount = data['abandoned_count'] ?? 0;
-    final total = integratedCount + abandonedCount;
-    final rate = total > 0 ? (integratedCount / total * 100) : 0.0;
+    final rate = (data['integration_rate'] ?? 0).toDouble();
 
     final rateColor = rate >= 70
         ? AppColors.integrated
         : rate >= 40
             ? AppColors.extended
-            : total == 0
+            : rate == 0
                 ? Colors.grey
                 : AppColors.abandoned;
 
@@ -159,7 +157,7 @@ class _EvangelistCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Text(
-                    total > 0 ? '${rate.toStringAsFixed(0)}%' : '—',
+                    rate > 0 ? '${rate.toStringAsFixed(0)}%' : '—',
                     style: TextStyle(color: rateColor, fontWeight: FontWeight.bold, fontSize: 14),
                   ),
                 ),
@@ -171,8 +169,6 @@ class _EvangelistCard extends StatelessWidget {
                 _miniStat('Actifs', '$activeCount', AppColors.inProgress),
                 const SizedBox(width: 16),
                 _miniStat('Intégrés', '$integratedCount', AppColors.integrated),
-                const SizedBox(width: 16),
-                _miniStat('Abandonnés', '$abandonedCount', AppColors.abandoned),
               ],
             ),
           ],

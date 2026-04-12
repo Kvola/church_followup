@@ -1,4 +1,4 @@
-from odoo import api, fields, models, _
+from odoo import api, fields, model, models, _
 
 
 class ChurchChurch(models.Model):
@@ -37,8 +37,11 @@ class ChurchChurch(models.Model):
     pastor_count = fields.Integer(compute='_compute_counts', store=True, string='Nombre de pasteurs')
     followup_active_count = fields.Integer(compute='_compute_followup_active_count', string='Suivis actifs')
 
-    _sql_constraints = [
-        ('unique_code', 'UNIQUE(code)', 'Le code de l\'église doit être unique.'),
+    _constraints = [
+        model.Constraint(
+            'UNIQUE(code)',
+            'Le code de l\'\u00e9glise doit \u00eatre unique.',
+        ),
     ]
 
     @api.depends('pastor_ids', 'pastor_ids.pastor_type', 'pastor_ids.name', 'pastor_ids.active')

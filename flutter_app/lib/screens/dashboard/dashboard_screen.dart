@@ -30,7 +30,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(auth.churchName.isNotEmpty ? auth.churchName : 'Tableau de bord'),
+        title: Text(
+          dashboard.dashboard?['church_name'] ??
+              (auth.churchName.isNotEmpty ? auth.churchName : 'Tableau de bord'),
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
