@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Bouton intelligent « Évangélisation » sur la fiche contact (360°) -->
+    <record id="view_partner_form_church" model="ir.ui.view">
+        <field name="name">res.partner.form.church</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button type="object" name="action_view_church_members"
+                        class="oe_stat_button" icon="fa-heart-o"
+                        invisible="church_member_count == 0">
+                    <field name="church_member_count" widget="statinfo"
+                           string="Évangélisation"/>
+                </button>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>
