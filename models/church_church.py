@@ -1,4 +1,5 @@
 from odoo import api, fields, models, _
+from odoo.exceptions import ValidationError
 
 from .church_tools import (
     ACTIVE_FOLLOWUP_STATES, DEFAULT_FOLLOWUP_WEEKS, MAX_PROPOSED_WEEKS, check_weeks,
@@ -50,6 +51,19 @@ class ChurchChurch(models.Model):
         'UNIQUE(code)',
         'Le code de l\'église doit être unique.',
     )
+
+    integration_min_attendance = fields.Integer(
+        string="Présence minimale au culte pour intégrer (%)", default=75,
+        help="Part des semaines écoulées du suivi où la personne est venue au culte. "
+             "En dessous, l'intégration reste possible mais demande une justification "
+             "écrite. 0 : aucun seuil.",
+    )
+
+    @api.constrains('integration_min_attendance')
+    def _check_integration_min_attendance(self):
+        for rec in self:
+            if not 0 <= rec.integration_min_attendance <= 100:
+                raise ValidationError(_('Le seuil de présence est un pourcentage entre 0 et 100.'))
 
     @api.constrains('default_followup_weeks')
     def _check_default_followup_weeks(self):

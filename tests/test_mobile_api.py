@@ -218,3 +218,20 @@ class TestChurchMobileApi(HttpCase):
         self.assertEqual(res['code'], 'forbidden')
         res = self._as(self.manager, '/api/church/settings', default_followup_weeks=9)
         self.assertEqual(res['settings']['default_followup_weeks'], 9)
+
+    # ─── Seuil d'intégration (phase C) ────────────────────────────────
+
+    def test_integrate_below_threshold_through_api(self):
+        self.f2.start_date = fields.Date.today() - timedelta(weeks=4)
+        params = dict(followup_id=self.f2.id, action='integrate',
+                      target_cell_id=self.cell.id, target_age_group_id=self.env['church.age.group'].create({
+                          'name': 'G', 'church_id': self.church.id, 'group_type': 'youth', 'gender': 'mixed'}).id)
+        ev2 = self.ev2.mobile_user_id
+        detail = self._as(ev2, '/api/church/followup/detail', followup_id=self.f2.id)['followup']
+        self.assertTrue(detail['below_threshold'])
+        res = self._as(ev2, '/api/church/followup/action', **params)
+        self.assertEqual(res['code'], 'refused')
+        self.assertIn('justification', res['message'])
+        res = self._as(ev2, '/api/church/followup/action', justification='Malade 3 semaines', **params)
+        self.assertEqual(res['status'], 'success', res)
+        self.assertEqual(self.f2.integration_justification, 'Malade 3 semaines')

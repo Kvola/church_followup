@@ -35,6 +35,15 @@
                             <field name="duration_origin" invisible="not duration_origin"/>
                             <field name="end_date"/>
                         </group>
+                        <group string="Présence au culte">
+                            <field name="elapsed_weeks"/>
+                            <field name="attendance_weeks"/>
+                            <field name="attendance_rate"
+                                   decoration-danger="below_threshold" decoration-success="not below_threshold"/>
+                            <field name="attendance_threshold" invisible="not attendance_threshold"/>
+                            <field name="below_threshold" invisible="1"/>
+                            <field name="average_score"/>
+                        </group>
                         <group string="Intégration" invisible="state in ('abandoned', 'transferred')">
                             <field name="target_cell_id" domain="[('church_id', '=', church_id)]"
                                    required="state == 'integrated'"/>
@@ -42,6 +51,14 @@
                                    required="state == 'integrated'"/>
                             <field name="transferred_to_id" domain="[('church_id', '=', church_id)]"
                                    invisible="state != 'transferred'"/>
+                            <div colspan="2" class="alert alert-warning mb-0" role="alert"
+                                 invisible="not below_threshold or state not in ('in_progress', 'extended')">
+                                Présence au culte sous le seuil de l'église : une justification est
+                                demandée pour intégrer. Sinon, prolongez le suivi.
+                            </div>
+                            <field name="integration_justification"
+                                   invisible="not below_threshold and not integration_justification"
+                                   readonly="state not in ('in_progress', 'extended')"/>
                         </group>
                     </group>
                     <notebook>
@@ -51,6 +68,7 @@
                                     <field name="week_number"/>
                                     <field name="date"/>
                                     <field name="sunday_attendance"/>
+                                    <field name="roll_call_present" string="Pointé(e)"/>
                                     <field name="call_made"/>
                                     <field name="visit_made"/>
                                     <field name="spiritual_state" widget="badge"

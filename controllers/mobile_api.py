@@ -544,6 +544,7 @@ class ChurchMobileApi(http.Controller):
             'id': w.id,
             'week_number': w.week_number,
             'sunday_attendance': w.sunday_attendance,
+            'roll_call_present': w.roll_call_present,
             'call_made': w.call_made,
             'visit_made': w.visit_made,
             'spiritual_state': w.spiritual_state or '',
@@ -585,6 +586,8 @@ class ChurchMobileApi(http.Controller):
                 'progress': round(f.week_count / f.duration_weeks * 100, 1) if f.duration_weeks else 0,
                 'state': f.state,
                 'week_count': f.week_count,
+                'attendance_rate': f.attendance_rate,
+                'below_threshold': f.below_threshold,
                 'weeks': [self._week_json(w) for w in f.week_ids],
             } for f in followups],
         }
@@ -641,7 +644,13 @@ class ChurchMobileApi(http.Controller):
                 'total_weeks': f.duration_weeks,
                 'duration_origin': f.duration_origin or '',
                 'progress': round(f.week_count / f.duration_weeks * 100, 1) if f.duration_weeks else 0,
-                'average_score': round(sum(weeks.mapped('score')) / len(weeks), 1) if weeks else 0,
+                'average_score': round(f.average_score, 1),
+                'elapsed_weeks': f.elapsed_weeks,
+                'attendance_weeks': f.attendance_weeks,
+                'attendance_rate': f.attendance_rate,
+                'attendance_threshold': f.attendance_threshold,
+                'below_threshold': f.below_threshold,
+                'integration_justification': f.integration_justification or '',
                 'weeks': [self._week_json(w, with_date=False) for w in weeks],
             },
         }
@@ -684,7 +693,10 @@ class ChurchMobileApi(http.Controller):
             group_id = self._ref('church.age.group', user, kwargs, 'target_age_group_id', 'Groupe d\'âge')
             if not cell_id or not group_id:
                 raise ApiInputError('Cellule et groupe d\'âge requis.')
-            followup.write({'target_cell_id': cell_id, 'target_age_group_id': group_id})
+            vals = {'target_cell_id': cell_id, 'target_age_group_id': group_id}
+            if _text(kwargs, 'justification'):
+                vals['integration_justification'] = _text(kwargs, 'justification')
+            followup.write(vals)
             followup.action_integrate()
         elif action == 'abandon':
             followup.action_abandon()
@@ -705,14 +717,18 @@ class ChurchMobileApi(http.Controller):
     def church_settings(self, user, **kwargs):
         """Réglages de l'église ; un responsable peut changer la durée de suivi par défaut."""
         church = request.env['church.church'].sudo().browse(self._resolve_church_id(user, kwargs))
-        if 'default_followup_weeks' in kwargs:
+        settings = {'default_followup_weeks': 'durée de suivi par défaut',
+                    'integration_min_attendance': 'présence minimale pour intégrer'}
+        vals = {key: _int(kwargs, key, True, label) for key, label in settings.items() if key in kwargs}
+        if vals:
             if not self._is_manager(user):
                 return _error('Action non autorisée pour votre rôle.', 'forbidden')
-            church.write({'default_followup_weeks': _int(
-                kwargs, 'default_followup_weeks', True, 'durée de suivi par défaut')})
+            church.write(vals)
         return {
             'status': 'success',
-            'settings': {'church_id': church.id, 'default_followup_weeks': church.default_followup_weeks},
+            'settings': {'church_id': church.id,
+                         'default_followup_weeks': church.default_followup_weeks,
+                         'integration_min_attendance': church.integration_min_attendance},
         }
 
     # ─── Prayer Cells ─────────────────────────────────────────────────

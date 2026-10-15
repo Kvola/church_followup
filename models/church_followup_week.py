@@ -13,7 +13,15 @@ class ChurchFollowupWeek(models.Model):
     date = fields.Date(string='Date du rapport', default=fields.Date.today)
 
     # Indicateurs de suivi
-    sunday_attendance = fields.Boolean(string='Présence au culte')
+    sunday_attendance = fields.Boolean(
+        string='Présence au culte',
+        help="Cochée d'office quand la personne a été pointée présente au culte "
+             "pendant cette semaine du suivi ; l'évangéliste peut aussi la cocher.",
+    )
+    roll_call_present = fields.Boolean(
+        string='Pointé(e) au culte', compute='_compute_roll_call_present',
+        help="Une présence au culte est enregistrée pendant cette semaine du suivi.",
+    )
     call_made = fields.Boolean(string='Appel effectué')
     visit_made = fields.Boolean(string='Visite effectuée')
     spiritual_state = fields.Selection([
@@ -33,6 +41,30 @@ class ChurchFollowupWeek(models.Model):
         'UNIQUE(followup_id, week_number)',
         'Un rapport pour cette semaine existe déjà.',
     )
+
+    @api.depends('followup_id.start_date', 'followup_id.member_id', 'week_number')
+    def _compute_roll_call_present(self):
+        for rec in self:
+            rec.roll_call_present = bool(rec.followup_id and rec.week_number and
+                                         rec.followup_id._roll_call_dates(rec.week_number))
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        records = super().create(vals_list)
+        records._apply_roll_call()
+        return records
+
+    def write(self, vals):
+        res = super().write(vals)
+        if {'sunday_attendance', 'week_number', 'followup_id'} & set(vals):
+            self._apply_roll_call()
+        return res
+
+    def _apply_roll_call(self):
+        """Le pointage fait foi : une présence pointée coche la semaine."""
+        to_check = self.filtered(lambda w: not w.sunday_attendance and w.roll_call_present)
+        if to_check:
+            super(ChurchFollowupWeek, to_check).write({'sunday_attendance': True})
 
     @api.constrains('week_number')
     def _check_week_number(self):

@@ -48,6 +48,18 @@ class ChurchFollowup(models.Model):
     week_count = fields.Integer(compute='_compute_week_count', string='Semaines complétées')
 
     notes = fields.Text(string='Notes')
+    # Appui à la décision d'intégrer
+    elapsed_weeks = fields.Integer(string='Semaines écoulées', compute='_compute_attendance')
+    attendance_weeks = fields.Integer(string='Semaines de présence au culte', compute='_compute_attendance')
+    attendance_rate = fields.Integer(string='Présence au culte (%)', compute='_compute_attendance')
+    attendance_threshold = fields.Integer(related='church_id.integration_min_attendance',
+                                          string='Seuil de présence (%)')
+    below_threshold = fields.Boolean(string='Sous le seuil', compute='_compute_attendance')
+    average_score = fields.Float(string='Score moyen', compute='_compute_attendance', digits=(4, 1))
+    integration_justification = fields.Text(
+        string="Justification de l'intégration", tracking=True,
+        help="Exigée pour intégrer une personne dont la présence au culte est sous le seuil de l'église.",
+    )
     end_notice_sent = fields.Boolean(
         string='Fin de période signalée', copy=False,
         help="Le message de fin de période a été posté ; remis à zéro quand le suivi est prolongé.",
@@ -112,6 +124,60 @@ class ChurchFollowup(models.Model):
             else:
                 rec.end_date = False
 
+    # ─── Calendrier des semaines ──────────────────────────────────────
+
+    def _week_bounds(self, week_number):
+        """(premier jour, dernier jour) de la semaine n° ``week_number`` du suivi."""
+        self.ensure_one()
+        start = self.start_date + relativedelta(weeks=week_number - 1)
+        return start, start + relativedelta(days=6)
+
+    def _week_number_of(self, day):
+        """N° de la semaine du suivi qui contient ``day`` (0 si hors période)."""
+        self.ensure_one()
+        if not self.start_date or not day or day < self.start_date:
+            return 0
+        number = (day - self.start_date).days // 7 + 1
+        return number if number <= self.duration_weeks else 0
+
+    def _roll_call_dates(self, week_number):
+        """Dates de présence au culte pointées pendant cette semaine du suivi."""
+        self.ensure_one()
+        if not self.start_date or not self.member_id:
+            return []
+        first, last = self._week_bounds(week_number)
+        return self.env['church.attendance.sunday'].sudo().search([
+            ('member_id', '=', self.member_id.id), ('present', '=', True),
+            ('date', '>=', first), ('date', '<=', last),
+        ]).mapped('date')
+
+    @api.depends('start_date', 'duration_weeks', 'week_ids.sunday_attendance', 'week_ids.score',
+                 'church_id.integration_min_attendance')
+    def _compute_attendance(self):
+        today = fields.Date.context_today(self)
+        for rec in self:
+            elapsed = 0
+            if rec.start_date and today >= rec.start_date:
+                elapsed = min(rec.duration_weeks, (today - rec.start_date).days // 7 + 1)
+            # Une semaine compte si son rapport la coche OU si un pointage y tombe,
+            # même quand aucun rapport n'a encore été rédigé.
+            present_weeks = set(rec.week_ids.filtered(
+                lambda w: w.sunday_attendance and w.week_number <= elapsed).mapped('week_number'))
+            if elapsed and rec.member_id:
+                attendances = self.env['church.attendance.sunday'].sudo().search([
+                    ('member_id', '=', rec.member_id.id), ('present', '=', True),
+                    ('date', '>=', rec.start_date),
+                    ('date', '<', rec.start_date + relativedelta(weeks=elapsed)),
+                ])
+                present_weeks |= {rec._week_number_of(a.date) for a in attendances} - {0}
+            present = len(present_weeks)
+            rec.elapsed_weeks = elapsed
+            rec.attendance_weeks = present
+            rec.attendance_rate = round(present * 100 / elapsed) if elapsed else 0
+            threshold = rec.church_id.integration_min_attendance
+            rec.below_threshold = bool(threshold) and rec.attendance_rate < threshold
+            rec.average_score = (sum(rec.week_ids.mapped('score')) / len(rec.week_ids)) if rec.week_ids else 0.0
+
     @api.depends('week_ids')
     def _compute_week_count(self):
         for rec in self:
@@ -138,6 +204,21 @@ class ChurchFollowup(models.Model):
                 raise UserError(_('Seuls les suivis en cours peuvent être intégrés.'))
             if not rec.target_cell_id or not rec.target_age_group_id:
                 raise ValidationError(_('Veuillez sélectionner une cellule de prière et un groupe d\'âge.'))
+            justification = (rec.integration_justification or '').strip()
+            if rec.below_threshold and not justification:
+                raise UserError(_(
+                    "Présence au culte : %(present)s semaine(s) sur %(elapsed)s (%(rate)s %%), "
+                    "sous le seuil de %(threshold)s %% fixé par l'église. Pour intégrer quand même, "
+                    "écrivez une justification ; sinon, prolongez le suivi.",
+                    present=rec.attendance_weeks, elapsed=rec.elapsed_weeks,
+                    rate=rec.attendance_rate, threshold=rec.attendance_threshold,
+                ))
+            if rec.below_threshold:
+                rec.message_post(body=_(
+                    "Intégration sous le seuil de présence (%(rate)s %% pour %(threshold)s %%). "
+                    "Justification : %(text)s",
+                    rate=rec.attendance_rate, threshold=rec.attendance_threshold, text=justification,
+                ))
             rec.state = 'integrated'
             rec.member_id.write({
                 'member_type': 'integrated',

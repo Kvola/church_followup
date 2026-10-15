@@ -34,6 +34,7 @@
                             <field name="code"/>
                             <field name="pastor_name"/>
                             <field name="default_followup_weeks"/>
+                            <field name="integration_min_attendance"/>
                             <field name="phone" widget="phone"/>
                             <field name="email" widget="email"/>
                         </group>
