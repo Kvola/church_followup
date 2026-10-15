@@ -1,7 +1,9 @@
 from odoo import api, fields, models, _
 from dateutil.relativedelta import relativedelta
 
-from .church_tools import check_same_church
+from .church_tools import (
+    DEFAULT_FOLLOWUP_WEEKS, FOLLOWUP_ORIGINS, MAX_PROPOSED_WEEKS, check_same_church, check_weeks,
+)
 
 
 class ChurchMember(models.Model):
@@ -80,12 +82,69 @@ class ChurchMember(models.Model):
     notes = fields.Text(string='Notes')
     active = fields.Boolean(default=True)
 
+    # Durée du suivi à venir. Vide : le réglage de l'église s'applique.
+    planned_followup_weeks = fields.Integer(
+        string='Durée de suivi prévue (semaines)', tracking=True,
+        help="Fixée par l'événement d'où vient la personne, ou par un responsable. "
+             "Elle est proposée à l'ouverture du suivi, qui peut la modifier.",
+    )
+    planned_followup_origin = fields.Selection(
+        [o for o in FOLLOWUP_ORIGINS if o[0] != 'church'], string='Origine de la durée prévue',
+    )
+    proposed_followup_weeks = fields.Integer(
+        string='Durée proposée (semaines)', compute='_compute_proposed_followup',
+    )
+    proposed_followup_origin = fields.Selection(
+        FOLLOWUP_ORIGINS, string='Origine de la durée proposée', compute='_compute_proposed_followup',
+    )
+    proposed_followup_label = fields.Char(
+        string='Durée proposée', compute='_compute_proposed_followup',
+    )
+
     # Computed followup stats
     followup_count = fields.Integer(compute='_compute_followup_count', string='Suivis')
 
     @api.constrains('church_id', 'district_id', 'prayer_cell_id', 'age_group_id', 'evangelist_id', 'invited_by_id', 'mentor_id')
     def _check_same_church(self):
         check_same_church(self, ['district_id', 'prayer_cell_id', 'age_group_id', 'evangelist_id', 'invited_by_id', 'mentor_id'])
+
+    @api.constrains('planned_followup_weeks')
+    def _check_planned_followup_weeks(self):
+        check_weeks(self, 'planned_followup_weeks', MAX_PROPOSED_WEEKS, allow_empty=True)
+
+    @api.depends('planned_followup_weeks', 'planned_followup_origin', 'church_id.default_followup_weeks')
+    def _compute_proposed_followup(self):
+        origins = dict(FOLLOWUP_ORIGINS)
+        for rec in self:
+            if rec.planned_followup_weeks:
+                rec.proposed_followup_weeks = rec.planned_followup_weeks
+                rec.proposed_followup_origin = rec.planned_followup_origin or 'manual'
+            else:
+                rec.proposed_followup_weeks = rec.church_id.default_followup_weeks or DEFAULT_FOLLOWUP_WEEKS
+                rec.proposed_followup_origin = 'church'
+            rec.proposed_followup_label = '%s semaines — %s' % (
+                rec.proposed_followup_weeks, rec._followup_origin_description())
+
+    def _followup_origin_description(self):
+        """Libellé de l'origine de la durée proposée ; `event_evangelization` y ajoute l'événement."""
+        self.ensure_one()
+        return dict(FOLLOWUP_ORIGINS).get(self.proposed_followup_origin, '')
+
+    def write(self, vals):
+        # Une durée saisie à la main par un responsable devient « son choix ».
+        if 'planned_followup_weeks' in vals and 'planned_followup_origin' not in vals:
+            vals = dict(vals, planned_followup_origin='manual' if vals['planned_followup_weeks'] else False)
+        return super().write(vals)
+
+    def action_open_followup_wizard(self):
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Ouvrir un suivi'),
+            'res_model': 'church.followup.assign',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {'default_member_ids': self.ids},
+        }
 
     @api.depends('name', 'first_name')
     def _compute_display_name_custom(self):
@@ -95,6 +154,9 @@ class ChurchMember(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        for vals in vals_list:
+            if vals.get('planned_followup_weeks') and not vals.get('planned_followup_origin'):
+                vals['planned_followup_origin'] = 'manual'
         records = super().create(vals_list)
         records._ensure_partner()
         return records

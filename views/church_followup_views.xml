@@ -9,7 +9,7 @@
                     <button name="action_integrate" string="Intégrer" type="object" class="btn-primary"
                             invisible="state not in ('in_progress', 'extended')"
                             icon="fa-check-circle"/>
-                    <button name="action_extend" string="Prolonger" type="object" class="btn-secondary"
+                    <button name="action_open_extend_wizard" string="Prolonger" type="object" class="btn-secondary"
                             invisible="state not in ('in_progress', 'extended')"
                             icon="fa-clock-o"/>
                     <button name="action_transfer" string="Transférer" type="object" class="btn-secondary"
@@ -32,6 +32,7 @@
                             <field name="member_id" domain="[('church_id', '=', church_id)]"/>
                             <field name="start_date"/>
                             <field name="duration_weeks"/>
+                            <field name="duration_origin" invisible="not duration_origin"/>
                             <field name="end_date"/>
                         </group>
                         <group string="Intégration" invisible="state in ('abandoned', 'transferred')">

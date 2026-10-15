@@ -31,7 +31,7 @@
               sequence="20"/>
 
     <menuitem id="menu_church_member_new"
-              name="Nouvelles personnes"
+              name="À attribuer"
               parent="menu_church_evangelism"
               action="action_church_member_new"
               sequence="30"/>

@@ -187,3 +187,34 @@ class TestChurchMobileApi(HttpCase):
                        member_id=self.m1.id, duration_weeks=8)
         self.assertEqual(res['status'], 'success', res)
         self.assertEqual(res['followup']['duration_weeks'], 8)
+
+    # ─── Durée de suivi (phase B) ─────────────────────────────────────
+
+    def test_to_assign_lists_waiting_people_with_their_proposal(self):
+        self.m1.write({'planned_followup_weeks': 9})
+        res = self._as(self.manager, '/api/church/followups/to_assign')
+        rows = {m['id']: m for m in res['members']}
+        self.assertIn(self.m1.id, rows)
+        self.assertNotIn(self.m2.id, rows, "Déjà en suivi")
+        self.assertEqual(rows[self.m1.id]['proposed_followup_weeks'], 9)
+        self.assertEqual(self._as(self.ev1.mobile_user_id, '/api/church/followups/to_assign')['code'], 'forbidden')
+
+    def test_followup_without_duration_takes_the_proposal(self):
+        self.church.default_followup_weeks = 7
+        res = self._as(self.ev1.mobile_user_id, '/api/church/followup/create', member_id=self.m1.id)
+        self.assertEqual((res['followup']['duration_weeks'], res['followup']['duration_origin']), (7, 'church'))
+
+    def test_extend_with_chosen_weeks(self):
+        res = self._as(self.ev2.mobile_user_id, '/api/church/followup/action',
+                       followup_id=self.f2.id, action='extend', weeks=3)
+        self.assertEqual(res['status'], 'success', res)
+        self.assertEqual(self.f2.duration_weeks, 7)
+        res = self._as(self.ev2.mobile_user_id, '/api/church/followup/action',
+                       followup_id=self.f2.id, action='extend', weeks=40)
+        self.assertEqual(res['code'], 'refused')
+
+    def test_only_managers_change_the_church_default(self):
+        res = self._as(self.ev1.mobile_user_id, '/api/church/settings', default_followup_weeks=9)
+        self.assertEqual(res['code'], 'forbidden')
+        res = self._as(self.manager, '/api/church/settings', default_followup_weeks=9)
+        self.assertEqual(res['settings']['default_followup_weeks'], 9)

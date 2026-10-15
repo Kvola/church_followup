@@ -1,6 +1,8 @@
 from odoo import api, fields, models, _
 
-from .church_tools import ACTIVE_FOLLOWUP_STATES
+from .church_tools import (
+    ACTIVE_FOLLOWUP_STATES, DEFAULT_FOLLOWUP_WEEKS, MAX_PROPOSED_WEEKS, check_weeks,
+)
 
 
 class ChurchChurch(models.Model):
@@ -21,6 +23,11 @@ class ChurchChurch(models.Model):
         store=True, readonly=True,
     )
     active = fields.Boolean(default=True)
+    default_followup_weeks = fields.Integer(
+        string='Durée de suivi par défaut (semaines)', default=DEFAULT_FOLLOWUP_WEEKS,
+        help="Durée proposée pour suivre une nouvelle personne, quand ni un événement "
+             "ni l'évangéliste n'en fixent une autre.",
+    )
 
     # Relations
     pastor_ids = fields.One2many('church.pastor', 'church_id', string='Pasteurs')
@@ -43,6 +50,10 @@ class ChurchChurch(models.Model):
         'UNIQUE(code)',
         'Le code de l\'église doit être unique.',
     )
+
+    @api.constrains('default_followup_weeks')
+    def _check_default_followup_weeks(self):
+        check_weeks(self, 'default_followup_weeks', MAX_PROPOSED_WEEKS)
 
     @api.depends('pastor_ids', 'pastor_ids.pastor_type', 'pastor_ids.name', 'pastor_ids.active')
     def _compute_pastor_name(self):

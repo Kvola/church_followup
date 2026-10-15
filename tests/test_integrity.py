@@ -114,8 +114,10 @@ class TestChurchIntegrity(TransactionCase):
         self.assertEqual(active.evangelist_id, other_ev)
 
     def test_duration_must_be_positive(self):
+        # 0 = « pas de durée choisie » : la durée proposée s'applique.
+        self.assertEqual(self._followup(duration_weeks=0).duration_weeks, 4)
         with self.assertRaises(ValidationError):
-            self._followup(duration_weeks=0)
+            self._followup(member=self._member(self.church, 'Négatif'), duration_weeks=-1)
 
     # ── Prolongé = actif ───────────────────────────────────────────────
 

@@ -26,3 +26,30 @@ def check_same_church(records, field_names):
                         linked=linked.display_name,
                         other=linked.church_id.name,
                     ))
+
+
+# Durées de suivi, en semaines. Une durée PROPOSÉE (réglage d'église, événement,
+# choix initial) reste dans un trimestre ; prolongations comprises, un suivi ne
+# dépasse pas un an.
+DEFAULT_FOLLOWUP_WEEKS = 4
+MAX_PROPOSED_WEEKS = 26
+MAX_FOLLOWUP_WEEKS = 52
+
+FOLLOWUP_ORIGINS = [
+    ('church', "Réglage de l'église"),
+    ('event', "Événement d'origine"),
+    ('manual', "Choix d'un responsable"),
+]
+
+
+def check_weeks(records, fname, maximum, allow_empty=False):
+    """Refuse une durée hors de [1, maximum] (0 toléré si ``allow_empty``)."""
+    for rec in records:
+        value = rec[fname]
+        if allow_empty and not value:
+            continue
+        if not 1 <= value <= maximum:
+            raise ValidationError(rec.env._(
+                "« %(field)s » doit être compris entre 1 et %(max)s semaines (valeur : %(value)s).",
+                field=rec._fields[fname].string, max=maximum, value=value,
+            ))

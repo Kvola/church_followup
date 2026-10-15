@@ -33,6 +33,7 @@
                         <group string="Informations générales">
                             <field name="code"/>
                             <field name="pastor_name"/>
+                            <field name="default_followup_weeks"/>
                             <field name="phone" widget="phone"/>
                             <field name="email" widget="email"/>
                         </group>

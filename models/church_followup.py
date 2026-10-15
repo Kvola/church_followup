@@ -2,7 +2,9 @@ from odoo import api, fields, models, _
 from odoo.exceptions import ValidationError, UserError
 from dateutil.relativedelta import relativedelta
 
-from .church_tools import ACTIVE_FOLLOWUP_STATES, check_same_church
+from .church_tools import (
+    ACTIVE_FOLLOWUP_STATES, FOLLOWUP_ORIGINS, MAX_FOLLOWUP_WEEKS, MAX_PROPOSED_WEEKS, check_same_church, check_weeks,
+)
 
 
 class ChurchFollowup(models.Model):
@@ -18,7 +20,15 @@ class ChurchFollowup(models.Model):
 
     start_date = fields.Date(string='Date de début', default=fields.Date.today, required=True)
     end_date = fields.Date(string='Date de fin prévue', compute='_compute_end_date', store=True)
-    duration_weeks = fields.Integer(string='Durée (semaines)', default=4)
+    duration_weeks = fields.Integer(
+        string='Durée (semaines)', tracking=True,
+        help="Proposée à l'ouverture (événement d'origine, sinon réglage de l'église), "
+             "modifiable par l'évangéliste ; augmentée à chaque prolongation.",
+    )
+    duration_origin = fields.Selection(
+        FOLLOWUP_ORIGINS, string='Origine de la durée', readonly=True,
+        help="D'où vient la durée initiale du suivi.",
+    )
 
     state = fields.Selection([
         ('in_progress', 'En cours'),
@@ -66,9 +76,33 @@ class ChurchFollowup(models.Model):
 
     @api.constrains('duration_weeks')
     def _check_duration_weeks(self):
-        for rec in self:
-            if rec.duration_weeks < 1:
-                raise ValidationError(_('La durée du suivi doit être d\'au moins une semaine.'))
+        check_weeks(self, 'duration_weeks', MAX_FOLLOWUP_WEEKS)
+
+    @api.onchange('member_id')
+    def _onchange_member_id(self):
+        if self.member_id:
+            self.church_id = self.member_id.church_id
+            self.duration_weeks = self.member_id.proposed_followup_weeks
+
+    @api.model
+    def _apply_proposed_duration(self, vals, member):
+        """Durée initiale : celle demandée, sinon celle proposée pour la personne.
+
+        Une durée demandée qui diffère de la proposition devient « choix » ; une
+        origine déjà fournie (transfert) est conservée telle quelle.
+        """
+        proposed = member.proposed_followup_weeks if member else 0
+        proposed_origin = member.proposed_followup_origin if member else 'church'
+        if not vals.get('duration_weeks'):
+            vals['duration_weeks'] = proposed or 4
+            vals.setdefault('duration_origin', proposed_origin)
+        else:
+            if vals['duration_weeks'] > MAX_PROPOSED_WEEKS and not vals.get('duration_origin'):
+                raise ValidationError(_(
+                    'Un suivi ne peut pas démarrer sur plus de %s semaines ; '
+                    'prolongez-le ensuite si nécessaire.') % MAX_PROPOSED_WEEKS)
+            vals.setdefault('duration_origin',
+                            proposed_origin if vals['duration_weeks'] == proposed else 'manual')
 
     @api.depends('start_date', 'duration_weeks')
     def _compute_end_date(self):
@@ -85,9 +119,11 @@ class ChurchFollowup(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        Member = self.env['church.member']
         for vals in vals_list:
             if vals.get('name', 'Nouveau') == 'Nouveau':
                 vals['name'] = self.env['ir.sequence'].next_by_code('church.followup') or 'Nouveau'
+            self._apply_proposed_duration(vals, Member.browse(vals.get('member_id')))
         records = super().create(vals_list)
         # L'unicité du suivi actif est gardée par _check_single_active_followup.
         records.filtered(
@@ -117,17 +153,33 @@ class ChurchFollowup(models.Model):
             rec.state = 'abandoned'
             rec.member_id.write({'member_type': 'new'})
 
-    def action_extend(self):
-        """Prolonger le suivi de 4 semaines supplémentaires."""
+    def action_extend(self, weeks=None):
+        """Prolonge le suivi du nombre de semaines choisi (par défaut : le réglage de l'église)."""
         for rec in self:
             if rec.state not in ACTIVE_FOLLOWUP_STATES:
                 raise UserError(_('Seuls les suivis en cours peuvent être prolongés.'))
+            added = weeks or rec.church_id.default_followup_weeks or 4
+            if not 1 <= added <= MAX_PROPOSED_WEEKS:
+                raise ValidationError(
+                    _('Une prolongation va de 1 à %s semaines.') % MAX_PROPOSED_WEEKS)
             rec.write({
-                'duration_weeks': rec.duration_weeks + 4,
+                'duration_weeks': rec.duration_weeks + added,
                 'state': 'extended',
                 'end_notice_sent': False,
             })
-            rec.message_post(body=_('Suivi prolongé de 4 semaines (total: %s semaines)') % rec.duration_weeks)
+            rec.message_post(body=_('Suivi prolongé de %(added)s semaines (total : %(total)s semaines)',
+                                    added=added, total=rec.duration_weeks))
+
+    def action_open_extend_wizard(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Prolonger le suivi'),
+            'res_model': 'church.followup.extend',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {'default_followup_id': self.id},
+        }
 
     def action_transfer(self):
         """Transférer à un autre évangéliste."""
@@ -146,6 +198,7 @@ class ChurchFollowup(models.Model):
                 'member_id': rec.member_id.id,
                 'start_date': fields.Date.today(),
                 'duration_weeks': rec.duration_weeks,
+                'duration_origin': rec.duration_origin,
             })
 
     @api.model

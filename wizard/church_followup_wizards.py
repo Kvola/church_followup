@@ -1,0 +1,80 @@
+from odoo import api, fields, models, _
+from odoo.exceptions import UserError
+
+from ..models.church_tools import MAX_PROPOSED_WEEKS
+
+
+class ChurchFollowupAssign(models.TransientModel):
+    """Confie une ou plusieurs nouvelles personnes à un évangéliste.
+
+    Sans durée saisie, chacune garde la durée proposée pour elle (événement
+    d'origine, sinon réglage de l'église).
+    """
+    _name = 'church.followup.assign'
+    _description = 'Ouvrir un suivi'
+
+    member_ids = fields.Many2many('church.member', string='Personnes', required=True)
+    church_id = fields.Many2one('church.church', compute='_compute_church_id')
+    evangelist_id = fields.Many2one('church.evangelist', string='Évangéliste', required=True,
+                                    domain="[('church_id', '=', church_id)]")
+    duration_weeks = fields.Integer(
+        string='Durée (semaines)',
+        help="Laisser vide pour appliquer à chacun la durée proposée pour lui.",
+    )
+    proposal_summary = fields.Text(string='Durées proposées', compute='_compute_church_id')
+
+    @api.depends('member_ids')
+    def _compute_church_id(self):
+        for rec in self:
+            churches = rec.member_ids.church_id
+            rec.church_id = churches if len(churches) == 1 else False
+            rec.proposal_summary = '\n'.join(
+                '%s : %s' % (m.display_name, m.proposed_followup_label) for m in rec.member_ids[:20])
+
+    @api.model
+    def default_get(self, fields_list):
+        res = super().default_get(fields_list)
+        members = self.env['church.member'].browse(self.env.context.get('default_member_ids') or [])
+        if len(members) == 1 and 'duration_weeks' in fields_list:
+            res['duration_weeks'] = members.proposed_followup_weeks
+        return res
+
+    def action_confirm(self):
+        self.ensure_one()
+        if len(self.member_ids.church_id) > 1:
+            raise UserError(_('Choisissez des personnes d\'une même église.'))
+        if self.duration_weeks and not 1 <= self.duration_weeks <= MAX_PROPOSED_WEEKS:
+            raise UserError(_('La durée va de 1 à %s semaines.') % MAX_PROPOSED_WEEKS)
+        vals_list = []
+        for member in self.member_ids:
+            vals = {'church_id': member.church_id.id, 'evangelist_id': self.evangelist_id.id,
+                    'member_id': member.id}
+            if self.duration_weeks:
+                vals['duration_weeks'] = self.duration_weeks
+            vals_list.append(vals)
+        followups = self.env['church.followup'].create(vals_list)
+        if len(followups) == 1:
+            return {'type': 'ir.actions.act_window', 'res_model': 'church.followup',
+                    'res_id': followups.id, 'view_mode': 'form'}
+        return {'type': 'ir.actions.act_window', 'name': _('Suivis ouverts'),
+                'res_model': 'church.followup', 'view_mode': 'list,form',
+                'domain': [('id', 'in', followups.ids)]}
+
+
+class ChurchFollowupExtend(models.TransientModel):
+    _name = 'church.followup.extend'
+    _description = 'Prolonger un suivi'
+
+    followup_id = fields.Many2one('church.followup', required=True, readonly=True)
+    current_weeks = fields.Integer(related='followup_id.duration_weeks', string='Durée actuelle')
+    weeks = fields.Integer(string='Semaines à ajouter', required=True,
+                           default=lambda self: self._default_weeks())
+
+    def _default_weeks(self):
+        followup = self.env['church.followup'].browse(self.env.context.get('default_followup_id'))
+        return followup.church_id.default_followup_weeks or 4
+
+    def action_confirm(self):
+        self.ensure_one()
+        self.followup_id.action_extend(weeks=self.weeks)
+        return {'type': 'ir.actions.act_window_close'}

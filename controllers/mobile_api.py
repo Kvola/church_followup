@@ -258,6 +258,7 @@ class ChurchMobileApi(http.Controller):
                 'church_name': user.church_id.name or '',
                 'is_multi_church': user.role == 'super_admin' and not user.church_id,
                 'session_expiry': fields.Datetime.to_string(user.token_expiry),
+                'default_followup_weeks': user.church_id.default_followup_weeks or 4,
             }
             if user.role == 'evangelist' and user.evangelist_id:
                 data['evangelist_id'] = user.evangelist_id.id
@@ -403,6 +404,9 @@ class ChurchMobileApi(http.Controller):
             'invited_by_name': m.invited_by_id.display_name_custom or '',
             'mentor_id': m.mentor_id.id or False,
             'mentor_name': m.mentor_id.display_name_custom or '',
+            'proposed_followup_weeks': m.proposed_followup_weeks,
+            'proposed_followup_origin': m.proposed_followup_origin,
+            'proposed_followup_label': m.proposed_followup_label,
         }
 
     @http.route('/api/church/members', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
@@ -449,6 +453,9 @@ class ChurchMobileApi(http.Controller):
                     vals[key] = self._ref(model, user, kwargs, key, label)
             if kwargs.get('member_type'):
                 vals['member_type'] = _choice('church.member', 'member_type', kwargs['member_type'], 'type')
+            if 'planned_followup_weeks' in kwargs:
+                vals['planned_followup_weeks'] = _int(kwargs, 'planned_followup_weeks',
+                                                      label='durée de suivi prévue') or 0
         return vals
 
     @http.route('/api/church/member/create', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
@@ -467,6 +474,18 @@ class ChurchMobileApi(http.Controller):
             'status': 'success',
             'message': 'Membre créé',
             'member': {'id': member.id, 'name': member.display_name_custom},
+        }
+
+    @http.route('/api/church/followups/to_assign', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
+    @church_endpoint(roles=MANAGERS)
+    def get_people_to_assign(self, user, **kwargs):
+        """Nouvelles personnes qui attendent qu'un évangéliste leur soit confié."""
+        members = request.env['church.member'].sudo().search(
+            self._church_domain(user, kwargs) + [('member_type', '=', 'new')], order='create_date desc')
+        return {
+            'status': 'success',
+            'members': [dict(self._member_summary(m), created_on=str(m.create_date.date()))
+                        for m in members],
         }
 
     @http.route('/api/church/member/detail', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
@@ -498,6 +517,10 @@ class ChurchMobileApi(http.Controller):
                 'mentor_id': member.mentor_id.id or False,
                 'mentor_name': member.mentor_id.display_name_custom or '',
                 'can_edit': self._can_edit_member(user, member),
+                'planned_followup_weeks': member.planned_followup_weeks,
+                'proposed_followup_weeks': member.proposed_followup_weeks,
+                'proposed_followup_origin': member.proposed_followup_origin,
+                'proposed_followup_label': member.proposed_followup_label,
             },
         }
 
@@ -556,6 +579,7 @@ class ChurchMobileApi(http.Controller):
                 'start_date': str(f.start_date) if f.start_date else '',
                 'end_date': str(f.end_date) if f.end_date else '',
                 'duration_weeks': f.duration_weeks,
+                'duration_origin': f.duration_origin or '',
                 'total_weeks': f.duration_weeks,
                 'current_week': f.week_count,
                 'progress': round(f.week_count / f.duration_weeks * 100, 1) if f.duration_weeks else 0,
@@ -592,7 +616,8 @@ class ChurchMobileApi(http.Controller):
             'status': 'success',
             'success': True,
             'message': 'Suivi créé',
-            'followup': {'id': followup.id, 'name': followup.name, 'duration_weeks': followup.duration_weeks},
+            'followup': {'id': followup.id, 'name': followup.name, 'duration_weeks': followup.duration_weeks,
+                         'duration_origin': followup.duration_origin},
         }
 
     @http.route('/api/church/followup/detail', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
@@ -614,6 +639,7 @@ class ChurchMobileApi(http.Controller):
                 'state': f.state,
                 'current_week': f.week_count,
                 'total_weeks': f.duration_weeks,
+                'duration_origin': f.duration_origin or '',
                 'progress': round(f.week_count / f.duration_weeks * 100, 1) if f.duration_weeks else 0,
                 'average_score': round(sum(weeks.mapped('score')) / len(weeks), 1) if weeks else 0,
                 'weeks': [self._week_json(w, with_date=False) for w in weeks],
@@ -663,7 +689,7 @@ class ChurchMobileApi(http.Controller):
         elif action == 'abandon':
             followup.action_abandon()
         elif action == 'extend':
-            followup.action_extend()
+            followup.action_extend(weeks=_int(kwargs, 'weeks', label='semaines à ajouter'))
         elif action == 'transfer':
             target_id = self._ref('church.evangelist', user, kwargs, 'transferred_to_id', 'Évangéliste destinataire')
             if not target_id:
@@ -673,6 +699,21 @@ class ChurchMobileApi(http.Controller):
         else:
             raise ApiInputError('Action inconnue : %s.' % action)
         return {'status': 'success', 'message': 'Action effectuée'}
+
+    @http.route('/api/church/settings', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
+    @church_endpoint()
+    def church_settings(self, user, **kwargs):
+        """Réglages de l'église ; un responsable peut changer la durée de suivi par défaut."""
+        church = request.env['church.church'].sudo().browse(self._resolve_church_id(user, kwargs))
+        if 'default_followup_weeks' in kwargs:
+            if not self._is_manager(user):
+                return _error('Action non autorisée pour votre rôle.', 'forbidden')
+            church.write({'default_followup_weeks': _int(
+                kwargs, 'default_followup_weeks', True, 'durée de suivi par défaut')})
+        return {
+            'status': 'success',
+            'settings': {'church_id': church.id, 'default_followup_weeks': church.default_followup_weeks},
+        }
 
     # ─── Prayer Cells ─────────────────────────────────────────────────
 
@@ -1074,6 +1115,8 @@ class ChurchMobileApi(http.Controller):
             raise ApiInputError('Le nom est requis.')
         if 'active' in kwargs:
             vals['active'] = _bool(kwargs, 'active')
+        if 'default_followup_weeks' in kwargs:
+            vals['default_followup_weeks'] = _int(kwargs, 'default_followup_weeks', True, 'durée de suivi par défaut')
         if vals:
             church.write(vals)
         return {
@@ -1114,6 +1157,7 @@ class ChurchMobileApi(http.Controller):
                 'evangelist_count': church.evangelist_count,
                 'cell_count': church.cell_count,
                 'age_group_count': church.age_group_count,
+                'default_followup_weeks': church.default_followup_weeks,
                 'active_followups': len(followups.filtered(lambda f: f.state in ACTIVE_FOLLOWUP_STATES)),
                 'total_integrated': len(followups.filtered(lambda f: f.state == 'integrated')),
                 'managers': [{'id': m.id, 'name': m.name, 'phone': m.phone} for m in managers],
