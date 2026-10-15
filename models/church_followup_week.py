@@ -29,12 +29,10 @@ class ChurchFollowupWeek(models.Model):
     # Score calculé
     score = fields.Integer(compute='_compute_score', store=True, string='Score')
 
-    _constraints = [
-        models.Constraint(
-            'UNIQUE(followup_id, week_number)',
-            'Un rapport pour cette semaine existe d\u00e9j\u00e0.',
-        ),
-    ]
+    _followup_week_uniq = models.Constraint(
+        'UNIQUE(followup_id, week_number)',
+        'Un rapport pour cette semaine existe déjà.',
+    )
 
     @api.constrains('week_number')
     def _check_week_number(self):

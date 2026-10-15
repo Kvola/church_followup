@@ -1,5 +1,7 @@
 from odoo import api, fields, models, _
 
+from .church_tools import ACTIVE_FOLLOWUP_STATES
+
 
 class ChurchChurch(models.Model):
     _name = 'church.church'
@@ -37,12 +39,10 @@ class ChurchChurch(models.Model):
     pastor_count = fields.Integer(compute='_compute_counts', store=True, string='Nombre de pasteurs')
     followup_active_count = fields.Integer(compute='_compute_followup_active_count', string='Suivis actifs')
 
-    _constraints = [
-        models.Constraint(
-            'UNIQUE(code)',
-            'Le code de l\'\u00e9glise doit \u00eatre unique.',
-        ),
-    ]
+    _code_uniq = models.Constraint(
+        'UNIQUE(code)',
+        'Le code de l\'église doit être unique.',
+    )
 
     @api.depends('pastor_ids', 'pastor_ids.pastor_type', 'pastor_ids.name', 'pastor_ids.active')
     def _compute_pastor_name(self):
@@ -66,7 +66,7 @@ class ChurchChurch(models.Model):
         for rec in self:
             rec.followup_active_count = followup_model.search_count([
                 ('church_id', '=', rec.id),
-                ('state', 'in', ('in_progress', 'extended')),
+                ('state', 'in', ACTIVE_FOLLOWUP_STATES),
             ])
 
     def action_view_members(self):
@@ -111,7 +111,7 @@ class ChurchChurch(models.Model):
             'name': _('Suivis actifs'),
             'res_model': 'church.followup',
             'view_mode': 'list,form',
-            'domain': [('church_id', '=', self.id), ('state', 'in', ('in_progress', 'extended'))],
+            'domain': [('church_id', '=', self.id), ('state', 'in', ACTIVE_FOLLOWUP_STATES)],
         }
 
     def action_view_pastors(self):

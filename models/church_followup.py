@@ -2,6 +2,8 @@ from odoo import api, fields, models, _
 from odoo.exceptions import ValidationError, UserError
 from dateutil.relativedelta import relativedelta
 
+from .church_tools import ACTIVE_FOLLOWUP_STATES, check_same_church
+
 
 class ChurchFollowup(models.Model):
     _name = 'church.followup'
@@ -36,6 +38,37 @@ class ChurchFollowup(models.Model):
     week_count = fields.Integer(compute='_compute_week_count', string='Semaines complétées')
 
     notes = fields.Text(string='Notes')
+    end_notice_sent = fields.Boolean(
+        string='Fin de période signalée', copy=False,
+        help="Le message de fin de période a été posté ; remis à zéro quand le suivi est prolongé.",
+    )
+
+    @api.constrains('church_id', 'member_id', 'evangelist_id', 'transferred_to_id',
+                    'target_cell_id', 'target_age_group_id')
+    def _check_same_church(self):
+        check_same_church(self, ['member_id', 'evangelist_id', 'transferred_to_id',
+                                 'target_cell_id', 'target_age_group_id'])
+
+    @api.constrains('member_id', 'state')
+    def _check_single_active_followup(self):
+        active = self.filtered(lambda f: f.state in ACTIVE_FOLLOWUP_STATES)
+        if not active:
+            return
+        groups = self._read_group(
+            [('member_id', 'in', active.member_id.ids), ('state', 'in', ACTIVE_FOLLOWUP_STATES)],
+            groupby=['member_id'], aggregates=['__count'],
+        )
+        for member, count in groups:
+            if count > 1:
+                raise ValidationError(
+                    _('Un suivi actif existe déjà pour %s.') % member.display_name
+                )
+
+    @api.constrains('duration_weeks')
+    def _check_duration_weeks(self):
+        for rec in self:
+            if rec.duration_weeks < 1:
+                raise ValidationError(_('La durée du suivi doit être d\'au moins une semaine.'))
 
     @api.depends('start_date', 'duration_weeks')
     def _compute_end_date(self):
@@ -55,22 +88,17 @@ class ChurchFollowup(models.Model):
         for vals in vals_list:
             if vals.get('name', 'Nouveau') == 'Nouveau':
                 vals['name'] = self.env['ir.sequence'].next_by_code('church.followup') or 'Nouveau'
-            # Vérifier qu'il n'y a pas de suivi actif pour ce membre
-            if vals.get('member_id'):
-                existing = self.search_count([
-                    ('member_id', '=', vals['member_id']),
-                    ('state', 'in', ('in_progress', 'extended')),
-                ])
-                if existing:
-                    raise ValidationError(_('Un suivi actif existe déjà pour ce membre.'))
-                # Mettre le membre en suivi
-                self.env['church.member'].browse(vals['member_id']).write({'member_type': 'in_followup'})
-        return super().create(vals_list)
+        records = super().create(vals_list)
+        # L'unicité du suivi actif est gardée par _check_single_active_followup.
+        records.filtered(
+            lambda f: f.state in ACTIVE_FOLLOWUP_STATES
+        ).member_id.write({'member_type': 'in_followup'})
+        return records
 
     def action_integrate(self):
         """Intégrer la personne dans l'église."""
         for rec in self:
-            if rec.state not in ('in_progress', 'extended'):
+            if rec.state not in ACTIVE_FOLLOWUP_STATES:
                 raise UserError(_('Seuls les suivis en cours peuvent être intégrés.'))
             if not rec.target_cell_id or not rec.target_age_group_id:
                 raise ValidationError(_('Veuillez sélectionner une cellule de prière et un groupe d\'âge.'))
@@ -84,7 +112,7 @@ class ChurchFollowup(models.Model):
 
     def action_abandon(self):
         for rec in self:
-            if rec.state not in ('in_progress', 'extended'):
+            if rec.state not in ACTIVE_FOLLOWUP_STATES:
                 raise UserError(_('Seuls les suivis en cours peuvent être abandonnés.'))
             rec.state = 'abandoned'
             rec.member_id.write({'member_type': 'new'})
@@ -92,16 +120,19 @@ class ChurchFollowup(models.Model):
     def action_extend(self):
         """Prolonger le suivi de 4 semaines supplémentaires."""
         for rec in self:
-            if rec.state not in ('in_progress', 'extended'):
+            if rec.state not in ACTIVE_FOLLOWUP_STATES:
                 raise UserError(_('Seuls les suivis en cours peuvent être prolongés.'))
-            rec.duration_weeks += 4
-            rec.state = 'extended'
+            rec.write({
+                'duration_weeks': rec.duration_weeks + 4,
+                'state': 'extended',
+                'end_notice_sent': False,
+            })
             rec.message_post(body=_('Suivi prolongé de 4 semaines (total: %s semaines)') % rec.duration_weeks)
 
     def action_transfer(self):
         """Transférer à un autre évangéliste."""
         for rec in self:
-            if rec.state not in ('in_progress', 'extended'):
+            if rec.state not in ACTIVE_FOLLOWUP_STATES:
                 raise UserError(_('Seuls les suivis en cours peuvent être transférés.'))
             if not rec.transferred_to_id:
                 raise ValidationError(_('Veuillez sélectionner l\'évangéliste destinataire.'))
@@ -120,21 +151,22 @@ class ChurchFollowup(models.Model):
     @api.model
     def _cron_send_reminders(self):
         """Envoie des rappels aux évangélistes pour les suivis actifs."""
-        active_followups = self.search([('state', '=', 'in_progress')])
+        active_followups = self.search([('state', 'in', ACTIVE_FOLLOWUP_STATES)])
         for followup in active_followups:
             # Les rappels seront gérés via l'API mobile (notifications push)
             pass
 
     @api.model
     def _cron_check_followup_end(self):
-        """Vérifie les suivis arrivés à terme."""
+        """Signale une seule fois chaque suivi actif arrivé à terme."""
         today = fields.Date.today()
         expired = self.search([
-            ('state', '=', 'in_progress'),
+            ('state', 'in', ACTIVE_FOLLOWUP_STATES),
             ('end_date', '<=', today),
+            ('end_notice_sent', '=', False),
         ])
-        # Ces suivis sont marqués pour action dans le dashboard mobile
         for followup in expired:
             followup.message_post(
                 body=_('La période de suivi est terminée. Veuillez prendre une décision.')
             )
+        expired.write({'end_notice_sent': True})

@@ -22,5 +22,16 @@
             <field name="interval_type">days</field>
             <field name="active">True</field>
         </record>
+
+        <!-- L'âge est stocké : le remettre à jour après chaque anniversaire -->
+        <record id="cron_member_refresh_age" model="ir.cron">
+            <field name="name">Mise à jour de l'âge des membres</field>
+            <field name="model_id" ref="model_church_member"/>
+            <field name="state">code</field>
+            <field name="code">model._cron_refresh_age()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">days</field>
+            <field name="active">True</field>
+        </record>
     </data>
 </odoo>

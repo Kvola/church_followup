@@ -1,6 +1,8 @@
 from odoo import api, fields, models, _
 from dateutil.relativedelta import relativedelta
 
+from .church_tools import check_same_church
+
 
 class ChurchMember(models.Model):
     _name = 'church.member'
@@ -81,6 +83,10 @@ class ChurchMember(models.Model):
     # Computed followup stats
     followup_count = fields.Integer(compute='_compute_followup_count', string='Suivis')
 
+    @api.constrains('church_id', 'district_id', 'prayer_cell_id', 'age_group_id', 'evangelist_id', 'invited_by_id', 'mentor_id')
+    def _check_same_church(self):
+        check_same_church(self, ['district_id', 'prayer_cell_id', 'age_group_id', 'evangelist_id', 'invited_by_id', 'mentor_id'])
+
     @api.depends('name', 'first_name')
     def _compute_display_name_custom(self):
         for rec in self:
@@ -134,6 +140,19 @@ class ChurchMember(models.Model):
                 rec.age = relativedelta(today, rec.date_of_birth).years
             else:
                 rec.age = 0
+
+    @api.model
+    def _cron_refresh_age(self):
+        """L'âge est stocké : le recalculer pour ceux dont l'anniversaire l'a changé."""
+        self.env.cr.execute("""
+            SELECT id FROM church_member
+             WHERE date_of_birth IS NOT NULL
+               AND age IS DISTINCT FROM date_part('year', age(CURRENT_DATE, date_of_birth))::int
+        """)
+        members = self.with_context(active_test=False).browse(r[0] for r in self.env.cr.fetchall())
+        if members:
+            self.env.add_to_compute(self._fields['age'], members)
+            members.flush_recordset(['age'])
 
     def action_view_followups(self):
         return {

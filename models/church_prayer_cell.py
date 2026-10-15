@@ -1,6 +1,8 @@
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError
 
+from .church_tools import check_same_church
+
 
 class ChurchPrayerCell(models.Model):
     _name = 'church.prayer.cell'
@@ -34,6 +36,10 @@ class ChurchPrayerCell(models.Model):
 
     active = fields.Boolean(default=True)
     notes = fields.Text(string='Notes')
+
+    @api.constrains('church_id', 'district_ids')
+    def _check_same_church(self):
+        check_same_church(self, ['district_ids'])
 
     @api.depends('member_ids')
     def _compute_member_count(self):

@@ -22,12 +22,10 @@ class ChurchPastor(models.Model):
         ondelete='cascade', tracking=True,
     )
 
-    _constraints = [
-        models.Constraint(
-            'UNIQUE(name, church_id)',
-            'Ce pasteur est déjà enregistré dans cette église.',
-        ),
-    ]
+    _name_church_uniq = models.Constraint(
+        'UNIQUE(name, church_id)',
+        'Ce pasteur est déjà enregistré dans cette église.',
+    )
 
     @api.constrains('pastor_type', 'church_id')
     def _check_principal_unique(self):

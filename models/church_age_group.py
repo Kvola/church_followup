@@ -1,6 +1,8 @@
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError
 
+from .church_tools import check_same_church
+
 
 class ChurchAgeGroup(models.Model):
     _name = 'church.age.group'
@@ -36,6 +38,10 @@ class ChurchAgeGroup(models.Model):
 
     active = fields.Boolean(default=True)
     notes = fields.Text(string='Notes')
+
+    @api.constrains('church_id', 'age_range_id')
+    def _check_same_church(self):
+        check_same_church(self, ['age_range_id'])
 
     @api.depends('member_ids')
     def _compute_member_count(self):

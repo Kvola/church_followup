@@ -1,6 +1,8 @@
 from odoo import api, fields, models, _
 from odoo.exceptions import ValidationError, UserError
 
+from .church_tools import check_same_church
+
 
 class ChurchCookingRotation(models.Model):
     _name = 'church.cooking.rotation'
@@ -18,12 +20,14 @@ class ChurchCookingRotation(models.Model):
     ], string='État', default='planned')
     notes = fields.Text(string='Notes')
 
-    _constraints = [
-        models.Constraint(
-            'UNIQUE(church_id, date)',
-            'Une rotation est déjà planifiée pour cette date.',
-        ),
-    ]
+    _church_date_uniq = models.Constraint(
+        'UNIQUE(church_id, date)',
+        'Une rotation est déjà planifiée pour cette date.',
+    )
+
+    @api.constrains('church_id', 'prayer_cell_id')
+    def _check_same_church(self):
+        check_same_church(self, ['prayer_cell_id'])
 
     def action_done(self):
         for rec in self:

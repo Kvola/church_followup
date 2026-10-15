@@ -6,10 +6,13 @@
         <field name="arch" type="xml">
             <form string="Utilisateur mobile">
                 <header>
-                    <button name="action_share_credentials" string="Partager identifiants" type="object"
-                            class="btn-primary" invisible="not pin" icon="fa-share-alt"/>
-                    <button name="action_regenerate_pin" string="Régénérer le PIN" type="object"
-                            class="btn-secondary" confirm="Êtes-vous sûr de vouloir régénérer le PIN ?" icon="fa-refresh"/>
+                    <button name="action_regenerate_pin" string="Générer et partager un PIN" type="object"
+                            class="btn-primary" icon="fa-key" invisible="pin_set_date"/>
+                    <button name="action_regenerate_pin" string="Nouveau PIN" type="object"
+                            class="btn-secondary" icon="fa-refresh" invisible="not pin_set_date"
+                            confirm="L'ancien PIN cessera de fonctionner et la session en cours sera fermée. Continuer ?"/>
+                    <button name="action_close_session" string="Fermer la session" type="object"
+                            class="btn-secondary" icon="fa-sign-out" invisible="not token_expiry"/>
                 </header>
                 <sheet>
                     <div class="oe_title">
@@ -18,7 +21,9 @@
                     <group>
                         <group string="Connexion">
                             <field name="phone" widget="phone"/>
-                            <field name="pin"/>
+                            <field name="pin_set_date" placeholder="Aucun PIN communiqué"/>
+                            <field name="last_login"/>
+                            <field name="token_expiry"/>
                             <field name="role"/>
                             <field name="active" widget="boolean_toggle"/>
                         </group>
@@ -31,6 +36,29 @@
                     </group>
                 </sheet>
                 <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_church_mobile_user_credentials_form" model="ir.ui.view">
+        <field name="name">church.mobile.user.credentials.form</field>
+        <field name="model">church.mobile.user.credentials</field>
+        <field name="arch" type="xml">
+            <form string="Identifiants à transmettre">
+                <div class="alert alert-warning" role="alert">
+                    Ce PIN ne sera plus jamais affiché : transmettez-le maintenant.
+                    S'il est perdu, générez-en un nouveau.
+                </div>
+                <group>
+                    <field name="mobile_user_id"/>
+                    <field name="phone" widget="phone"/>
+                    <field name="pin" class="fs-3 fw-bold"/>
+                    <field name="message" widget="CopyClipboardText"/>
+                    <field name="whatsapp_url" widget="url" string="WhatsApp" text="Envoyer par WhatsApp"/>
+                </group>
+                <footer>
+                    <button string="Fermer" class="btn-secondary" special="cancel"/>
+                </footer>
             </form>
         </field>
     </record>

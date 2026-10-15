@@ -1,8 +1,33 @@
 import hashlib
+import hmac
+import re
 import secrets
 import string
+from datetime import timedelta
+from urllib.parse import quote
+
+from passlib.context import CryptContext
+
 from odoo import api, fields, models, _
-from odoo.exceptions import ValidationError, UserError
+from odoo.exceptions import ValidationError
+
+from .church_tools import check_same_church
+
+# Même famille d'algorithme que les mots de passe Odoo : salé et lent, donc un
+# PIN de 6 chiffres ne se retrouve plus en une seconde à partir de son empreinte.
+_PIN_CRYPT = CryptContext(['pbkdf2_sha512'], pbkdf2_sha512__rounds=25000)
+
+SESSION_DAYS = 60
+
+
+def phone_key(phone):
+    """Le numéro réduit à ses chiffres : « +225 07 00 » et « +2250700 » se confondent."""
+    return re.sub(r'\D', '', phone or '')
+
+
+def _token_digest(token):
+    # Le jeton est un aléa de 256 bits : une empreinte rapide suffit à le protéger.
+    return hashlib.sha256(token.encode()).hexdigest()
 
 
 class ChurchMobileUser(models.Model):
@@ -12,12 +37,21 @@ class ChurchMobileUser(models.Model):
     _order = 'name'
 
     name = fields.Char(string='Nom complet', required=True, tracking=True)
-    phone = fields.Char(string='Numéro de téléphone', required=True, tracking=True, index=True)
-    pin = fields.Char(string='PIN', readonly=True, copy=False, groups='church_followup.group_church_manager')
-    pin_hash = fields.Char(string='PIN Hash', readonly=True, copy=False)
-    token = fields.Char(string='Token de session', readonly=True, copy=False, index=True)
-    login_attempts = fields.Integer(string='Tentatives de connexion', default=0)
-    last_login_attempt = fields.Datetime(string='Dernière tentative')
+    phone = fields.Char(string='Numéro de téléphone', required=True, tracking=True)
+    phone_key = fields.Char(
+        string='Numéro (chiffres)', compute='_compute_phone_key', store=True, index=True,
+        help="Le numéro réduit à ses chiffres : c'est lui qui sert à se connecter.",
+    )
+    # Ni le PIN ni le jeton ne sont conservés en clair ; leurs empreintes ne sont
+    # lisibles que par l'administrateur technique.
+    pin_hash = fields.Char(readonly=True, copy=False, groups='base.group_system')
+    pin_set_date = fields.Datetime(
+        string='PIN communiqué le', readonly=True, copy=False,
+        help="Date du dernier PIN généré. Vide : aucun PIN n'a encore été communiqué.",
+    )
+    token_hash = fields.Char(readonly=True, copy=False, index=True, groups='base.group_system')
+    token_expiry = fields.Datetime(string='Session valable jusqu\'au', readonly=True, copy=False)
+    last_login = fields.Datetime(string='Dernière connexion', readonly=True, copy=False)
     role = fields.Selection([
         ('super_admin', 'Super Administrateur'),
         ('manager', 'Responsable des évangélistes'),
@@ -34,12 +68,25 @@ class ChurchMobileUser(models.Model):
     prayer_cell_id = fields.Many2one('church.prayer.cell', string='Cellule liée', ondelete='set null')
     age_group_id = fields.Many2one('church.age.group', string='Groupe d\'âge lié', ondelete='set null')
 
-    _constraints = [
-        models.Constraint(
-            'UNIQUE(phone, church_id)',
-            'Ce numéro de téléphone est déjà utilisé dans cette église.',
-        ),
-    ]
+    _phone_church_uniq = models.Constraint(
+        'UNIQUE(phone_key, church_id)',
+        'Ce numéro de téléphone est déjà utilisé dans cette église.',
+    )
+
+    @api.depends('phone')
+    def _compute_phone_key(self):
+        for rec in self:
+            rec.phone_key = phone_key(rec.phone)
+
+    @api.constrains('phone')
+    def _check_phone(self):
+        for rec in self:
+            if len(rec.phone_key or '') < 8:
+                raise ValidationError(_('Le numéro « %s » est trop court pour servir à se connecter.') % rec.phone)
+
+    @api.constrains('church_id', 'evangelist_id', 'prayer_cell_id', 'age_group_id')
+    def _check_same_church(self):
+        check_same_church(self, ['evangelist_id', 'prayer_cell_id', 'age_group_id'])
 
     @api.constrains('role', 'church_id')
     def _check_church_required(self):
@@ -52,71 +99,115 @@ class ChurchMobileUser(models.Model):
         """Return the human-readable role label."""
         return dict(self._fields['role'].selection).get(self.role, self.role)
 
-    @api.model_create_multi
-    def create(self, vals_list):
-        for vals in vals_list:
-            if not vals.get('pin'):
-                pin = self._generate_pin()
-                vals['pin'] = pin
-                vals['pin_hash'] = self._hash_pin(pin)
-            elif not vals.get('pin_hash'):
-                vals['pin_hash'] = self._hash_pin(vals['pin'])
-        return super().create(vals_list)
+    def write(self, vals):
+        # Un compte désactivé, ou dont le rôle change, perd sa session en cours.
+        if 'active' in vals and not vals['active'] or 'role' in vals:
+            vals = dict(vals, token_hash=False, token_expiry=False)
+        return super().write(vals)
 
-    @staticmethod
-    def _hash_pin(pin):
-        """Hash a PIN using SHA-256."""
-        return hashlib.sha256(pin.encode()).hexdigest()
+    # ─── PIN ──────────────────────────────────────────────────────────
+
+    def _issue_pin(self):
+        """Tire un nouveau PIN, n'en garde que l'empreinte et le rend en clair.
+
+        C'est la seule occasion de le lire : l'appelant doit le transmettre
+        aussitôt. La session en cours est fermée.
+        """
+        self.ensure_one()
+        pin = ''.join(secrets.choice(string.digits) for _ in range(6))
+        self.sudo().write({
+            'pin_hash': _PIN_CRYPT.hash(pin),
+            'pin_set_date': fields.Datetime.now(),
+            'token_hash': False,
+            'token_expiry': False,
+        })
+        return pin
 
     def verify_pin(self, pin):
-        """Verify a PIN against the stored hash."""
         self.ensure_one()
-        # Support both hashed and legacy plaintext PINs
-        if self.pin_hash:
-            return self._hash_pin(pin) == self.pin_hash
-        # Fallback for legacy records without hash
-        return self.pin == pin
+        stored = self.sudo().pin_hash
+        if not stored or not pin:
+            return False
+        try:
+            return _PIN_CRYPT.verify(pin, stored)
+        except (ValueError, TypeError):
+            return False
 
-    def _generate_pin(self):
-        """Génère un PIN unique de 6 chiffres (cryptographiquement sûr)."""
-        for _ in range(100):
-            pin = ''.join(secrets.choice(string.digits) for _ in range(6))
-            if not self.search_count([('pin', '=', pin)]):
-                return pin
-        raise UserError(_('Impossible de générer un PIN unique. Contactez un administrateur.'))
-
-    def action_regenerate_pin(self):
-        """Régénère le PIN de l'utilisateur."""
-        for rec in self:
-            pin = rec._generate_pin()
-            rec.write({
-                'pin': pin,
-                'pin_hash': self._hash_pin(pin),
-                'token': False,  # Invalidate active session
-            })
-
-    def get_share_message(self):
-        """Retourne le message de partage des credentials."""
+    def get_share_message(self, pin):
         self.ensure_one()
         return _(
-            "Bonjour %s,\n\n"
+            "Bonjour %(name)s,\n\n"
             "Vos identifiants pour l'application de suivi :\n"
-            "Téléphone : %s\n"
-            "PIN : %s\n\n"
-            "Veuillez télécharger l'application et vous connecter."
-        ) % (self.name, self.phone, self.pin)
+            "Téléphone : %(phone)s\n"
+            "PIN : %(pin)s\n\n"
+            "Veuillez télécharger l'application et vous connecter.",
+            name=self.name, phone=self.phone, pin=pin,
+        )
 
-    def action_share_credentials(self):
-        """Affiche les identifiants dans une notification pour copier/partager."""
+    def action_regenerate_pin(self):
+        """Génère un nouveau PIN et l'affiche une seule fois, prêt à partager."""
         self.ensure_one()
-        message = self.get_share_message()
+        pin = self._issue_pin()
+        wizard = self.env['church.mobile.user.credentials'].create({
+            'mobile_user_id': self.id,
+            'pin': pin,
+            'message': self.get_share_message(pin),
+        })
         return {
-            'type': 'ir.actions.client',
-            'tag': 'display_notification',
-            'params': {
-                'title': _('Identifiants de %s') % self.name,
-                'message': _('Téléphone : %s — PIN : %s') % (self.phone, self.pin),
-                'type': 'info',
-                'sticky': True,
-            },
+            'type': 'ir.actions.act_window',
+            'name': _('Identifiants de %s') % self.name,
+            'res_model': 'church.mobile.user.credentials',
+            'res_id': wizard.id,
+            'view_mode': 'form',
+            'target': 'new',
         }
+
+    # ─── Session ──────────────────────────────────────────────────────
+
+    def _open_session(self):
+        """Ouvre une session et rend le jeton en clair (seule copie : celle de l'app)."""
+        self.ensure_one()
+        token = secrets.token_hex(32)
+        now = fields.Datetime.now()
+        self.sudo().write({
+            'token_hash': _token_digest(token),
+            'token_expiry': now + timedelta(days=SESSION_DAYS),
+            'last_login': now,
+        })
+        return token
+
+    @api.model
+    def _from_session(self, user_id, token):
+        """Le compte actif dont ``token`` est la session en cours, sinon un recordset vide."""
+        try:
+            user = self.sudo().browse(int(user_id))
+        except (TypeError, ValueError):
+            return self.browse()
+        if not token or not isinstance(token, str) or not user.exists() or not user.active:
+            return self.browse()
+        if not user.token_hash or not user.token_expiry or user.token_expiry < fields.Datetime.now():
+            return self.browse()
+        if not hmac.compare_digest(user.token_hash, _token_digest(token)):
+            return self.browse()
+        return user
+
+    def action_close_session(self):
+        self.sudo().write({'token_hash': False, 'token_expiry': False})
+
+
+class ChurchMobileUserCredentials(models.TransientModel):
+    """Affiche un PIN fraîchement généré, une seule fois, avec son message de partage."""
+    _name = 'church.mobile.user.credentials'
+    _description = 'Identifiants à transmettre'
+
+    mobile_user_id = fields.Many2one('church.mobile.user', required=True, readonly=True)
+    phone = fields.Char(related='mobile_user_id.phone')
+    pin = fields.Char(readonly=True)
+    message = fields.Text(readonly=True)
+    whatsapp_url = fields.Char(compute='_compute_whatsapp_url')
+
+    @api.depends('message', 'mobile_user_id.phone_key')
+    def _compute_whatsapp_url(self):
+        for rec in self:
+            rec.whatsapp_url = 'https://wa.me/%s?text=%s' % (
+                rec.mobile_user_id.phone_key or '', quote(rec.message or ''))
