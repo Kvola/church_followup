@@ -54,6 +54,14 @@ def check_weeks(records, fname, maximum, allow_empty=False):
                 field=rec._fields[fname].string, max=maximum, value=value,
             ))
 
+ABANDON_REASONS = [
+    ('unreachable', 'Injoignable'),
+    ('moved', 'A déménagé'),
+    ('other_church', 'Fréquente une autre église'),
+    ('not_interested', 'Ne souhaite pas poursuivre'),
+    ('other', 'Autre raison'),
+]
+
 # Un rapport hebdomadaire est en retard trois jours après la fin de sa semaine :
 # le temps de couvrir le culte du dimanche et d'appeler la personne.
 REPORT_GRACE_DAYS = 3

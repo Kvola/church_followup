@@ -49,4 +49,26 @@
             </form>
         </field>
     </record>
+
+    <record id="view_church_followup_abandon_form" model="ir.ui.view">
+        <field name="name">church.followup.abandon.form</field>
+        <field name="model">church.followup.abandon</field>
+        <field name="arch" type="xml">
+            <form string="Interrompre le suivi">
+                <p class="text-muted">
+                    La personne passera en « Suivi interrompu ». Son suivi pourra être repris
+                    plus tard ; ce motif restera dans son parcours.
+                </p>
+                <group>
+                    <field name="followup_id"/>
+                    <field name="reason" widget="radio"/>
+                    <field name="note" required="reason == 'other'"/>
+                </group>
+                <footer>
+                    <button name="action_confirm" string="Interrompre" type="object" class="btn-danger"/>
+                    <button string="Annuler" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
 </odoo>

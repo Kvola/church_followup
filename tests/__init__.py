@@ -4,3 +4,4 @@ from . import test_mobile_api
 from . import test_followup_duration
 from . import test_attendance_threshold
 from . import test_todo
+from . import test_interruption

@@ -3,7 +3,7 @@ from odoo.exceptions import ValidationError, UserError
 from dateutil.relativedelta import relativedelta
 
 from .church_tools import (
-    ACTIVE_FOLLOWUP_STATES, FOLLOWUP_ORIGINS, MAX_FOLLOWUP_WEEKS, MAX_PROPOSED_WEEKS, check_same_church, check_weeks,
+    ABANDON_REASONS, ACTIVE_FOLLOWUP_STATES, FOLLOWUP_ORIGINS, MAX_FOLLOWUP_WEEKS, MAX_PROPOSED_WEEKS, check_same_church, check_weeks,
 )
 
 
@@ -48,6 +48,15 @@ class ChurchFollowup(models.Model):
     week_count = fields.Integer(compute='_compute_week_count', string='Semaines complétées')
 
     notes = fields.Text(string='Notes')
+    # Abandon et reprise
+    abandon_reason = fields.Selection(ABANDON_REASONS, string="Motif de l'interruption",
+                                      tracking=True, readonly=True)
+    abandon_note = fields.Text(string="Précisions sur l'interruption", tracking=True, readonly=True)
+    abandon_date = fields.Date(string='Interrompu le', readonly=True)
+    previous_followup_id = fields.Many2one(
+        'church.followup', string='Reprend le suivi', readonly=True, ondelete='set null',
+        help="Suivi interrompu dont celui-ci est la reprise.")
+
     # Appui à la décision d'intégrer
     elapsed_weeks = fields.Integer(string='Semaines écoulées', compute='_compute_attendance')
     attendance_weeks = fields.Integer(string='Semaines de présence au culte', compute='_compute_attendance')
@@ -189,7 +198,13 @@ class ChurchFollowup(models.Model):
         for vals in vals_list:
             if vals.get('name', 'Nouveau') == 'Nouveau':
                 vals['name'] = self.env['ir.sequence'].next_by_code('church.followup') or 'Nouveau'
-            self._apply_proposed_duration(vals, Member.browse(vals.get('member_id')))
+            member = Member.browse(vals.get('member_id'))
+            self._apply_proposed_duration(vals, member)
+            # Une reprise garde le lien avec le suivi interrompu.
+            if member and member.member_type == 'interrupted' and 'previous_followup_id' not in vals:
+                previous = self.search([('member_id', '=', member.id), ('state', '=', 'abandoned')],
+                                       order='abandon_date desc, id desc', limit=1)
+                vals['previous_followup_id'] = previous.id or False
         records = super().create(vals_list)
         # L'unicité du suivi actif est gardée par _check_single_active_followup.
         records.filtered(
@@ -227,12 +242,35 @@ class ChurchFollowup(models.Model):
                 'integration_date': fields.Date.today(),
             })
 
-    def action_abandon(self):
+    def action_abandon(self, reason=None, note=None):
+        """Interrompt le suivi. Le motif est obligatoire : il distingue plus tard
+        une personne injoignable d'une personne partie dans une autre église."""
+        if reason not in dict(ABANDON_REASONS):
+            raise UserError(_("Indiquez le motif de l'interruption du suivi."))
+        note = (note or '').strip()
+        if reason == 'other' and not note:
+            raise UserError(_("Précisez la raison de l'interruption."))
         for rec in self:
             if rec.state not in ACTIVE_FOLLOWUP_STATES:
-                raise UserError(_('Seuls les suivis en cours peuvent être abandonnés.'))
-            rec.state = 'abandoned'
-            rec.member_id.write({'member_type': 'new'})
+                raise UserError(_('Seuls les suivis en cours peuvent être interrompus.'))
+            rec.write({
+                'state': 'abandoned',
+                'abandon_reason': reason,
+                'abandon_note': note or False,
+                'abandon_date': fields.Date.context_today(rec),
+            })
+            rec.member_id.write({'member_type': 'interrupted'})
+
+    def action_open_abandon_wizard(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Interrompre le suivi'),
+            'res_model': 'church.followup.abandon',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {'default_followup_id': self.id},
+        }
 
     def action_extend(self, weeks=None):
         """Prolonge le suivi du nombre de semaines choisi (par défaut : le réglage de l'église)."""

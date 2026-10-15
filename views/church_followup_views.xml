@@ -15,9 +15,8 @@
                     <button name="action_transfer" string="Transférer" type="object" class="btn-secondary"
                             invisible="state not in ('in_progress', 'extended')"
                             icon="fa-exchange"/>
-                    <button name="action_abandon" string="Abandonner" type="object" class="btn-danger"
+                    <button name="action_open_abandon_wizard" string="Interrompre" type="object" class="btn-danger"
                             invisible="state not in ('in_progress', 'extended')"
-                            confirm="Êtes-vous sûr de vouloir abandonner ce suivi ?"
                             icon="fa-times-circle"/>
                     <field name="state" widget="statusbar" statusbar_visible="in_progress,extended,integrated"/>
                 </header>
@@ -33,6 +32,7 @@
                             <field name="start_date"/>
                             <field name="duration_weeks"/>
                             <field name="duration_origin" invisible="not duration_origin"/>
+                            <field name="previous_followup_id" invisible="not previous_followup_id"/>
                             <field name="end_date"/>
                         </group>
                         <group string="Présence au culte">
@@ -43,6 +43,11 @@
                             <field name="attendance_threshold" invisible="not attendance_threshold"/>
                             <field name="below_threshold" invisible="1"/>
                             <field name="average_score"/>
+                        </group>
+                        <group string="Interruption" invisible="state != 'abandoned'">
+                            <field name="abandon_date"/>
+                            <field name="abandon_reason"/>
+                            <field name="abandon_note"/>
                         </group>
                         <group string="Intégration" invisible="state in ('abandoned', 'transferred')">
                             <field name="target_cell_id" domain="[('church_id', '=', church_id)]"

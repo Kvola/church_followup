@@ -50,7 +50,7 @@ class TestTodo(TransactionCase):
 
     def test_closed_followups_ask_nothing(self):
         f = self._followup(self.today - relativedelta(weeks=4))
-        f.action_abandon()
+        f.action_abandon(reason='unreachable')
         self.assertEqual(self.ev_account._todo_items(self.today), [])
 
     def test_manager_todo_lists_people_to_assign_and_late_evangelists(self):

@@ -63,6 +63,7 @@ class ChurchMember(models.Model):
     member_type = fields.Selection([
         ('new', 'Nouvelle personne'),
         ('in_followup', 'En suivi'),
+        ('interrupted', 'Suivi interrompu'),
         ('integrated', 'Intégré(e)'),
         ('old_member', 'Ancien membre'),
     ], string='Type', default='new', tracking=True)
@@ -100,6 +101,11 @@ class ChurchMember(models.Model):
     proposed_followup_label = fields.Char(
         string='Durée proposée', compute='_compute_proposed_followup',
     )
+
+    # Parcours : tous les suivis de la personne, du plus ancien au plus récent.
+    followup_ids = fields.One2many('church.followup', 'member_id', string='Parcours de suivi')
+    last_followup_id = fields.Many2one('church.followup', string='Dernier suivi',
+                                       compute='_compute_last_followup')
 
     # Computed followup stats
     followup_count = fields.Integer(compute='_compute_followup_count', string='Suivis')
@@ -188,6 +194,15 @@ class ChurchMember(models.Model):
                     'country_id': rec.country_id.id or False,
                 })
             rec.partner_id = partner.id
+
+    @api.depends('followup_ids')
+    def _compute_last_followup(self):
+        for rec in self:
+            rec.last_followup_id = rec.followup_ids.sorted(lambda f: (f.start_date, f.id))[-1:]
+
+    def action_resume_followup(self):
+        """Reprendre le suivi d'une personne dont le suivi a été interrompu."""
+        return self.action_open_followup_wizard()
 
     def _compute_followup_count(self):
         followup_model = self.env['church.followup']

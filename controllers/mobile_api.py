@@ -480,13 +480,49 @@ class ChurchMobileApi(http.Controller):
     @church_endpoint(roles=MANAGERS)
     def get_people_to_assign(self, user, **kwargs):
         """Nouvelles personnes qui attendent qu'un évangéliste leur soit confié."""
-        members = request.env['church.member'].sudo().search(
-            self._church_domain(user, kwargs) + [('member_type', '=', 'new')], order='create_date desc')
+        Member = request.env['church.member'].sudo()
+        church = self._church_domain(user, kwargs)
+        members = Member.search(church + [('member_type', '=', 'new')], order='create_date desc')
+        interrupted = Member.search(church + [('member_type', '=', 'interrupted')], order='write_date desc')
         return {
             'status': 'success',
             'members': [dict(self._member_summary(m), created_on=str(m.create_date.date()))
                         for m in members],
+            # Suivis interrompus : à reprendre quand la personne redonne signe de vie.
+            'interrupted': [dict(self._member_summary(m), **self._interruption(m)) for m in interrupted],
         }
+
+    @staticmethod
+    def _interruption(member):
+        last = member.last_followup_id
+        if not last or last.state != 'abandoned':
+            return {}
+        return {
+            'interrupted_on': str(last.abandon_date or ''),
+            'abandon_reason': last.abandon_reason or '',
+            'abandon_reason_label': dict(last._fields['abandon_reason'].selection).get(last.abandon_reason, ''),
+            'abandon_note': last.abandon_note or '',
+        }
+
+    @staticmethod
+    def _journey(member):
+        """Le parcours de la personne : chaque suivi, du plus ancien au plus récent."""
+        states = dict(member.env['church.followup']._fields['state'].selection)
+        reasons = dict(member.env['church.followup']._fields['abandon_reason'].selection)
+        return [{
+            'followup_id': f.id,
+            'reference': f.name,
+            'evangelist_name': f.evangelist_id.name,
+            'start_date': str(f.start_date) if f.start_date else '',
+            'end_date': str(f.end_date) if f.end_date else '',
+            'duration_weeks': f.duration_weeks,
+            'state': f.state,
+            'state_label': states.get(f.state, ''),
+            'abandon_reason': f.abandon_reason or '',
+            'abandon_reason_label': reasons.get(f.abandon_reason, ''),
+            'abandon_note': f.abandon_note or '',
+            'resumes_followup_id': f.previous_followup_id.id or False,
+        } for f in member.followup_ids.sorted(lambda f: (f.start_date, f.id))]
 
     @http.route('/api/church/member/detail', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     @church_endpoint()
@@ -517,6 +553,7 @@ class ChurchMobileApi(http.Controller):
                 'mentor_id': member.mentor_id.id or False,
                 'mentor_name': member.mentor_id.display_name_custom or '',
                 'can_edit': self._can_edit_member(user, member),
+                'journey': self._journey(member),
                 'planned_followup_weeks': member.planned_followup_weeks,
                 'proposed_followup_weeks': member.proposed_followup_weeks,
                 'proposed_followup_origin': member.proposed_followup_origin,
@@ -699,7 +736,9 @@ class ChurchMobileApi(http.Controller):
             followup.write(vals)
             followup.action_integrate()
         elif action == 'abandon':
-            followup.action_abandon()
+            followup.action_abandon(
+                reason=_choice('church.followup', 'abandon_reason', kwargs.get('reason'), 'motif'),
+                note=_text(kwargs, 'note'))
         elif action == 'extend':
             followup.action_extend(weeks=_int(kwargs, 'weeks', label='semaines à ajouter'))
         elif action == 'transfer':

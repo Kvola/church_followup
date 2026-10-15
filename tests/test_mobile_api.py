@@ -243,3 +243,18 @@ class TestChurchMobileApi(HttpCase):
         self.assertEqual(res['status'], 'success', res)
         self.assertIn(self.m1.id, [i.get('member_id') for i in res['items'] if i['kind'] == 'to_assign'])
         self.assertEqual(self._as(self.leader, '/api/church/todo')['count'], 0)
+
+    # ─── Interruption et parcours (phase E) ───────────────────────────
+
+    def test_abandon_through_api_requires_reason_and_shows_in_journey(self):
+        ev2 = self.ev2.mobile_user_id
+        res = self._as(ev2, '/api/church/followup/action', followup_id=self.f2.id, action='abandon')
+        self.assertEqual(res['code'], 'refused')
+        res = self._as(ev2, '/api/church/followup/action', followup_id=self.f2.id, action='abandon',
+                       reason='unreachable', note='Numéro coupé')
+        self.assertEqual(res['status'], 'success', res)
+        listing = self._as(self.manager, '/api/church/followups/to_assign')
+        interrupted = {m['id']: m for m in listing['interrupted']}
+        self.assertEqual(interrupted[self.m2.id]['abandon_reason'], 'unreachable')
+        journey = self._as(self.manager, '/api/church/member/detail', member_id=self.m2.id)['member']['journey']
+        self.assertEqual([(j['state'], j['abandon_note']) for j in journey], [('abandoned', 'Numéro coupé')])

@@ -1,7 +1,7 @@
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError
 
-from ..models.church_tools import MAX_PROPOSED_WEEKS
+from ..models.church_tools import ABANDON_REASONS, MAX_PROPOSED_WEEKS
 
 
 class ChurchFollowupAssign(models.TransientModel):
@@ -77,4 +77,18 @@ class ChurchFollowupExtend(models.TransientModel):
     def action_confirm(self):
         self.ensure_one()
         self.followup_id.action_extend(weeks=self.weeks)
+        return {'type': 'ir.actions.act_window_close'}
+
+
+class ChurchFollowupAbandon(models.TransientModel):
+    _name = 'church.followup.abandon'
+    _description = 'Interrompre un suivi'
+
+    followup_id = fields.Many2one('church.followup', required=True, readonly=True)
+    reason = fields.Selection(ABANDON_REASONS, string='Motif', required=True)
+    note = fields.Text(string='Précisions', help="Obligatoires pour « Autre raison ».")
+
+    def action_confirm(self):
+        self.ensure_one()
+        self.followup_id.action_abandon(reason=self.reason, note=self.note)
         return {'type': 'ir.actions.act_window_close'}
