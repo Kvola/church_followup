@@ -48,11 +48,20 @@ class TestChurchIntegrity(TransactionCase):
             self.env[model].create(vals)
 
     def test_unique_constraints_exist_in_database(self):
+        expected = {
+            ('church_church', 'church_church_code_uniq'),
+            ('church_pastor', 'church_pastor_name_church_uniq'),
+            ('church_mobile_user', 'church_mobile_user_phone_church_uniq'),
+            ('church_followup_week', 'church_followup_week_followup_week_uniq'),
+            ('church_attendance_sunday', 'church_attendance_sunday_member_date_uniq'),
+            ('church_attendance_cell', 'church_attendance_cell_member_cell_date_uniq'),
+            ('church_cooking_rotation', 'church_cooking_rotation_church_date_uniq'),
+        }
         self.env.cr.execute("""
-            SELECT count(*) FROM pg_constraint
-             WHERE contype = 'u' AND conrelid::regclass::text LIKE 'church\\_%%'
-        """)
-        self.assertEqual(self.env.cr.fetchone()[0], 7)
+            SELECT conrelid::regclass::text, conname FROM pg_constraint
+             WHERE contype = 'u' AND (conrelid::regclass::text, conname) IN %s
+        """, [tuple(expected)])
+        self.assertEqual(set(self.env.cr.fetchall()), expected)
 
     def test_church_code_unique(self):
         with mute_logger('odoo.sql_db'), self.assertRaises(IntegrityError), self.cr.savepoint():

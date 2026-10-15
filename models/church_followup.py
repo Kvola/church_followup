@@ -304,3 +304,4 @@ class ChurchFollowup(models.Model):
                 body=_('La période de suivi est terminée. Veuillez prendre une décision.')
             )
         expired.write({'end_notice_sent': True})
+        expired._notify_period_end()

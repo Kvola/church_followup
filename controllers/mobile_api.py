@@ -712,6 +712,14 @@ class ChurchMobileApi(http.Controller):
             raise ApiInputError('Action inconnue : %s.' % action)
         return {'status': 'success', 'message': 'Action effectuée'}
 
+    @http.route('/api/church/todo', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
+    @church_endpoint()
+    def get_todo(self, user, **kwargs):
+        """Liste « À faire » : ce qui attend l'utilisateur, avec un résumé pour le badge."""
+        items = user._todo_items()
+        return {'status': 'success', 'count': len(items), 'summary': user._todo_summary(items),
+                'items': items}
+
     @http.route('/api/church/settings', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     @church_endpoint()
     def church_settings(self, user, **kwargs):

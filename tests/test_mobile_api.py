@@ -235,3 +235,11 @@ class TestChurchMobileApi(HttpCase):
         res = self._as(ev2, '/api/church/followup/action', justification='Malade 3 semaines', **params)
         self.assertEqual(res['status'], 'success', res)
         self.assertEqual(self.f2.integration_justification, 'Malade 3 semaines')
+
+    # ─── Liste « À faire » (phase D) ──────────────────────────────────
+
+    def test_todo_route_answers_each_role(self):
+        res = self._as(self.manager, '/api/church/todo')
+        self.assertEqual(res['status'], 'success', res)
+        self.assertIn(self.m1.id, [i.get('member_id') for i in res['items'] if i['kind'] == 'to_assign'])
+        self.assertEqual(self._as(self.leader, '/api/church/todo')['count'], 0)

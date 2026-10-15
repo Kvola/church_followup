@@ -53,3 +53,7 @@ def check_weeks(records, fname, maximum, allow_empty=False):
                 "« %(field)s » doit être compris entre 1 et %(max)s semaines (valeur : %(value)s).",
                 field=rec._fields[fname].string, max=maximum, value=value,
             ))
+
+# Un rapport hebdomadaire est en retard trois jours après la fin de sa semaine :
+# le temps de couvrir le culte du dimanche et d'appeler la personne.
+REPORT_GRACE_DAYS = 3
