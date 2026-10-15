@@ -31,6 +31,15 @@ class AppColors {
         return extended;
       case 'transferred':
         return transferred;
+      // Statuts de la personne
+      case 'new':
+        return inProgress;
+      case 'in_followup':
+        return extended;
+      case 'interrupted':
+        return abandoned;
+      case 'established':
+        return const Color(0xFF2E7D32);
       // Role colors
       case 'super_admin':
         return const Color(0xFF5B4FCF);

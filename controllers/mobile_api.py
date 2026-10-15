@@ -264,8 +264,10 @@ class ChurchMobileApi(http.Controller):
                 data['evangelist_id'] = user.evangelist_id.id
             elif user.role == 'cell_leader' and user.prayer_cell_id:
                 data['prayer_cell_id'] = user.prayer_cell_id.id
+                data['prayer_cell_name'] = user.prayer_cell_id.name
             elif user.role == 'group_leader' and user.age_group_id:
                 data['age_group_id'] = user.age_group_id.id
+                data['age_group_name'] = user.age_group_id.name
 
             return {'status': 'success', 'message': 'Connexion réussie', 'user': data, 'token': token}
         except Exception:
@@ -633,6 +635,7 @@ class ChurchMobileApi(http.Controller):
                 'week_count': f.week_count,
                 'attendance_rate': f.attendance_rate,
                 'below_threshold': f.below_threshold,
+                'average_score': round(f.average_score, 1),
                 'weeks': [self._week_json(w) for w in f.week_ids],
             } for f in followups],
         }
@@ -896,6 +899,7 @@ class ChurchMobileApi(http.Controller):
                 'group_type': g.group_type,
                 'gender': g.gender,
                 'leader_name': g.leader_name or '',
+                'leader_phone': g.leader_phone or '',
                 'member_count': g.member_count,
                 'members': [{
                     'id': m.id,
@@ -1032,10 +1036,12 @@ class ChurchMobileApi(http.Controller):
                     'active': len(followups.filtered(lambda f: f.state in ACTIVE_FOLLOWUP_STATES)),
                     'integrated': len(followups.filtered(lambda f: f.state == 'integrated')),
                     'abandoned': len(followups.filtered(lambda f: f.state == 'abandoned')),
+                    'extended': len(followups.filtered(lambda f: f.state == 'extended')),
                     'rate': round(evangelist.integration_rate, 1),
                 },
                 'followups': [{
                     'name': f.name,
+                    'duration_weeks': f.duration_weeks,
                     'member_name': f.member_id.display_name_custom,
                     'start_date': str(f.start_date) if f.start_date else '',
                     'end_date': str(f.end_date) if f.end_date else '',
@@ -1111,15 +1117,25 @@ class ChurchMobileApi(http.Controller):
         valid_roles = ('manager', 'evangelist', 'cell_leader', 'group_leader')
         if role not in valid_roles:
             raise ApiInputError('Rôle invalide. Valeurs possibles : %s' % ', '.join(valid_roles))
-        new_user = request.env['church.mobile.user'].sudo().create({
-            'name': name,
-            'phone': phone,
-            'role': role,
-            'church_id': self._resolve_church_id(user, kwargs),
-            'evangelist_id': self._ref('church.evangelist', user, kwargs, 'evangelist_id', 'Évangéliste'),
-            'prayer_cell_id': self._ref('church.prayer.cell', user, kwargs, 'prayer_cell_id', 'Cellule'),
-            'age_group_id': self._ref('church.age.group', user, kwargs, 'age_group_id', 'Groupe d\'âge'),
-        })
+        # Un responsable de cellule ou de groupe passe par le circuit de l'unité :
+        # l'ancien responsable y est remplacé.
+        if role in self._LEADER_UNITS:
+            model, key, label = self._LEADER_UNITS[role]
+            if not _int(kwargs, key):
+                raise ApiInputError('Choisissez %s de ce responsable.' % label.lower())
+            pin = self._create_leader(user, kwargs, model, key, label)
+            new_user = request.env[model].sudo().browse(_int(kwargs, key)).mobile_user_id
+            return {
+                'status': 'success',
+                'message': 'Utilisateur %s créé avec le rôle %s' % (name, role),
+                'user': {'id': new_user.id, 'name': new_user.name, 'phone': new_user.phone,
+                         'role': new_user.role, 'pin': pin},
+            }
+        church_id = self._resolve_church_id(user, kwargs)
+        vals = {'name': name, 'phone': phone, 'role': role, 'church_id': church_id}
+        if role == 'evangelist':
+            vals['evangelist_id'] = self._evangelist_for(user, kwargs, name, phone, church_id)
+        new_user = request.env['church.mobile.user'].sudo().create(vals)
         return {
             'status': 'success',
             'message': 'Utilisateur %s créé avec le rôle %s' % (name, role),
@@ -1131,6 +1147,39 @@ class ChurchMobileApi(http.Controller):
                 'pin': new_user._issue_pin(),
             },
         }
+
+    _LEADER_UNITS = {
+        'cell_leader': ('church.prayer.cell', 'prayer_cell_id', 'La cellule'),
+        'group_leader': ('church.age.group', 'age_group_id', 'Le groupe d\'âge'),
+    }
+
+    def _evangelist_for(self, user, kwargs, name, phone, church_id):
+        """La fiche d'évangéliste du compte : celle désignée, sinon celle qui porte
+        ce numéro dans l'église, sinon une nouvelle. Sans elle, un évangéliste ne
+        peut ouvrir aucun suivi."""
+        designated = self._ref('church.evangelist', user, kwargs, 'evangelist_id', 'Évangéliste')
+        if designated:
+            return designated
+        Evangelist = request.env['church.evangelist'].sudo()
+        key = phone_key(phone)
+        same = Evangelist.search([('church_id', '=', church_id)]).filtered(lambda e: phone_key(e.phone) == key)
+        if same:
+            return same[:1].id
+        return Evangelist.with_context(church_skip_mobile_account=True).create({
+            'name': name, 'phone': phone, 'church_id': church_id}).id
+
+    def _role_links(self, user, target, role, kwargs):
+        """Le rattachement qu'exige un rôle ; un rôle sans rattachement est refusé."""
+        if role == 'evangelist':
+            return {'evangelist_id': target.evangelist_id.id or self._evangelist_for(
+                user, kwargs, target.name, target.phone, target.church_id.id)}
+        if role in self._LEADER_UNITS:
+            model, key, label = self._LEADER_UNITS[role]
+            unit_id = self._ref(model, user, kwargs, key, label) or target[key].id
+            if not unit_id:
+                raise ApiInputError('Choisissez %s de ce responsable.' % label.lower())
+            return {key: unit_id}
+        return {}
 
     @http.route('/api/church/admin/update_user', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     @church_endpoint(roles=('super_admin',))
@@ -1146,8 +1195,17 @@ class ChurchMobileApi(http.Controller):
             vals['active'] = _bool(kwargs, 'active')
         if _text(kwargs, 'name'):
             vals['name'] = _text(kwargs, 'name')
+        if vals.get('role') or any(k in kwargs for k in ('prayer_cell_id', 'age_group_id', 'evangelist_id')):
+            vals.update(self._role_links(user, target, vals.get('role') or target.role, kwargs))
         if vals:
             target.write(vals)
+        # Le compte devient le responsable désigné de son unité.
+        if target.role in self._LEADER_UNITS:
+            _model, key, _label = self._LEADER_UNITS[target.role]
+            unit = target[key]
+            if unit and unit.mobile_user_id != target:
+                unit.write({'leader_name': target.name, 'leader_phone': target.phone})
+                unit.mobile_user_id = target
         return {
             'status': 'success',
             'message': 'Utilisateur mis à jour',

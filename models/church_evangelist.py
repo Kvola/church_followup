@@ -37,6 +37,8 @@ class ChurchEvangelist(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         records = super().create(vals_list)
+        if self.env.context.get('church_skip_mobile_account'):
+            return records  # le compte existe déjà : il sera relié par l'appelant
         for rec in records:
             if not rec.phone:
                 continue

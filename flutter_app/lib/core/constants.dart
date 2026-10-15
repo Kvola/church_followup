@@ -20,7 +20,7 @@ class AppConstants {
   static const Map<String, String> stateLabels = {
     'in_progress': 'En cours',
     'integrated': 'Intégré',
-    'abandoned': 'Abandonné',
+    'abandoned': 'Interrompu',
     'extended': 'Prolongé',
     'transferred': 'Transféré',
   };
@@ -44,13 +44,41 @@ class AppConstants {
   static const Map<String, String> memberTypeLabels = {
     'new': 'Nouveau',
     'in_followup': 'En suivi',
+    'interrupted': 'Suivi interrompu',
     'integrated': 'Intégré',
+    'established': 'Fidèle affermi',
     'old_member': 'Ancien membre',
   };
+
+  /// Motifs d'interruption d'un suivi (le serveur en exige un).
+  static const Map<String, String> abandonReasons = {
+    'unreachable': 'Injoignable',
+    'moved': 'A déménagé',
+    'other_church': 'Fréquente une autre église',
+    'not_interested': 'Ne souhaite pas poursuivre',
+    'other': 'Autre raison',
+  };
+
+  /// D'où vient la durée d'un suivi.
+  static const Map<String, String> durationOriginLabels = {
+    'church': "Réglage de l'église",
+    'event': "Événement d'origine",
+    'manual': 'Choix',
+  };
+
+  static const int minFollowupWeeks = 1;
+  static const int maxFollowupWeeks = 26;
 
   static const Map<String, String> genderLabels = {
     'male': 'Homme',
     'female': 'Femme',
+  };
+
+  /// Sexe d'un groupe d'âge (qui peut être mixte, contrairement à une personne).
+  static const Map<String, String> groupGenderLabels = {
+    'male': 'Hommes',
+    'female': 'Femmes',
+    'mixed': 'Mixte',
   };
 
   static const Map<String, String> maritalLabels = {

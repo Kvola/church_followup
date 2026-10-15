@@ -114,7 +114,7 @@ class _GroupCard extends StatelessWidget {
             ListTile(
               dense: true,
               leading: const Icon(Icons.wc, size: 18),
-              title: Text(AppConstants.genderLabels[gender] ?? gender),
+              title: Text(AppConstants.groupGenderLabels[gender] ?? gender),
               contentPadding: EdgeInsets.zero,
             ),
           const Divider(),

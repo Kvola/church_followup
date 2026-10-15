@@ -9,18 +9,32 @@ class ApiException implements Exception {
   final int? statusCode;
   final bool isNetwork;
 
-  ApiException(this.message, {this.statusCode, this.isNetwork = false});
+  /// Code d'erreur renvoyé par le serveur : `auth_required`, `forbidden`,
+  /// `invalid`, `refused`, `duplicate`, `server`…
+  final String? code;
+
+  ApiException(this.message, {this.statusCode, this.isNetwork = false, this.code});
+
+  bool get isSessionExpired => code == 'auth_required';
 
   @override
   String toString() => message;
 }
 
 class ApiService {
+  /// Client HTTP injectable (les tests passent un `MockClient`).
+  ApiService({http.Client? client}) : _client = client ?? http.Client();
+
+  final http.Client _client;
   String _baseUrl = '';
   int? _userId;
   String? _token;
 
   String get baseUrl => _baseUrl;
+
+  /// Appelé quand le serveur répond que la session a expiré : l'app se
+  /// déconnecte au lieu d'afficher des listes vides.
+  void Function(String message)? onSessionExpired;
 
   /// Safely convert a dynamic list from the API to List<Map<String, dynamic>>.
   List<Map<String, dynamic>> _safeList(dynamic value) {
@@ -29,6 +43,26 @@ class ApiService {
         .whereType<Map>()
         .map((e) => Map<String, dynamic>.from(e))
         .toList();
+  }
+
+  /// Un refus du serveur est une erreur à montrer, jamais une liste vide.
+  void _ensureSuccess(dynamic result) {
+    if (result is! Map || result['status'] != 'success') {
+      final message = result is Map ? result['message'] : null;
+      throw ApiException((message ?? 'Erreur serveur').toString(),
+          code: result is Map ? result['code']?.toString() : null);
+    }
+  }
+
+  List<Map<String, dynamic>> _successList(dynamic result, String key) {
+    _ensureSuccess(result);
+    return _safeList(result[key]);
+  }
+
+  Map<String, dynamic> _successMap(dynamic result, String key) {
+    _ensureSuccess(result);
+    final value = result[key];
+    return value is Map ? Map<String, dynamic>.from(value) : <String, dynamic>{};
   }
 
   void configure({required String baseUrl, int? userId, String? token}) {
@@ -55,7 +89,7 @@ class ApiService {
     });
 
     try {
-      final response = await http
+      final response = await _client
           .post(url, headers: {'Content-Type': 'application/json'}, body: body)
           .timeout(AppConstants.requestTimeout);
 
@@ -78,6 +112,11 @@ class ApiService {
 
       final result = decoded['result'];
       if (result == null) throw ApiException('Réponse vide du serveur');
+      if (result is Map && result['code'] == 'auth_required' && _token != null) {
+        final message = (result['message'] ?? 'Session expirée : veuillez vous reconnecter.').toString();
+        onSessionExpired?.call(message);
+        throw ApiException(message, code: 'auth_required');
+      }
       return result;
     } on TimeoutException {
       if (retries < AppConstants.maxRetries) {
@@ -119,24 +158,26 @@ class ApiService {
     return Map<String, dynamic>.from(result);
   }
 
+  /// Ferme la session côté serveur (sans échouer si le réseau manque).
+  Future<void> logout() async {
+    if (_token == null) return;
+    try {
+      await call('/api/church/auth/logout', {});
+    } catch (_) {}
+  }
+
   // ─── Dashboard ─────────────────────────────────────────────────────
 
   Future<Map<String, dynamic>> getDashboard() async {
     final result = await call('/api/church/dashboard', {});
-    if (result['status'] == 'success') {
-      return Map<String, dynamic>.from(result['dashboard']);
-    }
-    throw ApiException(result['message'] ?? 'Erreur serveur');
+    return _successMap(result, 'dashboard');
   }
 
   // ─── Evangelists ───────────────────────────────────────────────────
 
   Future<List<Map<String, dynamic>>> getEvangelists() async {
     final result = await call('/api/church/evangelists', {});
-    if (result['status'] == 'success') {
-      return _safeList(result['evangelists']);
-    }
-    return [];
+    return _successList(result, 'evangelists');
   }
 
   Future<Map<String, dynamic>> createEvangelist(String name, String phone) async {
@@ -151,10 +192,7 @@ class ApiService {
     final params = <String, dynamic>{};
     if (memberType != null) params['member_type'] = memberType;
     final result = await call('/api/church/members', params);
-    if (result['status'] == 'success') {
-      return _safeList(result['members']);
-    }
-    return [];
+    return _successList(result, 'members');
   }
 
   Future<Map<String, dynamic>> createMember(Map<String, dynamic> data) async {
@@ -163,10 +201,7 @@ class ApiService {
 
   Future<Map<String, dynamic>?> getMemberDetail(int memberId) async {
     final result = await call('/api/church/member/detail', {'member_id': memberId});
-    if (result['status'] == 'success') {
-      return Map<String, dynamic>.from(result['member']);
-    }
-    return null;
+    return _successMap(result, 'member');
   }
 
   Future<Map<String, dynamic>> updateMember(int memberId, Map<String, dynamic> data) async {
@@ -181,18 +216,12 @@ class ApiService {
     if (state != null) params['state'] = state;
     if (myOnly) params['my_only'] = true;
     final result = await call('/api/church/followups', params);
-    if (result['status'] == 'success') {
-      return _safeList(result['followups']);
-    }
-    return [];
+    return _successList(result, 'followups');
   }
 
   Future<Map<String, dynamic>?> getFollowupDetail(int followupId) async {
     final result = await call('/api/church/followup/detail', {'followup_id': followupId});
-    if (result['status'] == 'success') {
-      return Map<String, dynamic>.from(result['followup']);
-    }
-    return null;
+    return _successMap(result, 'followup');
   }
 
   Future<Map<String, dynamic>> createFollowup(Map<String, dynamic> data) async {
@@ -209,6 +238,10 @@ class ApiService {
     int? evangelistId,
     int? cellId,
     int? groupId,
+    int? weeks,
+    String? reason,
+    String? note,
+    String? justification,
   }) async {
     final params = <String, dynamic>{
       'followup_id': followupId,
@@ -217,6 +250,10 @@ class ApiService {
     if (evangelistId != null) params['transferred_to_id'] = evangelistId;
     if (cellId != null) params['target_cell_id'] = cellId;
     if (groupId != null) params['target_age_group_id'] = groupId;
+    if (weeks != null) params['weeks'] = weeks;
+    if (reason != null) params['reason'] = reason;
+    if (note != null && note.isNotEmpty) params['note'] = note;
+    if (justification != null && justification.isNotEmpty) params['justification'] = justification;
     return Map<String, dynamic>.from(await call('/api/church/followup/action', params));
   }
 
@@ -224,26 +261,17 @@ class ApiService {
 
   Future<List<Map<String, dynamic>>> getPrayerCells() async {
     final result = await call('/api/church/cells', {});
-    if (result['status'] == 'success') {
-      return _safeList(result['cells']);
-    }
-    return [];
+    return _successList(result, 'cells');
   }
 
   Future<List<Map<String, dynamic>>> getAgeGroups() async {
     final result = await call('/api/church/age_groups', {});
-    if (result['status'] == 'success') {
-      return _safeList(result['age_groups']);
-    }
-    return [];
+    return _successList(result, 'age_groups');
   }
 
   Future<List<Map<String, dynamic>>> getDistricts() async {
     final result = await call('/api/church/districts', {});
-    if (result['status'] == 'success') {
-      return _safeList(result['districts']);
-    }
-    return [];
+    return _successList(result, 'districts');
   }
 
   // ─── Attendance ───────────────────────────────────────────────────
@@ -268,20 +296,14 @@ class ApiService {
 
   Future<List<Map<String, dynamic>>> getCookingRotation() async {
     final result = await call('/api/church/cooking_rotation', {});
-    if (result['status'] == 'success') {
-      return _safeList(result['rotations']);
-    }
-    return [];
+    return _successList(result, 'rotations');
   }
 
   // ─── Users / Admin ────────────────────────────────────────────────
 
   Future<List<Map<String, dynamic>>> getMobileUsers() async {
     final result = await call('/api/church/mobile_users', {});
-    if (result['status'] == 'success') {
-      return _safeList(result['users']);
-    }
-    return [];
+    return _successList(result, 'users');
   }
 
   Future<Map<String, dynamic>> shareCredentials(int targetUserId) async {
@@ -335,10 +357,7 @@ class ApiService {
 
   Future<List<Map<String, dynamic>>> getChurches() async {
     final result = await call('/api/church/churches', {});
-    if (result['status'] == 'success') {
-      return _safeList(result['churches']);
-    }
-    return [];
+    return _successList(result, 'churches');
   }
 
   Future<Map<String, dynamic>> createChurch(Map<String, dynamic> data) async {
@@ -356,10 +375,7 @@ class ApiService {
 
   Future<Map<String, dynamic>?> getChurchDetail(int churchId) async {
     final result = await call('/api/church/churches/detail', {'church_id': churchId});
-    if (result['status'] == 'success') {
-      return Map<String, dynamic>.from(result['church']);
-    }
-    return null;
+    return _successMap(result, 'church');
   }
 
   Future<Map<String, dynamic>> createManager(String name, String phone, int churchId) async {
@@ -378,10 +394,7 @@ class ApiService {
     final result = await call('/api/church/pastors', {
       if (churchId != null) 'church_id': churchId,
     });
-    if (result['status'] == 'success') {
-      return _safeList(result['pastors']);
-    }
-    return [];
+    return _successList(result, 'pastors');
   }
 
   Future<Map<String, dynamic>> createPastor(Map<String, dynamic> data) async {
@@ -407,9 +420,6 @@ class ApiService {
 
   Future<Map<String, dynamic>> getFollowupReport(int evangelistId) async {
     final result = await call('/api/church/report/followup', {'evangelist_id': evangelistId});
-    if (result['status'] == 'success') {
-      return Map<String, dynamic>.from(result['report']);
-    }
-    return {};
+    return _successMap(result, 'report');
   }
 }

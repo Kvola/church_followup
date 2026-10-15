@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../core/constants.dart';
 import '../../core/theme.dart';
 import '../../providers/followup_provider.dart';
 import '../../providers/organization_provider.dart';
@@ -110,7 +111,7 @@ class _ReportScreenState extends State<ReportScreen> {
     try {
       final orgProvider = context.read<OrganizationProvider>();
       final result = await orgProvider.getFollowupReport(_selectedEvangelistId!);
-      if (result.isEmpty || result.keys.every((k) => result[k] == 0 || result[k] == '' || result[k] == null)) {
+      if ((result['followups'] as List? ?? []).isEmpty) {
         setState(() {
           _error = 'Aucune donnée disponible pour cet évangéliste';
           _reportData = null;
@@ -132,14 +133,16 @@ class _ReportScreenState extends State<ReportScreen> {
 
   Widget _buildReportContent(ThemeData theme) {
     final data = _reportData!;
-    final evangelistName = data['evangelist_name'] ?? '';
-    final totalFollowups = data['total_followups'] ?? 0;
-    final activeFollowups = data['active_followups'] ?? 0;
-    final integratedCount = data['integrated_count'] ?? 0;
-    final abandonedCount = data['abandoned_count'] ?? 0;
-    final extendedCount = data['extended_count'] ?? 0;
-    final integrationRate = data['integration_rate'] ?? 0.0;
-    final followups = data['followups'] as List? ?? [];
+    // Le serveur range les chiffres sous « evangelist » ; la liste à côté.
+    final ev = data['evangelist'] is Map ? Map<String, dynamic>.from(data['evangelist']) : <String, dynamic>{};
+    final evangelistName = AppConstants.safeStr(ev['name']);
+    final totalFollowups = ev['total'] ?? 0;
+    final activeFollowups = ev['active'] ?? 0;
+    final integratedCount = ev['integrated'] ?? 0;
+    final abandonedCount = ev['abandoned'] ?? 0;
+    final extendedCount = ev['extended'] ?? 0;
+    final integrationRate = ev['rate'] ?? 0.0;
+    final followups = (data['followups'] as List? ?? []).whereType<Map>().toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -177,7 +180,7 @@ class _ReportScreenState extends State<ReportScreen> {
           children: [
             Expanded(child: _statTile('Prolongés', '$extendedCount', AppColors.extended)),
             const SizedBox(width: 10),
-            Expanded(child: _statTile('Abandonnés', '$abandonedCount', AppColors.abandoned)),
+            Expanded(child: _statTile('Interrompus', '$abandonedCount', AppColors.abandoned)),
           ],
         ),
         const SizedBox(height: 10),
@@ -227,13 +230,13 @@ class _ReportScreenState extends State<ReportScreen> {
           ...followups.map((f) {
             final memberName = f['member_name'] ?? '';
             final state = f['state'] ?? '';
-            final weeksDone = f['weeks_done'] ?? 0;
-            final weeksDuration = f['weeks_duration'] ?? 0;
+            final weeksDone = (f['weeks'] as List? ?? []).length;
+            final weeksDuration = f['duration_weeks'] ?? 0;
             return Card(
               margin: const EdgeInsets.only(bottom: 8),
               child: ListTile(
                 title: Text(memberName, style: const TextStyle(fontWeight: FontWeight.w600)),
-                subtitle: Text('Semaine $weeksDone / $weeksDuration'),
+                subtitle: Text('$weeksDone rapport(s) sur $weeksDuration semaines'),
                 trailing: StateBadge(state: state),
               ),
             );

@@ -154,7 +154,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     _drawerItem(Icons.assessment_outlined, 'Rapports', () => _navigateTo(const ReportScreen())),
                     const Divider(indent: 16, endIndent: 16),
                   ],
-                  _drawerItem(Icons.assignment_outlined, 'Suivis', () => _navigateTo(const FollowupListScreen())),
+                  if (auth.canSeeFollowups)
+                    _drawerItem(Icons.assignment_outlined, 'Suivis', () => _navigateTo(const FollowupListScreen())),
                   _drawerItem(Icons.people_outlined, 'Membres', () => _navigateTo(const MemberListScreen())),
                   _drawerItem(Icons.groups_outlined, 'Cellules de prière', () => _navigateTo(const PrayerCellListScreen())),
                   _drawerItem(Icons.diversity_3_outlined, 'Groupes d\'âge', () => _navigateTo(const AgeGroupListScreen())),
@@ -162,8 +163,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     _drawerItem(Icons.restaurant_outlined, 'Rotation cuisine', () => _navigateTo(const CookingRotationScreen())),
                   ],
                   const Divider(indent: 16, endIndent: 16),
-                  _drawerItem(Icons.checklist_outlined, 'Présence dimanche', () => _navigateTo(const AttendanceSundayScreen())),
-                  _drawerItem(Icons.group_work_outlined, 'Présence cellule', () => _navigateTo(const AttendanceCellScreen())),
+                  if (auth.canPointSunday)
+                    _drawerItem(Icons.checklist_outlined, 'Présence dimanche', () => _navigateTo(const AttendanceSundayScreen())),
+                  if (auth.canPointCell)
+                    _drawerItem(Icons.group_work_outlined, 'Présence cellule', () => _navigateTo(const AttendanceCellScreen())),
                   const Divider(indent: 16, endIndent: 16),
                   _drawerItem(Icons.settings_outlined, 'Paramètres', () => _navigateTo(const SettingsScreen())),
                 ],
@@ -229,8 +232,10 @@ class _MoreScreen extends StatelessWidget {
     items.addAll([
       _QuickAction('Cellules', Icons.groups_outlined, AppColors.inProgress, () => _nav(context, const PrayerCellListScreen())),
       _QuickAction('Groupes', Icons.diversity_3_outlined, AppColors.transferred, () => _nav(context, const AgeGroupListScreen())),
-      _QuickAction('Présence dim.', Icons.checklist_outlined, AppColors.integrated, () => _nav(context, const AttendanceSundayScreen())),
-      _QuickAction('Présence cell.', Icons.group_work_outlined, AppColors.extended, () => _nav(context, const AttendanceCellScreen())),
+      if (auth.canPointSunday)
+        _QuickAction('Présence dim.', Icons.checklist_outlined, AppColors.integrated, () => _nav(context, const AttendanceSundayScreen())),
+      if (auth.canPointCell)
+        _QuickAction('Présence cell.', Icons.group_work_outlined, AppColors.extended, () => _nav(context, const AttendanceCellScreen())),
       _QuickAction('Paramètres', Icons.settings_outlined, Colors.grey, () => _nav(context, const SettingsScreen())),
     ]);
 

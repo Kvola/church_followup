@@ -64,7 +64,7 @@ class _CookingRotationScreenState extends State<CookingRotationScreen> {
                                 ),
                                 child: Icon(Icons.restaurant, color: stateColor, size: 22),
                               ),
-                              title: Text(item['cell_name'] ?? '', style: const TextStyle(fontWeight: FontWeight.w600)),
+                              title: Text(item['prayer_cell_name'] ?? '', style: const TextStyle(fontWeight: FontWeight.w600)),
                               subtitle: Text(item['date'] ?? ''),
                               trailing: Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),

@@ -305,3 +305,60 @@ class TestChurchMobileApi(HttpCase):
                           name='P2', pastor_type='principal')['pastor']
         pastors = self.env['church.pastor'].browse([first['id'], second['id']])
         self.assertEqual(pastors.mapped('pastor_type'), ['assistant', 'principal'])
+
+    # ─── Comptes créés depuis l'app : toujours rattachés (phase H) ────
+
+    def _admin(self):
+        admin = self.env['church.mobile.user'].create({
+            'name': 'Admin', 'phone': '+225 07 00 00 98', 'role': 'super_admin', 'church_id': self.church.id})
+        self.pins[admin.id] = admin._issue_pin()
+        return admin
+
+    def test_created_evangelist_account_gets_its_evangelist_record(self):
+        admin = self._admin()
+        res = self._as(admin, '/api/church/admin/create_user', name='Nouvel Ev', phone='+225 07 00 00 41',
+                       role='evangelist')
+        self.assertEqual(res['status'], 'success', res)
+        account = self.env['church.mobile.user'].browse(res['user']['id'])
+        self.assertTrue(account.evangelist_id, "Sans fiche, il ne pourrait ouvrir aucun suivi")
+        self.assertEqual(account.evangelist_id.church_id, self.church)
+        self.pins[account.id] = res['user']['pin']
+        created = self._as(account, '/api/church/followup/create', member_id=self.m1.id)
+        self.assertEqual(created['status'], 'success', created)
+
+    def test_cell_leader_account_requires_its_cell_and_replaces_the_previous_one(self):
+        admin = self._admin()
+        res = self._as(admin, '/api/church/admin/create_user', name='Chef', phone='+225 07 00 00 42',
+                       role='cell_leader')
+        self.assertEqual(res['code'], 'invalid')
+        old_session = self._login(self.leader)
+        res = self._as(admin, '/api/church/admin/create_user', name='Chef', phone='+225 07 00 00 42',
+                       role='cell_leader', prayer_cell_id=self.cell.id)
+        self.assertEqual(res['status'], 'success', res)
+        self.assertEqual(self.cell.mobile_user_id.id, res['user']['id'])
+        self.assertTrue(res['user']['pin'])
+        self.assertEqual(self._rpc('/api/church/dashboard', **old_session)['code'], 'auth_required')
+
+    def test_role_change_requires_the_matching_link(self):
+        admin = self._admin()
+        manager2 = self.env['church.mobile.user'].create({
+            'name': 'Resp 2', 'phone': '+225 07 00 00 43', 'role': 'manager', 'church_id': self.church.id})
+        res = self._as(admin, '/api/church/admin/update_user', target_user_id=manager2.id, role='cell_leader')
+        self.assertEqual(res['code'], 'invalid')
+        self.assertEqual(manager2.role, 'manager')
+        res = self._as(admin, '/api/church/admin/update_user', target_user_id=manager2.id, role='cell_leader',
+                       prayer_cell_id=self.cell2.id)
+        self.assertEqual(res['status'], 'success', res)
+        self.assertEqual((manager2.prayer_cell_id, self.cell2.mobile_user_id), (self.cell2, manager2))
+        res = self._as(admin, '/api/church/admin/update_user', target_user_id=manager2.id, role='evangelist')
+        self.assertEqual(res['status'], 'success', res)
+        self.assertTrue(manager2.evangelist_id)
+
+    def test_report_and_lists_carry_what_the_app_reads(self):
+        report = self._as(self.manager, '/api/church/report/followup', evangelist_id=self.ev2.id)['report']
+        self.assertIn('extended', report['evangelist'])
+        self.assertEqual(report['followups'][0]['duration_weeks'], self.f2.duration_weeks)
+        listing = self._as(self.manager, '/api/church/followups')['followups']
+        self.assertIn('average_score', listing[0])
+        login = self._rpc('/api/church/auth/login', phone=self.leader.phone, pin=self.pins[self.leader.id])
+        self.assertEqual(login['user']['prayer_cell_name'], self.cell.name)

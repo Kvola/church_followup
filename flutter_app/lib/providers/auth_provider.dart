@@ -6,7 +6,7 @@ import '../core/constants.dart';
 import '../services/api_service.dart';
 
 class AuthProvider extends ChangeNotifier {
-  final ApiService _api = ApiService();
+  final ApiService _api;
   final FlutterSecureStorage _secure = const FlutterSecureStorage();
 
   bool _isAuthenticated = false;
@@ -35,7 +35,25 @@ class AuthProvider extends ChangeNotifier {
   bool get isCellLeader => userRole == 'cell_leader';
   bool get isGroupLeader => userRole == 'group_leader';
 
-  AuthProvider() {
+  // Ce que le serveur autorise à chaque rôle : l'app ne propose rien d'autre.
+  bool get canSeeFollowups => isManager || isEvangelist;
+  bool get canPointSunday => isManager || isEvangelist || isGroupLeader;
+  bool get canPointCell => isManager || isCellLeader;
+
+  /// Durée de suivi par défaut de l'église (semaines), donnée à la connexion.
+  int get defaultFollowupWeeks {
+    final value = _currentUser?['default_followup_weeks'];
+    return value is int && value > 0 ? value : 4;
+  }
+
+  /// Message à montrer sur l'écran de connexion (ex. session expirée).
+  String? _sessionMessage;
+  String? get sessionMessage => _sessionMessage;
+
+  AuthProvider({ApiService? api}) : _api = api ?? ApiService() {
+    _api.onSessionExpired = (message) {
+      if (_isAuthenticated) _endSession(message: message);
+    };
     _loadSession();
   }
 
@@ -74,6 +92,7 @@ class AuthProvider extends ChangeNotifier {
       final result = await _api.login(phone, pin, db);
 
       if (result['status'] == 'success') {
+        _sessionMessage = null;
         _currentUser = Map<String, dynamic>.from(result['user']);
         final token = result['token'] as String?;
         _isAuthenticated = true;
@@ -98,10 +117,17 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  /// Déconnexion voulue : la session est aussi fermée côté serveur.
   Future<void> logout() async {
+    await _api.logout();
+    await _endSession();
+  }
+
+  Future<void> _endSession({String? message}) async {
+    _sessionMessage = message;
     _isAuthenticated = false;
     _currentUser = null;
-    _api.configure(baseUrl: '', userId: null, token: null);
+    _api.configure(baseUrl: _serverUrl, userId: null, token: null);
     await _secure.delete(key: AppConstants.keyUserData);
     await _secure.delete(key: 'auth_token');
     notifyListeners();

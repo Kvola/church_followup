@@ -70,10 +70,10 @@ class SettingsScreen extends StatelessWidget {
               children: [
                 if (userData?['church_name'] != null)
                   _InfoTile(icon: Icons.church_outlined, label: 'Église', value: userData!['church_name']),
-                if (userData?['district_name'] != null)
-                  _InfoTile(icon: Icons.location_on_outlined, label: 'District', value: userData!['district_name']),
-                if (userData?['cell_name'] != null)
-                  _InfoTile(icon: Icons.group_outlined, label: 'Cellule', value: userData!['cell_name']),
+                if (userData?['prayer_cell_name'] != null)
+                  _InfoTile(icon: Icons.group_outlined, label: 'Cellule', value: userData!['prayer_cell_name']),
+                if (userData?['age_group_name'] != null)
+                  _InfoTile(icon: Icons.groups_outlined, label: 'Groupe d\'âge', value: userData!['age_group_name']),
                 _InfoTile(icon: Icons.dns_outlined, label: 'Serveur', value: auth.serverUrl),
               ],
             ),

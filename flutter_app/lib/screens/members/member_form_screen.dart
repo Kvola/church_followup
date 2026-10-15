@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants.dart';
+import '../../core/theme.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/member_provider.dart';
 import '../../providers/organization_provider.dart';
 import '../../widgets/common.dart';
@@ -19,6 +21,9 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
   final _formKey = GlobalKey<FormState>();
   bool _isSaving = false;
   bool _isEdit = false;
+
+  /// Le serveur dit si l'on a la charge de cette personne ; sinon, lecture seule.
+  bool _canEdit = true;
 
   // Controllers
   late final TextEditingController _nameCtrl;
@@ -48,7 +53,7 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
     _phoneCtrl = TextEditingController(text: d['phone'] ?? '');
     _addressCtrl = TextEditingController(text: d['address'] ?? '');
     _professionCtrl = TextEditingController(text: d['profession'] ?? '');
-    _gender = d['gender'] is String ? d['gender'] : null;
+    _gender = AppConstants.genderLabels.containsKey(d['gender']) ? d['gender'] : null;
     _maritalStatus = d['marital_status'] is String ? d['marital_status'] : null;
     _districtId = AppConstants.safeId(d['district_id']);
     _cellId = AppConstants.safeId(d['prayer_cell_id']);
@@ -77,12 +82,13 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
           final detail = context.read<MemberProvider>().currentDetail;
           if (detail != null && mounted) {
             setState(() {
+              _canEdit = detail['can_edit'] != false;
               _nameCtrl.text = detail['name'] ?? _nameCtrl.text;
               _firstNameCtrl.text = detail['first_name'] ?? _firstNameCtrl.text;
               _phoneCtrl.text = detail['phone'] ?? _phoneCtrl.text;
               _addressCtrl.text = detail['address'] ?? _addressCtrl.text;
               _professionCtrl.text = detail['profession'] ?? _professionCtrl.text;
-              _gender = detail['gender'] is String ? detail['gender'] : _gender;
+              _gender = AppConstants.genderLabels.containsKey(detail['gender']) ? detail['gender'] : _gender;
               _maritalStatus = detail['marital_status'] is String ? detail['marital_status'] : _maritalStatus;
 
               _districtId = AppConstants.safeId(detail['district_id']) ?? _districtId;
@@ -137,8 +143,11 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
     };
 
     if (_districtId != null) data['district_id'] = _districtId;
-    if (_cellId != null) data['prayer_cell_id'] = _cellId;
-    if (_ageGroupId != null) data['age_group_id'] = _ageGroupId;
+    // Cellule et groupe : décisions de responsable (le serveur les ignore sinon).
+    if (context.read<AuthProvider>().isManager) {
+      if (_cellId != null) data['prayer_cell_id'] = _cellId;
+      if (_ageGroupId != null) data['age_group_id'] = _ageGroupId;
+    }
     if (_invitedById != null) data['invited_by_id'] = _invitedById;
     if (_mentorId != null) data['mentor_id'] = _mentorId;
     if (_birthday != null) data['date_of_birth'] = _birthday!.toIso8601String().split('T')[0];
@@ -181,14 +190,32 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
   @override
   Widget build(BuildContext context) {
     final org = context.watch<OrganizationProvider>();
+    final isManager = context.watch<AuthProvider>().isManager;
 
     return Scaffold(
-      appBar: AppBar(title: Text(_isEdit ? 'Modifier le membre' : 'Nouveau membre')),
+      appBar: AppBar(title: Text(!_canEdit ? 'Fiche du membre' : _isEdit ? 'Modifier le membre' : 'Nouveau membre')),
       body: Form(
         key: _formKey,
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            if (!_canEdit) ...[
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.extended.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.visibility_outlined, color: AppColors.extended),
+                    SizedBox(width: 10),
+                    Expanded(child: Text('Consultation seulement : vous ne modifiez que les personnes dont vous avez la charge.')),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
             // Identity section
             _SectionTitle('Identité'),
             const SizedBox(height: 8),
@@ -201,7 +228,8 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
             const SizedBox(height: 12),
             TextFormField(
               controller: _firstNameCtrl,
-              decoration: const InputDecoration(labelText: 'Prénom', prefixIcon: Icon(Icons.person_outline)),
+              decoration: const InputDecoration(labelText: 'Prénom *', prefixIcon: Icon(Icons.person_outline)),
+              validator: (v) => (v == null || v.trim().isEmpty) ? 'Requis' : null,
               textCapitalization: TextCapitalization.words,
             ),
             const SizedBox(height: 12),
@@ -216,8 +244,9 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
               children: [
                 Expanded(
                   child: DropdownButtonFormField<String>(
-                    decoration: const InputDecoration(labelText: 'Genre'),
-                    value: _gender,
+                    decoration: const InputDecoration(labelText: 'Sexe *'),
+                    initialValue: _gender,
+                    validator: (v) => v == null ? 'Requis' : null,
                     items: AppConstants.genderLabels.entries
                         .map((e) => DropdownMenuItem(value: e.key, child: Text(e.value)))
                         .toList(),
@@ -273,19 +302,21 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
               onChanged: (v) => setState(() => _districtId = v),
             ),
             const SizedBox(height: 12),
-            DropdownButtonFormField<int>(
-              decoration: const InputDecoration(labelText: 'Cellule de prière', prefixIcon: Icon(Icons.groups_outlined)),
-              value: _validDropdownValue(_cellId, org.cells),
-              items: org.cells.where((c) => c['id'] is int).map((c) => DropdownMenuItem(value: c['id'] as int, child: Text(AppConstants.safeStr(c['name'], '—')))).toList(),
-              onChanged: (v) => setState(() => _cellId = v),
-            ),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<int>(
-              decoration: const InputDecoration(labelText: 'Groupe d\'âge', prefixIcon: Icon(Icons.diversity_3_outlined)),
-              value: _validDropdownValue(_ageGroupId, org.ageGroups),
-              items: org.ageGroups.where((g) => g['id'] is int).map((g) => DropdownMenuItem(value: g['id'] as int, child: Text(AppConstants.safeStr(g['name'], '—')))).toList(),
-              onChanged: (v) => setState(() => _ageGroupId = v),
-            ),
+            if (isManager) ...[
+              DropdownButtonFormField<int>(
+                decoration: const InputDecoration(labelText: 'Cellule de prière', prefixIcon: Icon(Icons.groups_outlined)),
+                value: _validDropdownValue(_cellId, org.cells),
+                items: org.cells.where((c) => c['id'] is int).map((c) => DropdownMenuItem(value: c['id'] as int, child: Text(AppConstants.safeStr(c['name'], '—')))).toList(),
+                onChanged: (v) => setState(() => _cellId = v),
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<int>(
+                decoration: const InputDecoration(labelText: 'Groupe d\'âge', prefixIcon: Icon(Icons.diversity_3_outlined)),
+                value: _validDropdownValue(_ageGroupId, org.ageGroups),
+                items: org.ageGroups.where((g) => g['id'] is int).map((g) => DropdownMenuItem(value: g['id'] as int, child: Text(AppConstants.safeStr(g['name'], '—')))).toList(),
+                onChanged: (v) => setState(() => _ageGroupId = v),
+              ),
+            ],
             const SizedBox(height: 20),
 
             // Inviter & Mentor
@@ -337,7 +368,7 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
             SizedBox(
               height: 52,
               child: FilledButton(
-                onPressed: _isSaving ? null : _save,
+                onPressed: _isSaving || !_canEdit ? null : _save,
                 child: _isSaving
                     ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
                     : Text(_isEdit ? 'Mettre à jour' : 'Créer le membre', style: const TextStyle(fontSize: 16)),
