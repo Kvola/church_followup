@@ -4,6 +4,7 @@ from dateutil.relativedelta import relativedelta
 from psycopg2 import IntegrityError
 
 from odoo.exceptions import ValidationError
+from odoo import fields
 from odoo.tests.common import TransactionCase, tagged
 from odoo.tools import mute_logger
 
@@ -138,14 +139,14 @@ class TestChurchIntegrity(TransactionCase):
     # ── Fin de période signalée une fois ───────────────────────────────
 
     def test_end_notice_posted_once_and_again_after_extension(self):
-        followup = self._followup(start_date=date.today() - relativedelta(weeks=5))
+        followup = self._followup(start_date=fields.Date.context_today(self.env.user) - relativedelta(weeks=5))
         Followup = self.env['church.followup']
         before = len(followup.message_ids)
         Followup._cron_check_followup_end()
         Followup._cron_check_followup_end()
         self.assertEqual(len(followup.message_ids) - before, 1)
 
-        followup.write({'start_date': date.today() - relativedelta(weeks=9)})
+        followup.write({'start_date': fields.Date.context_today(self.env.user) - relativedelta(weeks=9)})
         followup.action_extend()  # 4 + 4 = 8 semaines, toujours échu
         before = len(followup.message_ids)
         Followup._cron_check_followup_end()

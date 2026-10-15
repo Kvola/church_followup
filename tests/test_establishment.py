@@ -2,6 +2,7 @@ from datetime import date
 
 from dateutil.relativedelta import relativedelta
 
+from odoo import fields
 from odoo.exceptions import UserError
 from odoo.tests.common import TransactionCase, tagged
 
@@ -44,7 +45,7 @@ class TestEstablishment(TransactionCase):
 
     def test_integration_plans_two_checkpoints(self):
         member = self._integrated()
-        today = date.today()
+        today = fields.Date.context_today(self.church)
         self.assertEqual(sorted(member.checkpoint_ids.mapped('due_date')),
                          [today + relativedelta(months=3), today + relativedelta(months=6)])
 
@@ -54,14 +55,14 @@ class TestEstablishment(TransactionCase):
         self.assertEqual(member.member_type, 'integrated')
         self._checkpoint(member, '6m').action_record('favorable')
         self.assertEqual(member.member_type, 'established')
-        self.assertEqual(member.established_date, date.today())
+        self.assertEqual(member.established_date, fields.Date.context_today(self.church))
 
     def test_unfavorable_plans_a_catchup_one_month_later(self):
         member = self._integrated()
         self._checkpoint(member, '3m').action_record('unfavorable', notes='Absente depuis 5 semaines')
         catchup = self._checkpoint(member, '3m')
         self.assertTrue(catchup.is_catchup)
-        self.assertEqual(catchup.due_date, date.today() + relativedelta(months=1))
+        self.assertEqual(catchup.due_date, fields.Date.context_today(self.church) + relativedelta(months=1))
         self.assertFalse(member.reopen_suggested, "Un seul défavorable : on rattrape d'abord")
 
     def test_two_unfavorable_in_a_row_suggest_reopening(self):
@@ -99,17 +100,17 @@ class TestEstablishment(TransactionCase):
 
     def test_cell_leader_does_due_checkpoints_of_his_cell(self):
         member = self._integrated()
-        later = date.today() + relativedelta(months=3)
+        later = fields.Date.context_today(self.church) + relativedelta(months=3)
         items = self.leader._todo_items(later)
         self.assertEqual([i['member_id'] for i in items if i['kind'] == 'checkpoint_due'], [member.id])
-        self.assertNotIn('checkpoint_due', [i['kind'] for i in self.leader._todo_items(date.today())],
+        self.assertNotIn('checkpoint_due', [i['kind'] for i in self.leader._todo_items(fields.Date.context_today(self.church))],
                          "Pas avant l'échéance")
         self.assertNotIn('checkpoint_due', [i['kind'] for i in self.manager._todo_items(later)],
                          "Le responsable n'intervient qu'à défaut de responsable de cellule")
 
     def test_manager_does_checkpoints_when_the_cell_has_no_leader(self):
         member = self._integrated(cell=False)
-        later = date.today() + relativedelta(months=3)
+        later = fields.Date.context_today(self.church) + relativedelta(months=3)
         self.assertIn(member.id, [i['member_id'] for i in self.manager._todo_items(later)
                                   if i['kind'] == 'checkpoint_due'])
         self.assertIn('contrôle(s) à faire', self.manager._todo_summary(self.manager._todo_items(later)))

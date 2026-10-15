@@ -5,6 +5,12 @@
         <field name="model">church.pastor</field>
         <field name="arch" type="xml">
             <form string="Pasteur">
+                <header>
+                    <button name="action_set_principal" string="Désigner pasteur principal" type="object"
+                            class="btn-primary" icon="fa-star"
+                            invisible="not id or pastor_type == 'principal' or not active"
+                            confirm="Le pasteur principal actuel deviendra pasteur assistant. Continuer ?"/>
+                </header>
                 <sheet>
                     <field name="photo" widget="image" class="oe_avatar" options="{'preview_image': 'photo', 'size': [128, 128]}"/>
                     <div class="oe_title">
@@ -12,7 +18,7 @@
                     </div>
                     <group>
                         <group string="Informations">
-                            <field name="pastor_type" widget="radio"/>
+                            <field name="pastor_type" widget="radio" readonly="id"/>
                             <field name="phone" widget="phone"/>
                             <field name="start_date"/>
                             <field name="active" widget="boolean_toggle"/>

@@ -23,7 +23,12 @@ class ChurchMember(models.Model):
     gender = fields.Selection([
         ('male', 'Homme'),
         ('female', 'Femme'),
-    ], string='Sexe', required=True)
+    ], string='Sexe',
+        help="Peut manquer sur une fiche venue d'ailleurs (import, événement) : elle est "
+             "alors signalée « à compléter » plutôt que de recevoir un sexe inventé.")
+    to_complete = fields.Boolean(
+        string='À compléter', compute='_compute_to_complete', store=True,
+        help="Une information indispensable manque (le sexe, qui oriente le groupe d'âge).")
     date_of_birth = fields.Date(string='Date de naissance')
     age = fields.Integer(compute='_compute_age', store=True, string='Âge')
     profession = fields.Char(string='Profession')
@@ -152,6 +157,11 @@ class ChurchMember(models.Model):
             'target': 'new',
             'context': {'default_member_ids': self.ids},
         }
+
+    @api.depends('gender')
+    def _compute_to_complete(self):
+        for rec in self:
+            rec.to_complete = not rec.gender
 
     @api.depends('name', 'first_name')
     def _compute_display_name_custom(self):

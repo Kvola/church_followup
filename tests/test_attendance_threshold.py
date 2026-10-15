@@ -3,6 +3,7 @@ from datetime import date
 from dateutil.relativedelta import relativedelta
 
 from odoo.exceptions import UserError
+from odoo import fields
 from odoo.tests.common import TransactionCase, tagged
 
 
@@ -23,7 +24,7 @@ class TestAttendanceThreshold(TransactionCase):
         cls.member = cls.env['church.member'].create({
             'name': 'N', 'first_name': 'P', 'gender': 'male', 'church_id': cls.church.id})
         # Suivi de 4 semaines commencé il y a 4 semaines : tout est écoulé.
-        cls.start = date.today() - relativedelta(weeks=4)
+        cls.start = fields.Date.context_today(cls.env.user) - relativedelta(weeks=4)
         cls.followup = cls.env['church.followup'].create({
             'church_id': cls.church.id, 'evangelist_id': cls.ev.id, 'member_id': cls.member.id,
             'start_date': cls.start, 'duration_weeks': 4,
@@ -107,8 +108,8 @@ class TestAttendanceThreshold(TransactionCase):
             'church_id': self.church.id, 'evangelist_id': self.ev.id,
             'member_id': self.env['church.member'].create({
                 'name': 'J', 'first_name': 'J', 'gender': 'female', 'church_id': self.church.id}).id,
-            'start_date': date.today(), 'duration_weeks': 8,
+            'start_date': fields.Date.context_today(self.env.user), 'duration_weeks': 8,
         })
         self.env['church.attendance.sunday'].create({
-            'church_id': self.church.id, 'member_id': young.member_id.id, 'date': date.today()})
+            'church_id': self.church.id, 'member_id': young.member_id.id, 'date': fields.Date.context_today(self.env.user)})
         self.assertEqual((young.elapsed_weeks, young.attendance_rate), (1, 100))

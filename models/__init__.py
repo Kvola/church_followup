@@ -4,6 +4,7 @@ from . import church_pastor
 from . import church_district
 from . import church_member
 from . import church_mobile_user
+from . import church_leader_mixin
 from . import church_evangelist
 from . import church_followup
 from . import church_followup_week

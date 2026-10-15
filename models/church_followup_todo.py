@@ -102,6 +102,14 @@ class ChurchMobileUser(models.Model):
                 'title': _('À attribuer : %s') % member.display_name,
                 'detail': member.proposed_followup_label,
             })
+        incomplete = self.env['church.member'].sudo().search_count(
+            [('to_complete', '=', True)] + ([('church_id', '=', self.church_id.id)] if self.church_id else []))
+        if incomplete:
+            items.append({
+                'kind': 'to_complete', 'count': incomplete,
+                'title': _('%s fiche(s) à compléter') % incomplete,
+                'detail': _('Le sexe manque : il oriente le choix du groupe d\'âge.'),
+            })
         late = {}
         for f in followups:
             overdue = len(f._overdue_report_weeks(today))
@@ -121,7 +129,7 @@ class ChurchMobileUser(models.Model):
         items = self._todo_items() if items is None else items
         counts = {}
         for item in items:
-            counts[item['kind']] = counts.get(item['kind'], 0) + 1
+            counts[item['kind']] = counts.get(item['kind'], 0) + item.get('count', 1)
         return ', '.join(label % counts[kind] for kind, label in self._todo_labels() if counts.get(kind))
 
     def _todo_labels(self):
@@ -131,4 +139,5 @@ class ChurchMobileUser(models.Model):
             ('report_overdue', _('%s rapport(s) en retard')),
             ('to_assign', _('%s personne(s) à attribuer')),
             ('evangelist_late', _('%s évangéliste(s) en retard')),
+            ('to_complete', _('%s fiche(s) à compléter')),
         ]

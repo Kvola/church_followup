@@ -1,4 +1,5 @@
-from odoo import api, fields, models
+from odoo import _, api, fields, models
+from odoo.exceptions import UserError
 
 
 class ChurchPastor(models.Model):
@@ -27,16 +28,28 @@ class ChurchPastor(models.Model):
         'Ce pasteur est déjà enregistré dans cette église.',
     )
 
-    @api.constrains('pastor_type', 'church_id')
-    def _check_principal_unique(self):
-        for rec in self:
-            if rec.pastor_type == 'principal' and rec.active:
-                existing = self.search([
-                    ('church_id', '=', rec.church_id.id),
-                    ('pastor_type', '=', 'principal'),
-                    ('active', '=', True),
-                    ('id', '!=', rec.id),
-                ])
-                if existing:
-                    # Demote existing principal to assistant
-                    existing.write({'pastor_type': 'assistant'})
+    # Un seul pasteur principal actif par église, garanti par la base même en
+    # cas d'écritures simultanées. Le changer passe par action_set_principal.
+    _one_principal_per_church = models.UniqueIndex(
+        "(church_id) WHERE pastor_type = 'principal' AND active IS TRUE",
+        "Cette église a déjà un pasteur principal actif. Utilisez « Désigner pasteur "
+        "principal » sur le nouveau : l'actuel deviendra pasteur assistant.",
+    )
+
+    def action_set_principal(self):
+        """Désigne ce pasteur comme principal ; l'actuel devient assistant."""
+        self.ensure_one()
+        if not self.active:
+            raise UserError(_("Un pasteur archivé ne peut pas être désigné pasteur principal."))
+        if self.pastor_type == 'principal':
+            return
+        current = self.search([('church_id', '=', self.church_id.id), ('pastor_type', '=', 'principal'),
+                               ('active', '=', True), ('id', '!=', self.id)])
+        current.write({'pastor_type': 'assistant'})
+        # L'index n'admet qu'un principal à la fois : la rétrogradation doit
+        # atteindre la base AVANT la promotion (Odoo n'ordonne pas ses écritures).
+        current.flush_recordset(['pastor_type'])
+        self.pastor_type = 'principal'
+        self.church_id.message_post(body=_(
+            "%(new)s devient pasteur principal%(previous)s.", new=self.name,
+            previous=_(" (succède à %s)") % ', '.join(current.mapped('name')) if current else ''))

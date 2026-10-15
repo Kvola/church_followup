@@ -32,7 +32,7 @@
                         <group string="Identité">
                             <field name="phone" widget="phone"/>
                             <field name="email" widget="email"/>
-                            <field name="gender"/>
+                            <field name="gender" required="1"/>
                             <field name="date_of_birth"/>
                             <field name="age"/>
                             <field name="profession"/>
@@ -222,6 +222,7 @@
                 <filter name="filter_male" string="Hommes" domain="[('gender', '=', 'male')]"/>
                 <filter name="filter_female" string="Femmes" domain="[('gender', '=', 'female')]"/>
                 <separator/>
+                <filter name="filter_to_complete" string="À compléter" domain="[('to_complete', '=', True)]"/>
                 <filter name="filter_no_cell" string="Sans cellule" domain="[('prayer_cell_id', '=', False)]"/>
                 <filter name="filter_no_group" string="Sans groupe" domain="[('age_group_id', '=', False)]"/>
                 <group>

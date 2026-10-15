@@ -239,7 +239,7 @@ class ChurchFollowup(models.Model):
                 'member_type': 'integrated',
                 'prayer_cell_id': rec.target_cell_id.id,
                 'age_group_id': rec.target_age_group_id.id,
-                'integration_date': fields.Date.today(),
+                'integration_date': fields.Date.context_today(rec),
             })
 
     def action_abandon(self, reason=None, note=None):

@@ -7,15 +7,14 @@ from .church_tools import check_same_church
 class ChurchPrayerCell(models.Model):
     _name = 'church.prayer.cell'
     _description = 'Cellule de prière'
-    _inherit = ['mail.thread']
+    _inherit = ['mail.thread', 'church.leader.mixin']
+    _leader_role = 'cell_leader'
+    _leader_link_field = 'prayer_cell_id'
     _order = 'name'
 
     name = fields.Char(string='Nom de la cellule', required=True, tracking=True)
     church_id = fields.Many2one('church.church', string='Église', required=True, ondelete='cascade')
     district_ids = fields.Many2many('church.district', string='Quartiers couverts')
-    leader_name = fields.Char(string='Responsable')
-    leader_phone = fields.Char(string='Téléphone du responsable')
-    mobile_user_id = fields.Many2one('church.mobile.user', string='Compte mobile responsable', readonly=True)
 
     # Horaire
     meeting_day = fields.Selection([
@@ -54,19 +53,3 @@ class ChurchPrayerCell(models.Model):
             'view_mode': 'list,form',
             'domain': [('prayer_cell_id', '=', self.id)],
         }
-
-    def action_create_leader_account(self):
-        """Créer un compte mobile pour le responsable de cellule."""
-        self.ensure_one()
-        if self.mobile_user_id:
-            return
-        if not self.leader_phone:
-            raise UserError(_('Veuillez renseigner le téléphone du responsable avant de créer le compte.'))
-        mobile_user = self.env['church.mobile.user'].create({
-            'name': self.leader_name or self.name,
-            'phone': self.leader_phone,
-            'role': 'cell_leader',
-            'church_id': self.church_id.id,
-            'prayer_cell_id': self.id,
-        })
-        self.mobile_user_id = mobile_user.id

@@ -390,7 +390,8 @@ class ChurchMobileApi(http.Controller):
             'name': m.name,
             'first_name': m.first_name,
             'phone': m.phone or '',
-            'gender': m.gender,
+            'gender': m.gender or '',
+            'to_complete': m.to_complete,
             'district_id': m.district_id.id or False,
             'district_name': m.district_id.name or '',
             'member_type': m.member_type,
@@ -538,7 +539,8 @@ class ChurchMobileApi(http.Controller):
                 'name': member.name,
                 'first_name': member.first_name or '',
                 'phone': member.phone or '',
-                'gender': member.gender,
+                'gender': member.gender or '',
+                'to_complete': member.to_complete,
                 'date_of_birth': str(member.date_of_birth) if member.date_of_birth else '',
                 'address': member.address or '',
                 'profession': member.profession or '',
@@ -1212,12 +1214,10 @@ class ChurchMobileApi(http.Controller):
         for pd in pastors:
             if not isinstance(pd, dict) or not _text(pd, 'name'):
                 continue
-            request.env['church.pastor'].sudo().create({
+            self._create_pastor(church, {
                 'name': _text(pd, 'name'),
                 'phone': _text(pd, 'phone') or False,
-                'pastor_type': _choice('church.pastor', 'pastor_type', pd.get('pastor_type') or 'assistant', 'type'),
-                'church_id': church.id,
-            })
+            }, _choice('church.pastor', 'pastor_type', pd.get('pastor_type') or 'assistant', 'type'))
         return {
             'status': 'success',
             'message': 'Église « %s » créée avec succès' % church.name,
@@ -1348,14 +1348,11 @@ class ChurchMobileApi(http.Controller):
     def create_pastor(self, user, **kwargs):
         """Créer un pasteur (super_admin uniquement)."""
         church = self._get_church(kwargs)
-        pastor = request.env['church.pastor'].sudo().create({
+        pastor = self._create_pastor(church, {
             'name': _text(kwargs, 'name', True, 'nom'),
             'phone': _text(kwargs, 'phone') or False,
-            'pastor_type': _choice('church.pastor', 'pastor_type',
-                                   kwargs.get('pastor_type') or 'assistant', 'type'),
-            'church_id': church.id,
             'start_date': _date(kwargs, 'start_date', 'date d\'entrée en fonction'),
-        })
+        }, _choice('church.pastor', 'pastor_type', kwargs.get('pastor_type') or 'assistant', 'type'))
         return {
             'status': 'success',
             'message': 'Pasteur « %s » ajouté à %s' % (pastor.name, church.name),
@@ -1367,6 +1364,15 @@ class ChurchMobileApi(http.Controller):
                 'church_id': church.id,
             },
         }
+
+    @staticmethod
+    def _create_pastor(church, vals, pastor_type):
+        """Crée un pasteur ; « principal » passe par la désignation explicite."""
+        pastor = request.env['church.pastor'].sudo().create(
+            dict(vals, church_id=church.id, pastor_type='assistant'))
+        if pastor_type == 'principal':
+            pastor.action_set_principal()
+        return pastor
 
     def _get_pastor(self, kwargs):
         pastor = request.env['church.pastor'].sudo().with_context(active_test=False).browse(
@@ -1385,14 +1391,17 @@ class ChurchMobileApi(http.Controller):
             vals['name'] = _text(kwargs, 'name', True, 'nom')
         if 'phone' in kwargs:
             vals['phone'] = _text(kwargs, 'phone') or False
-        if 'pastor_type' in kwargs:
-            vals['pastor_type'] = _choice('church.pastor', 'pastor_type', kwargs['pastor_type'], 'type')
+        new_type = _choice('church.pastor', 'pastor_type', kwargs.get('pastor_type'), 'type')
+        if new_type == 'assistant':
+            vals['pastor_type'] = 'assistant'
         if 'start_date' in kwargs:
             vals['start_date'] = _date(kwargs, 'start_date', 'date d\'entrée en fonction')
         if 'active' in kwargs:
             vals['active'] = _bool(kwargs, 'active')
         if vals:
             pastor.write(vals)
+        if new_type == 'principal':
+            pastor.action_set_principal()
         return {'status': 'success', 'message': 'Pasteur mis à jour'}
 
     @http.route('/api/church/pastors/delete', type='jsonrpc', auth='public', methods=['POST'], csrf=False)

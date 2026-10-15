@@ -282,3 +282,26 @@ class TestChurchMobileApi(HttpCase):
         res = self._as(self.leader, '/api/church/checkpoint/save', checkpoint_id=other.id, result='favorable')
         self.assertEqual(res['status'], 'error', "Une autre cellule que la sienne")
         self.assertEqual(self._as(self.ev1.mobile_user_id, '/api/church/checkpoints')['code'], 'forbidden')
+
+    # ─── Responsables et pasteurs (phase G) ───────────────────────────
+
+    def test_replacing_cell_leader_through_api(self):
+        old_session = self._login(self.leader)
+        res = self._as(self.manager, '/api/church/cell_leader/create', prayer_cell_id=self.cell.id,
+                       name='Nouveau Chef', phone='+225 07 00 00 31')
+        self.assertEqual(res['status'], 'success', res)
+        self.assertTrue(res['pin'])
+        self.assertEqual(self._rpc('/api/church/dashboard', **old_session)['code'], 'auth_required',
+                         "L'ancien responsable n'a plus accès")
+        self.assertEqual(self.cell.mobile_user_id.phone_key, '22507000031')
+
+    def test_pastor_principal_through_api(self):
+        admin = self.env['church.mobile.user'].create({
+            'name': 'Admin', 'phone': '+225 07 00 00 99', 'role': 'super_admin'})
+        self.pins[admin.id] = admin._issue_pin()
+        first = self._as(admin, '/api/church/pastors/create', church_id=self.church.id,
+                         name='P1', pastor_type='principal')['pastor']
+        second = self._as(admin, '/api/church/pastors/create', church_id=self.church.id,
+                          name='P2', pastor_type='principal')['pastor']
+        pastors = self.env['church.pastor'].browse([first['id'], second['id']])
+        self.assertEqual(pastors.mapped('pastor_type'), ['assistant', 'principal'])
