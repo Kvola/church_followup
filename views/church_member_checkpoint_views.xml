@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="view_church_member_checkpoint_form" model="ir.ui.view">
+        <field name="name">church.member.checkpoint.form</field>
+        <field name="model">church.member.checkpoint</field>
+        <field name="arch" type="xml">
+            <form string="Point de contrôle">
+                <header>
+                    <button name="action_record_favorable" string="Favorable" type="object"
+                            class="btn-primary" icon="fa-thumbs-up" invisible="state != 'planned'"/>
+                    <button name="action_record_unfavorable" string="Défavorable" type="object"
+                            class="btn-danger" icon="fa-thumbs-down" invisible="state != 'planned'"
+                            confirm="Un rattrapage sera planifié dans un mois et le responsable alerté. Continuer ?"/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <div class="oe_title"><h1><field name="display_name" readonly="1"/></h1></div>
+                    <group>
+                        <group string="Contrôle">
+                            <field name="member_id" readonly="1"/>
+                            <field name="church_id" invisible="1"/>
+                            <field name="prayer_cell_id"/>
+                            <field name="milestone" readonly="1"/>
+                            <field name="is_catchup" invisible="not is_catchup"/>
+                            <field name="due_date"/>
+                        </group>
+                        <group string="Présence (90 derniers jours)">
+                            <field name="service_count"/>
+                            <field name="cell_count"/>
+                        </group>
+                    </group>
+                    <group string="Résultat" invisible="state != 'done'">
+                        <field name="result"/>
+                        <field name="done_date"/>
+                        <field name="done_by"/>
+                    </group>
+                    <field name="notes" placeholder="Observations : assiduité, besoins, baptême envisagé…"/>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_church_member_checkpoint_list" model="ir.ui.view">
+        <field name="name">church.member.checkpoint.list</field>
+        <field name="model">church.member.checkpoint</field>
+        <field name="arch" type="xml">
+            <list decoration-danger="state == 'planned' and due_date &lt; current_date"
+                  decoration-success="result == 'favorable'" decoration-warning="result == 'unfavorable'">
+                <field name="due_date"/>
+                <field name="member_id"/>
+                <field name="prayer_cell_id"/>
+                <field name="milestone"/>
+                <field name="is_catchup" optional="show"/>
+                <field name="state" widget="badge"/>
+                <field name="result" optional="show"/>
+                <field name="church_id" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_church_member_checkpoint_search" model="ir.ui.view">
+        <field name="name">church.member.checkpoint.search</field>
+        <field name="model">church.member.checkpoint</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="member_id"/>
+                <field name="prayer_cell_id"/>
+                <filter name="filter_due" string="À faire (échus)"
+                        domain="[('state', '=', 'planned'), ('due_date', '&lt;=', context_today().strftime('%Y-%m-%d'))]"/>
+                <filter name="filter_planned" string="Planifiés" domain="[('state', '=', 'planned')]"/>
+                <filter name="filter_unfavorable" string="Défavorables" domain="[('result', '=', 'unfavorable')]"/>
+                <group>
+                    <filter name="group_cell" string="Cellule" context="{'group_by': 'prayer_cell_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_church_member_checkpoint" model="ir.actions.act_window">
+        <field name="name">Points de contrôle</field>
+        <field name="res_model">church.member.checkpoint</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'search_default_filter_planned': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Aucun point de contrôle prévu</p>
+            <p>À chaque intégration, deux contrôles sont planifiés, à 3 et 6 mois. Tous deux
+               favorables, la personne devient « Fidèle affermi(e) ».</p>
+        </field>
+    </record>
+
+    <record id="action_church_member_established" model="ir.actions.act_window">
+        <field name="name">Fidèles affermis</field>
+        <field name="res_model">church.member</field>
+        <field name="view_mode">list,kanban,form</field>
+        <field name="domain">[('member_type', '=', 'established')]</field>
+    </record>
+</odoo>

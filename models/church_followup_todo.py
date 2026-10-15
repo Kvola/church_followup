@@ -122,10 +122,13 @@ class ChurchMobileUser(models.Model):
         counts = {}
         for item in items:
             counts[item['kind']] = counts.get(item['kind'], 0) + 1
-        labels = (
+        return ', '.join(label % counts[kind] for kind, label in self._todo_labels() if counts.get(kind))
+
+    def _todo_labels(self):
+        """(type de tâche, libellé « %s … ») dans l'ordre du résumé ; extensible."""
+        return [
             ('decision_due', _('%s décision(s) à prendre')),
             ('report_overdue', _('%s rapport(s) en retard')),
             ('to_assign', _('%s personne(s) à attribuer')),
             ('evangelist_late', _('%s évangéliste(s) en retard')),
-        )
-        return ', '.join(label % counts[kind] for kind, label in labels if counts.get(kind))
+        ]

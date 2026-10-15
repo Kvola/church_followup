@@ -258,3 +258,27 @@ class TestChurchMobileApi(HttpCase):
         self.assertEqual(interrupted[self.m2.id]['abandon_reason'], 'unreachable')
         journey = self._as(self.manager, '/api/church/member/detail', member_id=self.m2.id)['member']['journey']
         self.assertEqual([(j['state'], j['abandon_note']) for j in journey], [('abandoned', 'Numéro coupé')])
+
+    # ─── Points de contrôle (phase F) ─────────────────────────────────
+
+    def test_cell_leader_records_checkpoints_of_own_cell_only(self):
+        self.church.integration_min_attendance = 0
+        group = self.env['church.age.group'].create({
+            'name': 'G', 'church_id': self.church.id, 'group_type': 'youth', 'gender': 'mixed'})
+        f2 = self.f2
+        f2.write({'target_cell_id': self.cell.id, 'target_age_group_id': group.id})
+        f2.action_integrate()
+        mine = self.m2.checkpoint_ids.filtered(lambda c: c.milestone == '3m')
+        listing = self._as(self.leader, '/api/church/checkpoints')['checkpoints']
+        self.assertEqual([c['id'] for c in listing if c['member_id'] == self.m2.id], self.m2.checkpoint_ids.ids)
+
+        res = self._as(self.leader, '/api/church/checkpoint/save', checkpoint_id=mine.id,
+                       result='favorable', baptism_date='2026-12-06', notes='Assidue')
+        self.assertEqual(res['status'], 'success', res)
+        self.assertEqual(str(self.m2.baptism_date), '2026-12-06')
+
+        self.m2.prayer_cell_id = self.cell2
+        other = self.m2.checkpoint_ids.filtered(lambda c: c.milestone == '6m')
+        res = self._as(self.leader, '/api/church/checkpoint/save', checkpoint_id=other.id, result='favorable')
+        self.assertEqual(res['status'], 'error', "Une autre cellule que la sienne")
+        self.assertEqual(self._as(self.ev1.mobile_user_id, '/api/church/checkpoints')['code'], 'forbidden')

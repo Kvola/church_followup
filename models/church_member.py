@@ -65,6 +65,7 @@ class ChurchMember(models.Model):
         ('in_followup', 'En suivi'),
         ('interrupted', 'Suivi interrompu'),
         ('integrated', 'Intégré(e)'),
+        ('established', 'Fidèle affermi(e)'),
         ('old_member', 'Ancien membre'),
     ], string='Type', default='new', tracking=True)
 

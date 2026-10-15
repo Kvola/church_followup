@@ -36,6 +36,18 @@
               action="action_church_member_new"
               sequence="30"/>
 
+    <menuitem id="menu_church_member_checkpoint"
+              name="Points de contrôle"
+              parent="menu_church_evangelism"
+              action="action_church_member_checkpoint"
+              sequence="40"/>
+
+    <menuitem id="menu_church_member_established"
+              name="Fidèles affermis"
+              parent="menu_church_evangelism"
+              action="action_church_member_established"
+              sequence="45"/>
+
     <menuitem id="menu_church_member_interrupted"
               name="Suivis interrompus"
               parent="menu_church_evangelism"

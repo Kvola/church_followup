@@ -554,6 +554,12 @@ class ChurchMobileApi(http.Controller):
                 'mentor_name': member.mentor_id.display_name_custom or '',
                 'can_edit': self._can_edit_member(user, member),
                 'journey': self._journey(member),
+                'baptism_date': str(member.baptism_date) if member.baptism_date else '',
+                'integration_date': str(member.integration_date) if member.integration_date else '',
+                'established_date': str(member.established_date) if member.established_date else '',
+                'reopen_suggested': member.reopen_suggested,
+                'checkpoints': [self._checkpoint_json(c) for c in member.checkpoint_ids
+                                if c.state != 'cancelled'],
                 'planned_followup_weeks': member.planned_followup_weeks,
                 'proposed_followup_weeks': member.proposed_followup_weeks,
                 'proposed_followup_origin': member.proposed_followup_origin,
@@ -758,6 +764,66 @@ class ChurchMobileApi(http.Controller):
         items = user._todo_items()
         return {'status': 'success', 'count': len(items), 'summary': user._todo_summary(items),
                 'items': items}
+
+    # ─── Points de contrôle après l'intégration ───────────────────────
+
+    @staticmethod
+    def _checkpoint_json(c):
+        return {
+            'id': c.id,
+            'member_id': c.member_id.id,
+            'member_name': c.member_id.display_name,
+            'member_phone': c.member_id.phone or '',
+            'prayer_cell_name': c.prayer_cell_id.name or '',
+            'milestone': c.milestone,
+            'is_catchup': c.is_catchup,
+            'due_date': str(c.due_date),
+            'state': c.state,
+            'result': c.result or '',
+            'done_date': str(c.done_date) if c.done_date else '',
+            'service_count': c.service_count,
+            'cell_count': c.cell_count,
+            'notes': c.notes or '',
+            'baptized': bool(c.member_id.baptism_date),
+            'has_mentor': bool(c.member_id.mentor_id),
+        }
+
+    def _checkpoint_domain(self, user, kwargs):
+        domain = self._church_domain(user, kwargs)
+        if user.role == 'cell_leader':
+            domain.append(('prayer_cell_id', '=', user.prayer_cell_id.id))
+        return domain
+
+    @http.route('/api/church/checkpoints', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
+    @church_endpoint(roles=('super_admin', 'manager', 'cell_leader'))
+    def get_checkpoints(self, user, **kwargs):
+        """Contrôles à faire (par défaut) ou faits, dans le périmètre de l'utilisateur."""
+        state = _choice('church.member.checkpoint', 'state', kwargs.get('state') or 'planned', 'état')
+        checkpoints = request.env['church.member.checkpoint'].sudo().search(
+            self._checkpoint_domain(user, kwargs) + [('state', '=', state)], order='due_date')
+        return {'status': 'success', 'checkpoints': [self._checkpoint_json(c) for c in checkpoints]}
+
+    @http.route('/api/church/checkpoint/save', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
+    @church_endpoint(roles=('super_admin', 'manager', 'cell_leader'))
+    def save_checkpoint(self, user, **kwargs):
+        """Enregistre le résultat d'un contrôle ; peut aussi noter le baptême et le mentor."""
+        checkpoint = self._get('church.member.checkpoint', user,
+                               _int(kwargs, 'checkpoint_id', True, 'contrôle'), 'Contrôle')
+        if not checkpoint.filtered_domain(self._checkpoint_domain(user, {})):
+            raise ApiInputError('Contrôle introuvable.')
+        member_vals = {}
+        if kwargs.get('baptism_date'):
+            member_vals['baptism_date'] = _date(kwargs, 'baptism_date', 'date de baptême')
+        if kwargs.get('mentor_id'):
+            member_vals['mentor_id'] = self._ref('church.member', user, kwargs, 'mentor_id', 'Mentor')
+        if member_vals:
+            checkpoint.member_id.write(member_vals)
+        checkpoint.action_record(
+            _choice('church.member.checkpoint', 'result', kwargs.get('result'), 'résultat'),
+            notes=_text(kwargs, 'notes') or None, done_by=user.name)
+        return {'status': 'success', 'message': 'Contrôle enregistré',
+                'checkpoint': self._checkpoint_json(checkpoint),
+                'member_type': checkpoint.member_id.member_type}
 
     @http.route('/api/church/settings', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     @church_endpoint()
