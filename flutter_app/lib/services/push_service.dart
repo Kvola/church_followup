@@ -37,8 +37,7 @@ class PushService {
   static const _webApiKey = String.fromEnvironment('FCM_WEB_API_KEY');
 
   /// La version navigateur sait-elle recevoir des notifications ?
-  bool get webPushConfigured =>
-      kIsWeb && _webAppId.isNotEmpty && _webVapidKey.isNotEmpty && _webApiKey.isNotEmpty;
+  bool get webPushConfigured => kIsWeb && _webAppId.isNotEmpty && _webApiKey.isNotEmpty;
 
   /// 'default' (pas encore demandé), 'granted', 'denied' ou 'unsupported'.
   String get webPermission => webPushConfigured ? web_push.webPushPermission() : 'unsupported';

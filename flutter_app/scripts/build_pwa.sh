@@ -9,10 +9,9 @@
 # reconstruit pas l'autre. Un correctif non déployé se comporte exactement
 # comme un correctif raté.
 #
-# Notifications web (facultatives) : FCM_WEB_APP_ID et FCM_VAPID_KEY, deux
-# identifiants PUBLICS du projet Firebase. Absents, la PWA fonctionne sans
-# notifications ; présents, ils sont compilés dans l'app ET écrits dans le
-# service worker, pour que les deux ne divergent jamais.
+# Notifications web : l'app Web Firebase (identifiants publics, valeurs par
+# défaut ci-dessous) est compilée dans l'app ET écrite dans le service worker,
+# pour que les deux ne divergent jamais. FCM_WEB_APP_ID=off les coupe.
 #
 # Sortie : addons/church_followup/static/suivi_app/
 # ═══════════════════════════════════════════════════════════════════════════
@@ -45,15 +44,21 @@ fi
 BASE_HREF='/suivi-evangelisation/'
 VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //')
 DEFINES=(--dart-define="APP_VERSION=$VERSION")
-# Clé « navigateur » du projet Firebase (publique : elle identifie le projet,
-# elle n'autorise rien à elle seule).
-FCM_WEB_API_KEY="${FCM_WEB_API_KEY:-AIzaSyCYwYEwbRAawKGA9jHRN296hiZiWOkse7Y}"
-if [ -n "${FCM_WEB_APP_ID:-}" ] && [ -n "${FCM_VAPID_KEY:-}" ]; then
+# L'app « Web » du projet Firebase association-management-fef4d (console
+# Firebase, 2026-10-16). Identifiants PUBLICS : ils désignent le projet et
+# l'app, ils n'autorisent rien à eux seuls. FCM_WEB_APP_ID=off coupe les
+# notifications web. La clé VAPID est facultative : sans elle, le SDK prend
+# la clé par défaut de FCM.
+FCM_WEB_APP_ID="${FCM_WEB_APP_ID:-1:541286889689:web:2787d49d3b3c8e0e33a6c8}"
+FCM_WEB_API_KEY="${FCM_WEB_API_KEY:-AIzaSyAXKFpEZIp2DtMj39qSmaQi5o3YuPadf6w}"
+FCM_VAPID_KEY="${FCM_VAPID_KEY:-}"
+[ "$FCM_WEB_APP_ID" = "off" ] && FCM_WEB_APP_ID=""
+if [ -n "$FCM_WEB_APP_ID" ]; then
     DEFINES+=(--dart-define="FCM_WEB_APP_ID=$FCM_WEB_APP_ID" --dart-define="FCM_VAPID_KEY=$FCM_VAPID_KEY"
               --dart-define="FCM_WEB_API_KEY=$FCM_WEB_API_KEY")
     info "▶ Notifications web : activées (app Web $FCM_WEB_APP_ID)"
 else
-    info "▶ Notifications web : désactivées (FCM_WEB_APP_ID / FCM_VAPID_KEY non fournis)"
+    info "▶ Notifications web : désactivées (FCM_WEB_APP_ID=off)"
 fi
 
 # `flutter build web` ne vide pas build/web : un service worker d'une
@@ -81,7 +86,7 @@ ok "✓ base-href et scope accordés à $BASE_HREF"
 
 # Service worker des notifications : écrit depuis les MÊMES valeurs que l'app.
 SW="$APP_DIR/build/web/firebase-messaging-sw.js"
-if [ -n "${FCM_WEB_APP_ID:-}" ] && [ -n "${FCM_VAPID_KEY:-}" ]; then
+if [ -n "$FCM_WEB_APP_ID" ]; then
     sed -e "s|__FCM_WEB_APP_ID__|$FCM_WEB_APP_ID|" -e "s|__FCM_WEB_API_KEY__|$FCM_WEB_API_KEY|" \
         "$APP_DIR/web/firebase-messaging-sw.template.js" > "$SW"
     RESTE=$(grep -c "__FCM_" "$SW" || true)

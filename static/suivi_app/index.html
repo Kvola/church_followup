@@ -83,25 +83,45 @@
         if (!ask) { return null; }
         if (await Notification.requestPermission() !== 'granted') { return null; }
       }
-      var base = 'https://www.gstatic.com/firebasejs/10.12.2/';
-      if (!window.firebase || !window.firebase.messaging) {
-        await suiviLoad(base + 'firebase-app-compat.js');
-        await suiviLoad(base + 'firebase-messaging-compat.js');
+      // Un seul chargement, partagé : deux appels simultanés (connexion, puis
+      // réenregistrement) chargeaient la librairie deux fois.
+      if (!window.suiviFirebaseReady) {
+        var base = 'https://www.gstatic.com/firebasejs/10.12.2/';
+        window.suiviFirebaseReady = suiviLoad(base + 'firebase-app-compat.js')
+          .then(function () { return suiviLoad(base + 'firebase-messaging-compat.js'); })
+          .then(function () {
+            firebase.initializeApp({
+              apiKey: c.apiKey, appId: c.appId, messagingSenderId: '541286889689',
+              projectId: 'association-management-fef4d',
+            });
+            var messaging = firebase.messaging();
+            // Application ouverte : FCM livre à la page, pas au service worker.
+            messaging.onMessage(function (p) {
+              var n = p.notification || {};
+              navigator.serviceWorker.getRegistration('./fcm-push/').then(function (r) {
+                if (r) { r.showNotification(n.title || 'Suivi Évangélisation', {body: n.body || '', icon: 'icons/Icon-192.png'}); }
+              });
+            });
+            return messaging;
+          })
+          .catch(function (e) { window.suiviFirebaseReady = null; throw e; });
       }
-      if (!firebase.apps.length) {
-        firebase.initializeApp({
-          apiKey: c.apiKey, appId: c.appId, messagingSenderId: '541286889689',
-          projectId: 'association-management-fef4d',
+      var messaging = await window.suiviFirebaseReady;
+      var reg = await navigator.serviceWorker.register('firebase-messaging-sw.js', {scope: './fcm-push/'});
+      // S'abonner exige un service worker ACTIF ; tout juste enregistré, il
+      // s'installe encore (« no active Service Worker »). On attend CELUI-CI :
+      // `navigator.serviceWorker.ready` rendrait celui de Flutter.
+      if (!reg.active) {
+        await new Promise(function (ok) {
+          var sw = reg.installing || reg.waiting;
+          if (!sw) { return ok(); }
+          sw.addEventListener('statechange', function () { if (sw.state === 'activated') { ok(); } });
         });
       }
-      var reg = await navigator.serviceWorker.register('firebase-messaging-sw.js', {scope: './fcm-push/'});
-      var messaging = firebase.messaging();
-      // Application ouverte : FCM livre à la page, pas au service worker.
-      messaging.onMessage(function (p) {
-        var n = p.notification || {};
-        reg.showNotification(n.title || 'Suivi Évangélisation', {body: n.body || '', icon: 'icons/Icon-192.png'});
-      });
-      return await messaging.getToken({vapidKey: c.vapidKey, serviceWorkerRegistration: reg});
+      // Sans clé VAPID propre, le SDK prend celle de FCM par défaut.
+      var options = {serviceWorkerRegistration: reg};
+      if (c.vapidKey) { options.vapidKey = c.vapidKey; }
+      return await messaging.getToken(options);
     };
   </script>
 </head>
