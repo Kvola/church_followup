@@ -3,6 +3,7 @@ from datetime import timedelta
 from unittest.mock import patch
 
 from odoo import fields
+from odoo.exceptions import ValidationError
 from odoo.tests import tagged
 from odoo.tests.common import HttpCase
 
@@ -119,16 +120,44 @@ class TestChurchMobileApi(HttpCase):
         res = self._rpc('/api/church/auth/request_otp', identifier=identifier)
         self.assertEqual(res['code'], 'rate_limited')
 
-    def test_one_enters_one_s_own_church_and_stays_there(self):
-        """Hors administrateur, on entre dans son église et l'on n'en change pas."""
+    def test_one_number_opens_one_church_only(self):
+        """Un même numéro ne peut pas avoir de compte dans deux églises : on le
+        refuse à la création, au lieu de laisser la connexion deviner."""
+        # `assertRaises` d'Odoo annule l'écriture ratée ; `assertRaisesRegex`, non.
+        with self.assertRaises(ValidationError) as refused:
+            self.env['church.mobile.user'].create({
+                'name': 'Resp', 'phone': '07 00 00 09', 'role': 'evangelist', 'church_id': self.other.id})
+        self.assertIn('Église A', str(refused.exception), "Le message dit où est l'autre compte")
+        # Même par l'adresse.
+        self.manager.email = 'resp@exemple.ci'
+        with self.assertRaises(ValidationError):
+            self.env['church.mobile.user'].create({
+                'name': 'Resp', 'phone': '+225 07 00 00 31', 'email': 'RESP@exemple.ci',
+                'role': 'evangelist', 'church_id': self.other.id})
+        # Ni en ajoutant un évangéliste qui porterait ce numéro ailleurs.
+        with self.assertRaises(ValidationError):
+            self.env['church.evangelist'].create({
+                'name': 'Resp', 'phone': '+225 07 00 00 09', 'church_id': self.other.id})
+        # Un compte désactivé ne gêne pas ; le réactiver, si.
+        self.manager.active = False
         elsewhere = self.env['church.mobile.user'].create({
             'name': 'Resp', 'phone': '+225 07 00 00 09', 'role': 'evangelist', 'church_id': self.other.id})
+        with self.assertRaises(ValidationError):
+            self.manager.active = True
+        # L'administrateur, lui, peut avoir le même numéro.
+        self.env['church.mobile.user'].create({
+            'name': 'Resp', 'phone': '+225 07 00 00 09', 'role': 'super_admin'})
+        res = self._sign_in('+225 07 00 00 09')
+        self.assertEqual(res['user']['role'], 'super_admin')
+        self.assertTrue(elsewhere.active)
+
+    def test_one_enters_one_s_own_church_and_stays_there(self):
+        """Hors administrateur, on entre dans son église et l'on n'en change pas."""
         res = self._sign_in(self.manager.phone)
-        self.assertEqual([a['id'] for a in res['accounts']], [res['user']['id']],
-                         "Aucune autre église n'est proposée")
+        self.assertEqual(res['user']['church_id'], self.church.id)
+        self.assertEqual([a['id'] for a in res['accounts']], [self.manager.id])
         self.assertFalse(res['user']['can_change_church'])
-        target = elsewhere if res['user']['id'] == self.manager.id else self.manager
-        refused = self._rpc('/api/church/auth/switch', token=res['token'], account_id=target.id)
+        refused = self._rpc('/api/church/auth/switch', token=res['token'], account_id=self.leader.id)
         self.assertEqual(refused['code'], 'forbidden')
         refused = self._rpc('/api/church/auth/set_church', token=res['token'], church_id=self.other.id)
         self.assertEqual(refused['code'], 'forbidden')
@@ -175,13 +204,15 @@ class TestChurchMobileApi(HttpCase):
 
     def test_pastor_lands_in_his_church_even_with_another_account(self):
         """Évangéliste ailleurs, pasteur ici : c'est l'église du pasteur qui s'ouvre."""
-        self.env['church.mobile.user'].create({
-            'name': 'Pasteur Yao', 'phone': '+225 07 00 00 66', 'role': 'evangelist',
-            'church_id': self.other.id})
+        ev = self.env['church.evangelist'].create({
+            'name': 'Pasteur Yao', 'phone': '+225 07 00 00 00 66', 'church_id': self.other.id})
+        account = ev.mobile_user_id
         self._pastor('0700000066', self.church)
         res = self._sign_in('+225 0700000066')
+        self.assertEqual(res['user']['id'], account.id, "Son compte le suit : une personne, un compte")
         self.assertEqual(res['user']['church_id'], self.church.id)
         self.assertEqual(res['user']['role'], 'manager')
+        self.assertFalse(ev.mobile_user_id, "La fiche d'évangéliste d'ailleurs ne le désigne plus")
 
     def test_inactive_pastor_no_longer_enters(self):
         pastor = self._pastor('0700000044', self.church)
