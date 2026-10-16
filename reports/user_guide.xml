@@ -44,6 +44,25 @@
                 <tr><td>Responsable de groupe d'âge</td><td>Son groupe et la présence de son groupe au culte.</td></tr>
             </table>
 
+            <h2>Installer : application Android ou version navigateur</h2>
+            <p>
+                <strong>Android</strong> : installez l'application depuis
+                <code>/apps/suivi-evangelisation</code>. <strong>iPhone et ordinateur</strong> : ouvrez
+                <code>/suivi-evangelisation</code> dans le navigateur — c'est la même application,
+                avec le même compte.
+            </p>
+            <div class="bloc">
+            <t t-call="mobile_app_release.guide_capture">
+                <t t-set="chemin" t-value="'church_followup/static/help/app/pwa_iphone.png'"/>
+                <t t-set="alt" t-value="'La version navigateur sur iPhone'"/>
+            </t>
+            </div>
+            <ul>
+                <li>Dans la version navigateur, une banderole propose la meilleure installation pour l'appareil : sur Android, « Télécharger » l'application ; sur iPhone, « Partager », puis « Sur l'écran d'accueil » ; sur ordinateur, « Installer ». « Plus tard » la ferme pour de bon sur ce navigateur.</li>
+                <li>Pour recevoir les relances dans le navigateur, touchez « Activer » dans la banderole « Recevez les relances sur ce navigateur », ou dans « Paramètres › Notifications ». Sur iPhone, ajoutez d'abord l'application à l'écran d'accueil : c'est la condition d'Apple.</li>
+                <li>Après une mise à jour, le navigateur peut garder l'ancienne version un moment : fermez puis rouvrez l'application, ou rechargez la page.</li>
+            </ul>
+
             <h2>Se connecter</h2>
             <p>
                 Installez l'application depuis <code>/apps/suivi-evangelisation</code>, ou
@@ -278,6 +297,8 @@
                 Odoo, « Envoyer un code de connexion » lui dit où le code est parti, et le lui affiche
                 pour qu'il vous le dicte. Il peut aussi ajouter votre adresse e-mail à votre compte.
             </p>
+            <h3>Je n'ai pas Android.</h3>
+            <p>Ouvrez <code>/suivi-evangelisation</code> dans Safari ou dans le navigateur de l'ordinateur, et connectez-vous avec votre numéro : tout y est.</p>
             <h3>J'ai changé de numéro.</h3>
             <p>L'administrateur de l'église corrige le numéro de votre compte dans le back-office ; votre responsable vous renvoie ensuite l'invitation.</p>
             <h3>J'ai perdu mon téléphone.</h3>

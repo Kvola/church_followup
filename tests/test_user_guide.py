@@ -35,7 +35,7 @@ class TestUserGuide(HttpCase):
         for label in ('Recevoir un code', 'Renvoyer le code', "Changer d'église", 'À attribuer',
                       'Présence au culte', 'Appel effectué', 'Visite effectuée', 'Oui, elle tient',
                       'Elle ne vient plus', 'Jamais connecté', 'Fermer les sessions', 'Inviter',
-                      'A déménagé', 'Fidèle affermi(e)', 'Rapport de semaine', 'Envoyer un code de connexion'):
+                      'A déménagé', 'Fidèle affermi(e)', 'Rapport de semaine', 'Envoyer un code de connexion', '/suivi-evangelisation', 'Sur l\'écran d\'accueil'):
             self.assertIn(label, body, "Le guide ne cite pas « %s »" % label)
         self.assertNotIn('PIN', body, "Il n'y a plus de PIN : le guide ne doit pas en parler")
 
