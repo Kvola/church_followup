@@ -50,7 +50,7 @@ class SettingsScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          _roleLabel(auth.userRole),
+                          auth.roleLabel,
                           style: theme.textTheme.bodyMedium?.copyWith(color: AppColors.primary),
                         ),
                         if (AppConstants.safeStr(userData?['phone']).isNotEmpty)
@@ -211,7 +211,6 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  String _roleLabel(String role) => AppConstants.roleLabels[role] ?? role;
 }
 
 class _SectionTitle extends StatelessWidget {

@@ -29,6 +29,14 @@ class AuthProvider extends ChangeNotifier {
   String get database => _database;
 
   String get userRole => _currentUser?['role'] ?? '';
+
+  /// Ce que la personne lit (« Pasteur » pour un pasteur, qui a les droits
+  /// d'un responsable) ; à défaut, le libellé du rôle.
+  String get roleLabel {
+    final label = _currentUser?['role_label'];
+    if (label is String && label.isNotEmpty) return label;
+    return AppConstants.roleLabels[userRole] ?? userRole;
+  }
   int get userId => _int(_currentUser?['id']);
   // Odoo rend `false` pour « aucune église » (administrateur multi-église).
   int get churchId => _int(_currentUser?['church_id']);

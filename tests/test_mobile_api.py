@@ -162,6 +162,7 @@ class TestChurchMobileApi(HttpCase):
         self.assertEqual(res['user']['church_id'], self.church.id)
         self.assertEqual(res['user']['role'], 'manager')
         self.assertTrue(res['user']['is_pastor'])
+        self.assertEqual(res['user']['role_label'], 'Pasteur', "Il se lit pasteur, avec les droits d'un responsable")
         account = self.env['church.mobile.user'].browse(res['user']['id'])
         self.assertEqual(account.pastor_id, pastor)
         # Muté : à la connexion suivante, il entre dans la nouvelle église.
