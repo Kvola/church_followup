@@ -1,6 +1,6 @@
 {
     'name': 'Suivi Évangélisation Église',
-    'version': '19.0.2.1.0',
+    'version': '19.0.2.2.0',
     'category': 'Church Management',
     'summary': 'Suivi des classes d\'évangile et gestion des cellules de prière',
     'description': """
@@ -42,6 +42,8 @@
         'reports/report_cell_members.xml',
         'reports/report_age_group_members.xml',
         'reports/report_dashboard.xml',
+        'reports/user_guide.xml',
+        'reports/training_manual.xml',
         # Views
         'views/church_church_views.xml',
         'views/church_district_views.xml',

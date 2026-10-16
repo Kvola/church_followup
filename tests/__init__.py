@@ -8,3 +8,5 @@ from . import test_interruption
 from . import test_establishment
 from . import test_leaders_pastors
 from . import test_app_distribution
+from . import test_user_guide
+from . import test_training_manual
