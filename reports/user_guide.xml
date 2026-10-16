@@ -66,11 +66,13 @@
 
             <h2>Évangéliste</h2>
 
+            <div class="bloc">
             <h3>1. Commencer par « À faire »</h3>
             <t t-call="mobile_app_release.guide_capture">
                 <t t-set="chemin" t-value="'church_followup/static/help/app/evangeliste_a_faire.png'"/>
                 <t t-set="alt" t-value="'La liste À faire d\'un évangéliste'"/>
             </t>
+            </div>
             <p>
                 « À faire » dit ce qui vous attend, le plus urgent d'abord : un rapport en
                 retard, une décision à prendre, une fiche à compléter. Le nombre sur
@@ -79,11 +81,13 @@
                 du dimanche et d'un appel.
             </p>
 
+            <div class="bloc">
             <h3>2. Le rapport de la semaine</h3>
             <t t-call="mobile_app_release.guide_capture">
                 <t t-set="chemin" t-value="'church_followup/static/help/app/rapport_semaine.png'"/>
                 <t t-set="alt" t-value="'Le rapport de la semaine'"/>
             </t>
+            </div>
             <p>
                 Ouvrez le suivi depuis « Mes suivis », puis « Ajouter ». Cochez « Présence au culte », « Appel effectué », « Visite effectuée », choisissez l'état
                 spirituel et notez ce qui compte. <strong>Si la personne a été pointée au
@@ -91,11 +95,13 @@
                 qui la remplit.
             </p>
 
+            <div class="bloc">
             <h3>3. Pointer la présence du dimanche</h3>
             <t t-call="mobile_app_release.guide_capture">
                 <t t-set="chemin" t-value="'church_followup/static/help/app/presence_dimanche.png'"/>
                 <t t-set="alt" t-value="'La présence au culte'"/>
             </t>
+            </div>
             <p>
                 Onglet « Présence » : cochez ceux qui sont venus, enregistrez. Une minute
                 le dimanche épargne une question à chaque rapport.
@@ -117,11 +123,13 @@
                 <t t-set="alt" t-value="'Intégrer sous le seuil de présence'"/>
             </t>
 
+            <div class="bloc">
             <h3>5. Enregistrer une nouvelle personne</h3>
             <t t-call="mobile_app_release.guide_capture">
                 <t t-set="chemin" t-value="'church_followup/static/help/app/nouveau_suivi.png'"/>
                 <t t-set="alt" t-value="'Un nouveau suivi'"/>
             </t>
+            </div>
             <p>
                 « Nouveau suivi » : la durée proposée est celle de l'église, ou de
                 l'événement d'où vient la personne. Vous pouvez la changer pour cette
@@ -130,11 +138,13 @@
 
             <h2>Responsable des évangélistes</h2>
 
+            <div class="bloc">
             <h3>1. Le tableau de bord</h3>
             <t t-call="mobile_app_release.guide_capture">
                 <t t-set="chemin" t-value="'church_followup/static/help/app/responsable_tableau_de_bord.png'"/>
                 <t t-set="alt" t-value="'Le tableau de bord du responsable'"/>
             </t>
+            </div>
             <p>
                 L'onglet « Accueil » : les membres, les évangélistes, les cellules, et
                 combien de suivis sont en cours, intégrés ou interrompus, avec le taux
@@ -142,22 +152,26 @@
                 son taux d'intégration, dans « Plus › Évangélistes ».
             </p>
 
+            <div class="bloc">
             <h3>2. Confier les nouvelles personnes</h3>
             <t t-call="mobile_app_release.guide_capture">
                 <t t-set="chemin" t-value="'church_followup/static/help/app/a_attribuer.png'"/>
                 <t t-set="alt" t-value="'Les personnes à attribuer'"/>
             </t>
+            </div>
             <p>
                 « À attribuer » liste les nouvelles personnes sans évangéliste — celles d'un
                 événement y arrivent seules — et les suivis interrompus qu'on peut reprendre.
                 Touchez une personne pour lui ouvrir un suivi et choisir son évangéliste.
             </p>
 
+            <div class="bloc">
             <h3>3. Les comptes et l'invitation</h3>
             <t t-call="mobile_app_release.guide_capture">
                 <t t-set="chemin" t-value="'church_followup/static/help/app/invitation.png'"/>
                 <t t-set="alt" t-value="'L\'invitation à transmettre'"/>
             </t>
+            </div>
             <p>
                 Créer un évangéliste ou un responsable crée son compte. Envoyez-lui
                 l'invitation par WhatsApp ou SMS : elle contient le lien de l'application
@@ -166,22 +180,26 @@
                 pas encore utilisée.
             </p>
 
+            <div class="bloc">
             <h3>4. Le parcours d'une personne</h3>
             <t t-call="mobile_app_release.guide_capture">
                 <t t-set="chemin" t-value="'church_followup/static/help/app/fiche_parcours.png'"/>
                 <t t-set="alt" t-value="'Le parcours d\'une personne'"/>
             </t>
+            </div>
             <p>
                 Sur la fiche d'une personne, la section « Parcours » raconte chaque suivi :
                 qui, combien de semaines, pourquoi il s'est arrêté, quand il a repris.
             </p>
 
             <h2>Responsable de cellule</h2>
+            <div class="bloc">
             <h3>Les points de contrôle</h3>
             <t t-call="mobile_app_release.guide_capture">
                 <t t-set="chemin" t-value="'church_followup/static/help/app/controle.png'"/>
                 <t t-set="alt" t-value="'Un point de contrôle'"/>
             </t>
+            </div>
             <p>
                 Trois puis six mois après l'intégration, la personne apparaît dans « Points de contrôle ». Vous voyez sa présence sur les 90 derniers jours ; répondez
                 « Oui, elle tient » ou « Elle ne vient plus », avec une observation. Un
@@ -197,9 +215,11 @@
                 s'y tiennent, une seule fois pour toutes les applications.
             </p>
 
+            <div class="bloc">
             <h3>1. Les réglages de l'église</h3>
             <div class="capture ecran">
                 <img t-att-src="guide_image_mode == 'data' and app.help_image('church_followup/static/help/backoffice/bo_eglise.png') or '/church_followup/static/help/backoffice/bo_eglise.png'" alt="La fiche de l'église"/>
+            </div>
             </div>
             <p>
                 « Configuration › Églises » : la « Durée de suivi par défaut (semaines) » et
@@ -207,9 +227,11 @@
                 L'onglet « Pasteurs » montre ceux de l'annuaire, en lecture.
             </p>
 
+            <div class="bloc">
             <h3>2. Les comptes de l'application</h3>
             <div class="capture ecran">
                 <img t-att-src="guide_image_mode == 'data' and app.help_image('church_followup/static/help/backoffice/bo_invitation.png') or '/church_followup/static/help/backoffice/bo_invitation.png'" alt="L'invitation dans le back-office"/>
+            </div>
             </div>
             <p>
                 « Configuration › Utilisateurs mobiles » : le numéro sert à recevoir le code,
@@ -217,9 +239,11 @@
                 L'onglet « Sessions » montre chaque téléphone connecté ; « Fermer les sessions » coupe l'accès d'un téléphone perdu.
             </p>
 
+            <div class="bloc">
             <h3>3. Un événement d'évangélisation</h3>
             <div class="capture ecran">
                 <img t-att-src="guide_image_mode == 'data' and app.help_image('church_followup/static/help/backoffice/bo_evenement.png') or '/church_followup/static/help/backoffice/bo_evenement.png'" alt="L'onglet Évangélisation d'un événement"/>
+            </div>
             </div>
             <p>
                 Sur un événement, l'onglet « Évangélisation » crée une fiche pour chaque
@@ -276,6 +300,7 @@
                                        background: #f8f7fe; padding: 10px 14px;
                                        margin: 0 0 14px; }
                     .page code { background: #f0f0f0; padding: 1px 4px; font-size: 9.5pt; }
+                    .page .bloc { page-break-inside: avoid; }
                     .page .capture { text-align: center; margin: 0 0 16px;
                                      page-break-inside: avoid; }
                     /* Hauteur fixe : wkhtmltopdf déforme une image bornée en

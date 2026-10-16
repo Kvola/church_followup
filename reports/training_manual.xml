@@ -104,11 +104,13 @@
                     <li>Savoir quoi faire quand le code n'arrive pas.</li>
                     <li>Changer d'église quand on sert dans deux églises.</li>
                 </ul>
+                <div class="bloc">
                 <h3>Démonstration</h3>
                 <t t-call="mobile_app_release.guide_capture">
                     <t t-set="chemin" t-value="'church_followup/static/help/app/connexion_code.png'"/>
                     <t t-set="alt" t-value="'La saisie du code'"/>
                 </t>
+                </div>
                 <p>
                     Saisissez le numéro, « Recevoir un code », recopiez les six chiffres. Il
                     n'y a <strong>aucun mot de passe</strong> : le code prouve que l'on tient
@@ -143,11 +145,13 @@
                     <li>Pointer la présence du dimanche.</li>
                     <li>Enregistrer une nouvelle personne avec la bonne durée de suivi.</li>
                 </ul>
+                <div class="bloc">
                 <h3>Démonstration</h3>
                 <t t-call="mobile_app_release.guide_capture">
                     <t t-set="chemin" t-value="'church_followup/static/help/app/evangeliste_a_faire.png'"/>
                     <t t-set="alt" t-value="'À faire, côté évangéliste'"/>
                 </t>
+                </div>
                 <p>
                     Un rapport est en retard trois jours après la fin de sa semaine. Le
                     rapport de <strong>Traoré Mariam</strong> pour la semaine 3 l'est.
@@ -186,11 +190,13 @@
                     <li>Justifier une intégration sous le seuil de présence.</li>
                     <li>Interrompre sans rien effacer.</li>
                 </ul>
+                <div class="bloc">
                 <h3>Démonstration</h3>
                 <t t-call="mobile_app_release.guide_capture">
                     <t t-set="chemin" t-value="'church_followup/static/help/app/integrer_sous_le_seuil.png'"/>
                     <t t-set="alt" t-value="'Intégrer sous le seuil'"/>
                 </t>
+                </div>
                 <p>
                     <strong>Konan Aya</strong> est arrivée au terme de son suivi, mais n'est
                     venue au culte que sous le seuil de l'église (75 %). On peut l'intégrer :
@@ -224,11 +230,13 @@
                     <li>Confier les nouvelles personnes depuis « À attribuer ».</li>
                     <li>Ouvrir un compte et envoyer l'invitation.</li>
                 </ul>
+                <div class="bloc">
                 <h3>Démonstration</h3>
                 <t t-call="mobile_app_release.guide_capture">
                     <t t-set="chemin" t-value="'church_followup/static/help/app/a_attribuer.png'"/>
                     <t t-set="alt" t-value="'À attribuer'"/>
                 </t>
+                </div>
                 <p>
                     <strong>Bamba Ibrahim</strong> vient du « Camp de Toussaint 2026 » : sa fiche
                     a été créée par l'événement, avec les 8 semaines de suivi qu'il prévoit. Il
@@ -265,11 +273,13 @@
                     <li>Faire un point de contrôle à 3 et 6 mois.</li>
                     <li>Comprendre le rattrapage et la proposition de rouvrir un suivi.</li>
                 </ul>
+                <div class="bloc">
                 <h3>Démonstration</h3>
                 <t t-call="mobile_app_release.guide_capture">
                     <t t-set="chemin" t-value="'church_followup/static/help/app/controle.png'"/>
                     <t t-set="alt" t-value="'Un point de contrôle'"/>
                 </t>
+                </div>
                 <p><strong>Ouattara Fanta</strong> a été intégrée il y a trois mois : son contrôle « À 3 mois » est dû.</p>
                 <h3>Exercice</h3>
                 <ol>
@@ -294,9 +304,11 @@
                     <li>Gérer les comptes : invitation, sessions.</li>
                     <li>Brancher un événement d'évangélisation sur le suivi.</li>
                 </ul>
+                <div class="bloc">
                 <h3>Démonstration</h3>
                 <div class="capture ecran">
                     <img t-att-src="guide_image_mode == 'data' and app.help_image('church_followup/static/help/backoffice/bo_eglise.png') or '/church_followup/static/help/backoffice/bo_eglise.png'" alt="La fiche de l'église"/>
+                </div>
                 </div>
                 <p>
                     L'église vient de <strong>l'annuaire du réseau</strong> : son nom, sa région
@@ -398,6 +410,7 @@
                     .page .attention { border-left: 3px solid #5B4FCF;
                                        background: #f8f7fe; padding: 10px 14px; margin: 0 0 14px; }
                     .page code { background: #f0f0f0; padding: 1px 4px; font-size: 9pt; }
+                    .page .bloc { page-break-inside: avoid; }
                     .page .capture { text-align: center; margin: 0 0 14px;
                                      page-break-inside: avoid; }
                     .page .capture img { height: 95mm; border: 1px solid #ddd; border-radius: 4px; }
