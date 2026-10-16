@@ -32,7 +32,8 @@ class _ArchiveTile extends StatelessWidget {
   final bool feminine;
   const _ArchiveTile({required this.active, required this.onChanged, required this.what, this.feminine = false});
 
-  String _e(String word) => feminine ? '${word}e' : word;
+  static const _feminine = {'actif': 'active', 'archivé': 'archivée'};
+  String _e(String word) => feminine ? _feminine[word]! : word;
 
   @override
   Widget build(BuildContext context) => SwitchListTile(

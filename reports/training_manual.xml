@@ -22,14 +22,16 @@
                     <strong>Ce que les participants sauront faire en sortant</strong> :
                     se connecter avec un code, rédiger le rapport de la semaine, décider au
                     terme d'un suivi, confier une nouvelle personne, faire un point de
-                    contrôle, et — pour l'administrateur — régler l'église et inviter les
+                    contrôle, organiser l'église (cellules, groupes, quartiers), importer ses
+                    listes Excel, et — pour l'administrateur — régler l'église et inviter les
                     comptes.
                 </p>
                 <p>
                     <strong>Matériel</strong> : un téléphone Android par participant avec
                     l'application installée depuis <code>/apps/suivi-evangelisation</code> ;
                     un vidéoprojecteur pour le back-office ; la base de démonstration
-                    <code>suivi_demo</code>, recréée la veille.
+                    <code>suivi_demo</code>, recréée la veille (le module 8 y ajoute des fiches) ;
+                    pour le module 8, Excel ou WPS sur le téléphone, ou un ordinateur.
                 </p>
                 <p>
                     <strong>Comptes de démonstration</strong> (personnes et numéros
@@ -52,6 +54,7 @@
                 <tr><td>5. Piloter l'église</td><td>Responsables</td><td>35 min</td></tr>
                 <tr><td>6. Affermir : les points de contrôle</td><td>Responsables de cellule</td><td>20 min</td></tr>
                 <tr><td>7. Administrer dans Odoo</td><td>Administrateur</td><td>40 min</td></tr>
+                <tr><td>8. Organiser l'église et importer ses listes</td><td>Responsables, pasteurs</td><td>40 min</td></tr>
             </table>
 
             <!-- ─── Module 1 ─────────────────────────────────────────── -->
@@ -230,7 +233,7 @@
                 <h3>Objectifs</h3>
                 <ul>
                     <li>Lire le tableau de bord.</li>
-                    <li>Confier les nouvelles personnes depuis « À attribuer ».</li>
+                    <li>Confier les personnes depuis « À attribuer », nouvelles personnes comme anciens membres.</li>
                     <li>Ouvrir un compte et envoyer l'invitation.</li>
                 </ul>
                 <div class="bloc">
@@ -243,7 +246,8 @@
                 <p>
                     <strong>Bamba Ibrahim</strong> vient du « Camp de Toussaint 2026 » : sa fiche
                     a été créée par l'événement, avec les 8 semaines de suivi qu'il prévoit. Il
-                    attend un évangéliste.
+                    attend un évangéliste. <strong>Kouassi Esther</strong>, elle, est une
+                    « Ancien membre » qu'on reprend en suivi : son badge le dit.
                 </p>
                 <h3>Exercices</h3>
                 <ol>
@@ -284,10 +288,12 @@
                 </t>
                 </div>
                 <p><strong>Ouattara Fanta</strong> a été intégrée il y a trois mois : son contrôle « À 3 mois » est dû.</p>
-                <h3>Exercice</h3>
+                <h3>Exercices</h3>
                 <ol>
                     <li>« Points de contrôle », Ouattara Fanta : « Oui, elle tient », avec une observation.
                         <p class="voir"><strong>Vous devez voir</strong> : le contrôle passer dans les contrôles faits ; le suivant reste planifié à 6 mois.</p></li>
+                    <li>« Ma cellule », déroulez-la, « Modifier » : passez la réunion à 19:30.
+                        <p class="voir"><strong>Vous devez voir</strong> : le nom de la cellule grisé (c'est la décision du responsable de l'église), et « Vendredi à 19:30 » une fois enregistré.</p></li>
                 </ol>
                 <h3>Contrôle</h3>
                 <ol class="questions">
@@ -306,6 +312,7 @@
                     <li>Faire entrer une église de l'annuaire dans le suivi et régler sa durée et son seuil.</li>
                     <li>Gérer les comptes : invitation, sessions.</li>
                     <li>Brancher un événement d'évangélisation sur le suivi.</li>
+                    <li>Retrouver les imports faits depuis l'application.</li>
                 </ul>
                 <div class="bloc">
                 <h3>Démonstration</h3>
@@ -330,6 +337,8 @@
                         <p class="voir"><strong>Vous devez voir</strong> : le code à six chiffres, l'identifiant à saisir, et par où le code est parti (sur la base de démonstration, rien ne part : WhatsApp et SMS n'y sont pas réglés — c'est le cas où l'on dicte le code).</p></li>
                     <li>L'événement « Camp de Toussaint 2026 », onglet « Évangélisation ».
                         <p class="voir"><strong>Vous devez voir</strong> : l'église de rattachement et la durée de suivi propre à l'événement (8 semaines).</p></li>
+                    <li>Après le module 8 : « Configuration › Historique des imports ».
+                        <p class="voir"><strong>Vous devez voir</strong> : chaque import de la séance, les refusés comme les réussis, avec qui l'a fait et le fichier d'origine.</p></li>
                 </ol>
                 <div class="capture ecran">
                     <img t-att-src="guide_image_mode == 'data' and app.help_image('church_followup/static/help/backoffice/bo_evenement.png') or '/church_followup/static/help/backoffice/bo_evenement.png'" alt="L'onglet Évangélisation d'un événement"/>
@@ -343,11 +352,65 @@
                 <p class="note"><strong>Note du formateur</strong> : sans gabarit WhatsApp approuvé par Meta, les codes et les relances partent par SMS ; vérifiez les réglages des notifications avant la mise en service.</p>
             </div>
 
+            <!-- ─── Module 8 ─────────────────────────────────────────── -->
+            <div class="module">
+                <h2>Module 8 — Organiser l'église et importer ses listes</h2>
+                <p class="meta">Responsables et pasteurs · 40 min · connecté en Pasteur Marc Kouadio</p>
+                <h3>Objectifs</h3>
+                <ul>
+                    <li>Créer et modifier quartiers, cellules et groupes d'âge depuis l'application.</li>
+                    <li>Importer une liste Excel : télécharger le modèle, le remplir, l'importer, corriger un refus.</li>
+                    <li>Distinguer le profil d'une personne (nouvelle personne, ancien membre) de son statut.</li>
+                </ul>
+                <div class="bloc">
+                <h3>Démonstration</h3>
+                <t t-call="mobile_app_release.guide_capture">
+                    <t t-set="chemin" t-value="'church_followup/static/help/app/importer.png'"/>
+                    <t t-set="alt" t-value="'Les imports Excel'"/>
+                </t>
+                </div>
+                <p>
+                    « Plus › Importer » : six imports, à faire dans l'ordre — un membre se range
+                    dans une cellule qui doit déjà exister. Chaque modèle est celui de
+                    <strong>votre</strong> église : ses listes déroulantes proposent vos cellules,
+                    vos groupes, vos évangélistes. Le fichier est vérifié en entier : à la moindre
+                    erreur, rien n'est importé.
+                </p>
+                <h3>Exercices</h3>
+                <ol>
+                    <li>« Plus › Quartiers », « Nouveau quartier » : Angré Djibi, à Cocody.
+                        <p class="voir"><strong>Vous devez voir</strong> : Angré Djibi dans la liste, « Aucune cellule ».</p></li>
+                    <li>« Plus › Cellules », « Nouvelle cellule » : Cellule Djibi, quartier Angré Djibi, mardi à 19:30, responsable Koné Ali au <code>07 00 06 06 06</code>.
+                        <p class="voir"><strong>Vous devez voir</strong> : la cellule dans la liste ; dans « Plus › Utilisateurs », Koné Ali, responsable de cellule, « Jamais connecté ».</p></li>
+                    <li>« Plus › Importer », « Personnes à suivre », « Modèle ». Remplissez trois lignes : Gbagbo Lucie avec l'évangéliste « Awa Koné » ; Tanoh Serge sans évangéliste ; Yao Paul avec l'évangéliste tapé « Awa K. ». Importez.
+                        <p class="voir"><strong>Vous devez voir</strong> : « Rien n'a été importé » et la ligne de Yao Paul citée, avec les évangélistes permis.</p></li>
+                    <li>Choisissez « Awa Koné » dans la liste déroulante pour Yao Paul, enregistrez, importez à nouveau.
+                        <p class="voir"><strong>Vous devez voir</strong> : « Import réussi », 3 créé(s), « 2 suivi(s) démarré(s), 1 personne(s) dans « À attribuer » » ; Tanoh Serge dans « À attribuer ».</p></li>
+                    <li>Importez encore le même fichier.
+                        <p class="voir"><strong>Vous devez voir</strong> : « 0 créé(s) », « déjà à jour », et « Déjà en suivi, laissé(e)s tel quel » : aucun doublon.</p></li>
+                    <li>« Membres », ajoutez « Konan Aya » avec son numéro <code>07 00 10 10 10</code>.
+                        <p class="voir"><strong>Vous devez voir</strong> : « Déjà enregistrée ? », avec « Voir sa fiche » et « C'est une autre personne ».</p></li>
+                </ol>
+                <div class="bloc">
+                <t t-call="mobile_app_release.guide_capture">
+                    <t t-set="chemin" t-value="'church_followup/static/help/app/import_refuse.png'"/>
+                    <t t-set="alt" t-value="'Un import refusé'"/>
+                </t>
+                </div>
+                <h3>Contrôle</h3>
+                <ol class="questions">
+                    <li>Une seule ligne du fichier est fausse : qu'est-ce qui est importé ?</li>
+                    <li>Une personne du fichier est déjà enregistrée : que devient sa fiche ?</li>
+                    <li>Quelle différence entre le profil d'une personne et son statut ?</li>
+                </ol>
+                <p class="note"><strong>Note du formateur</strong> : sur le terrain, le modèle se remplit souvent sur un ordinateur ; montrez « Partager », qui l'envoie par WhatsApp à la secrétaire. Insistez sur les listes déroulantes : une valeur tapée à la main est la première cause de refus.</p>
+            </div>
+
             <!-- ─── Corrigés ─────────────────────────────────────────── -->
             <h2>Corrigés</h2>
             <h3>Module 1</h3>
             <ol class="reponses">
-                <li>Nouvelle personne ; confiée à un évangéliste ; suivie chaque semaine ; décision au terme (intégrer, prolonger, interrompre, transférer) ; affermissement par les contrôles à 3 et 6 mois.</li>
+                <li>Personne enregistrée (nouvelle personne ou ancien membre) ; confiée à un évangéliste ; suivie chaque semaine ; décision au terme (intégrer, prolonger, interrompre, transférer) ; affermissement par les contrôles à 3 et 6 mois.</li>
                 <li>Il voit combien de personnes sont suivies, intégrées ou perdues et pourquoi ; toute intégration sous le seuil est justifiée par écrit.</li>
             </ol>
             <h3>Module 2</h3>
@@ -370,7 +433,7 @@
             </ol>
             <h3>Module 5</h3>
             <ol class="reponses">
-                <li>Des nouvelles personnes sans évangéliste (dont celles créées par un événement) et des suivis interrompus à reprendre.</li>
+                <li>Des personnes sans évangéliste — nouvelles personnes ou anciens membres, dont celles créées par un événement ou un import — et des suivis interrompus à reprendre.</li>
                 <li>Elle ne contient aucun secret : le code arrive au moment de se connecter, sur le numéro du compte.</li>
                 <li>Un compte qui ne s'est encore jamais connecté.</li>
             </ol>
@@ -384,6 +447,12 @@
                 <li>Dans l'annuaire du réseau (la gestion des églises), pas dans le suivi.</li>
                 <li>Sur son compte, « Fermer les sessions ».</li>
                 <li>Il crée une fiche pour chaque participant pointé présent, rattachée à l'église choisie, avec la durée de suivi de l'événement.</li>
+            </ol>
+            <h3>Module 8</h3>
+            <ol class="reponses">
+                <li>Rien : le fichier est vérifié en entier, et la moindre erreur fait tout refuser, en citant la ligne à corriger.</li>
+                <li>Elle est complétée : ses cases vides sont remplies, rien n'est écrasé ; ce qui diffère est signalé.</li>
+                <li>Le profil (nouvelle personne ou ancien membre) dit qui elle est et ne change pas ; le statut (à attribuer, en suivi, intégrée…) suit son parcours.</li>
             </ol>
         </t>
     </template>

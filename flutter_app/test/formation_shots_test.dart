@@ -11,6 +11,10 @@ import 'package:church_followup_mobile/screens/followups/followup_form_screen.da
 import 'package:church_followup_mobile/screens/followups/followup_list_screen.dart';
 import 'package:church_followup_mobile/screens/followups/to_assign_screen.dart';
 import 'package:church_followup_mobile/screens/home/home_screen.dart';
+import 'package:church_followup_mobile/screens/imports/import_screen.dart';
+import 'package:church_followup_mobile/screens/organization/district_list_screen.dart';
+import 'package:church_followup_mobile/screens/organization/prayer_cell_list_screen.dart';
+import 'package:church_followup_mobile/screens/organization/unit_forms.dart';
 import 'package:church_followup_mobile/screens/members/member_form_screen.dart';
 import 'package:church_followup_mobile/screens/settings/settings_screen.dart';
 import 'package:flutter/material.dart';
@@ -91,8 +95,17 @@ void main() {
         await t.tap(find.byTooltip('Envoyer l\'invitation').last);
         await t.pumpAndSettle();
       }));
-  testWidgets('changer_eglise', (t) => shoot(t, name: 'changer_eglise', screen: const SettingsScreen(), role: 'manager',
+  // Seul l'administrateur change d'église (compte formateur@exemple.ci de la démo).
+  testWidgets('changer_eglise', (t) => shoot(t, name: 'changer_eglise', screen: const SettingsScreen(), role: 'super_admin',
       avantLaPhoto: (t) => tapText(t, 'Changer d\'église')));
+  testWidgets('nouvelle_personne', (t) => shoot(t, name: 'nouvelle_personne', screen: const MemberFormScreen()));
+  testWidgets('cellules', (t) => shoot(t, name: 'cellules', screen: const PrayerCellListScreen(), role: 'manager'));
+  testWidgets('cellule_formulaire', (t) => shoot(t, name: 'cellule_formulaire', role: 'manager',
+      screen: CellFormScreen(cell: demoResponse('/cells', {}, 'manager')['cells'][0] as Map<String, dynamic>)));
+  testWidgets('quartiers', (t) => shoot(t, name: 'quartiers', screen: const DistrictListScreen(), role: 'manager'));
+  testWidgets('importer', (t) => shoot(t, name: 'importer', screen: const ImportScreen(), role: 'manager'));
+  testWidgets('import_refuse', (t) => shoot(t, name: 'import_refuse', role: 'manager',
+      screen: const ImportResultScreen(label: 'Personnes à suivre', result: demoImportRefused)));
   testWidgets('fiche_parcours', (t) => shoot(t, name: 'fiche_parcours', role: 'manager',
       screen: const MemberFormScreen(memberId: 16), avantLaPhoto: (t) async {
         await t.scrollUntilVisible(find.text('Parcours'), 300, scrollable: find.byType(Scrollable).first);

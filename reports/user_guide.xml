@@ -25,9 +25,9 @@
             </p>
 
             <div class="attention">
-                <h3>Le parcours d'une nouvelle personne</h3>
+                <h3>Le parcours d'une personne à suivre</h3>
                 <ol>
-                    <li><strong>Nouvelle personne</strong> — enregistrée par un évangéliste, un responsable, ou automatiquement après un événement d'évangélisation.</li>
+                    <li><strong>Enregistrée</strong> — par un évangéliste, un responsable, un import, ou automatiquement après un événement d'évangélisation. Son <strong>profil</strong> dit qui elle est : « Nouvelle personne » (venue à la foi depuis peu) ou « Ancien membre » (déjà de l'église, qu'on reprend en suivi). Le profil ne change pas ; le statut, lui, suit le parcours.</li>
                     <li><strong>Confiée à un évangéliste</strong> — le responsable la retrouve dans « À attribuer » et ouvre son suivi.</li>
                     <li><strong>Suivie</strong> — chaque semaine, un « Rapport de semaine » : présence au culte, appel, visite, état spirituel. La durée est celle de l'église (4 semaines par défaut), de l'événement, ou celle que l'évangéliste a choisie.</li>
                     <li><strong>Décision au terme</strong> — intégrer (dans une cellule de prière et un groupe d'âge), prolonger, interrompre avec un motif, ou transférer à un autre évangéliste.</li>
@@ -39,8 +39,8 @@
             <table>
                 <tr><th>Rôle</th><th>Ce qu'il fait dans l'application</th></tr>
                 <tr><td>Évangéliste</td><td>Ses suivis, ses rapports de la semaine, la présence du dimanche, les décisions au terme.</td></tr>
-                <tr><td>Responsable des évangélistes</td><td>Toute l'église : tableau de bord, personnes « À attribuer », comptes, rapports.</td></tr>
-                <tr><td>Responsable de cellule</td><td>Sa cellule, la présence en cellule, les points de contrôle.</td></tr>
+                <tr><td>Responsable des évangélistes (et pasteur)</td><td>Toute l'église : tableau de bord, personnes « À attribuer », comptes, rapports, cellules, groupes et quartiers, imports Excel. Un pasteur de l'annuaire entre avec ces droits et se lit « Pasteur ».</td></tr>
+                <tr><td>Responsable de cellule</td><td>Sa cellule (jour, heure et lieu de réunion), la présence en cellule, les points de contrôle.</td></tr>
                 <tr><td>Responsable de groupe d'âge</td><td>Son groupe et la présence de son groupe au culte.</td></tr>
             </table>
 
@@ -144,7 +144,19 @@
             </t>
 
             <div class="bloc">
-            <h3>5. Enregistrer une nouvelle personne</h3>
+            <h3>5. Enregistrer une personne</h3>
+            <t t-call="mobile_app_release.guide_capture">
+                <t t-set="chemin" t-value="'church_followup/static/help/app/nouvelle_personne.png'"/>
+                <t t-set="alt" t-value="'Enregistrer une personne'"/>
+            </t>
+            </div>
+            <p>
+                « Membres », puis le bouton d'ajout : choisissez d'abord « Nouvelle personne » ou
+                « Ancien membre ». Si la personne semble déjà enregistrée (même numéro, ou même nom),
+                l'application le dit avant de créer un doublon : « Déjà enregistrée ? ». Touchez
+                « Voir sa fiche », ou « C'est une autre personne » s'il s'agit bien de quelqu'un d'autre.
+            </p>
+            <div class="bloc">
             <t t-call="mobile_app_release.guide_capture">
                 <t t-set="chemin" t-value="'church_followup/static/help/app/nouveau_suivi.png'"/>
                 <t t-set="alt" t-value="'Un nouveau suivi'"/>
@@ -180,9 +192,10 @@
             </t>
             </div>
             <p>
-                « À attribuer » liste les nouvelles personnes sans évangéliste — celles d'un
-                événement y arrivent seules — et les suivis interrompus qu'on peut reprendre.
-                Touchez une personne pour lui ouvrir un suivi et choisir son évangéliste.
+                « À attribuer » liste les personnes sans évangéliste — celles d'un événement ou
+                d'un import y arrivent seules — et les suivis interrompus qu'on peut reprendre.
+                Un badge dit si c'est une « Nouvelle personne » ou un « Ancien membre ».
+                Touchez « Confier » pour lui ouvrir un suivi et choisir son évangéliste.
             </p>
 
             <div class="bloc">
@@ -212,7 +225,67 @@
                 qui, combien de semaines, pourquoi il s'est arrêté, quand il a repris.
             </p>
 
+            <div class="bloc">
+            <h3>5. Cellules, groupes d'âge et quartiers</h3>
+            <t t-call="mobile_app_release.guide_capture">
+                <t t-set="chemin" t-value="'church_followup/static/help/app/cellules.png'"/>
+                <t t-set="alt" t-value="'Les cellules de prière'"/>
+            </t>
+            </div>
+            <p>
+                « Plus › Cellules » : « Nouvelle cellule », ou « Modifier » sur une cellule
+                (déroulez-la). Même chose pour les groupes d'âge (« Nouveau groupe ») et dans
+                « Plus › Quartiers ».
+            </p>
+            <div class="bloc">
+            <t t-call="mobile_app_release.guide_capture">
+                <t t-set="chemin" t-value="'church_followup/static/help/app/cellule_formulaire.png'"/>
+                <t t-set="alt" t-value="'Le formulaire d\'une cellule'"/>
+            </t>
+            </div>
+            <ul>
+                <li>Une cellule couvre un ou plusieurs quartiers ; « + Quartier » en crée un sans quitter le formulaire.</li>
+                <li>Le téléphone du responsable ouvre son compte : il se connecte aussitôt avec ce numéro. Un numéro n'ouvre qu'une église.</li>
+                <li>On n'efface pas une cellule : on l'archive (l'interrupteur en bas du formulaire). Elle quitte les listes, son histoire reste, et l'icône de la barre du haut affiche les archivées pour la rouvrir.</li>
+                <li>Deux cellules (ou deux groupes, deux quartiers) ne portent pas le même nom dans une église.</li>
+            </ul>
+
+            <div class="bloc">
+            <h3>6. Importer des listes Excel</h3>
+            <t t-call="mobile_app_release.guide_capture">
+                <t t-set="chemin" t-value="'church_followup/static/help/app/importer.png'"/>
+                <t t-set="alt" t-value="'Les imports Excel'"/>
+            </t>
+            </div>
+            <p>
+                Pour démarrer une église qui a déjà ses listes : « Plus › Importer ». Six imports,
+                dans cet ordre : Quartiers, Cellules de prière, Groupes d'âge, Évangélistes,
+                Membres, Personnes à suivre.
+            </p>
+            <ol>
+                <li>« Modèle » : le fichier Excel de <strong>votre</strong> église arrive dans les téléchargements. Il contient un onglet à remplir, un « Mode d'emploi », et des listes déroulantes avec vos cellules, groupes, quartiers et évangélistes. « Partager » l'envoie par WhatsApp ou e-mail à qui le remplira.</li>
+                <li>Remplissez-le dans Excel, WPS ou Google Sheets, sans toucher aux en-têtes. Les colonnes en orange sont obligatoires.</li>
+                <li>« Importer » : choisissez le fichier rempli et confirmez.</li>
+            </ol>
+            <div class="bloc">
+            <t t-call="mobile_app_release.guide_capture">
+                <t t-set="chemin" t-value="'church_followup/static/help/app/import_refuse.png'"/>
+                <t t-set="alt" t-value="'Un import refusé'"/>
+            </t>
+            </div>
+            <ul>
+                <li><strong>Tout ou rien.</strong> Le fichier est vérifié en entier : à la moindre erreur, « Rien n'a été importé » et l'application dit quelle ligne corriger. Corrigez, puis importez à nouveau le même fichier.</li>
+                <li>Une fiche déjà connue est <strong>complétée</strong> — ses cases vides sont remplies — jamais écrasée. Réimporter un fichier ne crée pas de doublon.</li>
+                <li>Une personne est reconnue à son numéro, ou à son nom et sa date de naissance. Deux homonymes sans numéro : l'import le dit, et demande lequel.</li>
+                <li>« Personnes à suivre » : avec un évangéliste, le suivi démarre ; sans évangéliste, la personne va dans « À attribuer ». Une personne déjà en suivi n'en reçoit pas un second.</li>
+            </ul>
+
             <h2>Responsable de cellule</h2>
+            <p>
+                « Ma cellule », puis « Modifier » : vous changez le jour, l'heure, le lieu et les notes
+                de <strong>votre</strong> cellule. Son nom, ses quartiers et son responsable restent la
+                décision du responsable de l'église.
+            </p>
             <div class="bloc">
             <h3>Les points de contrôle</h3>
             <t t-call="mobile_app_release.guide_capture">
@@ -282,7 +355,16 @@
                 suivi propre à l'événement. Ces personnes arrivent dans « À attribuer ».
             </p>
 
-            <h3>4. Les relances</h3>
+            <h3>4. Imports et historique</h3>
+            <p>
+                « Configuration › Importer un fichier » fait les mêmes imports que l'application,
+                pour une église choisie. « Configuration › Historique des imports » garde chaque
+                tentative, réussie ou refusée, avec qui l'a faite et le fichier d'origine.
+                Dans « Membres » et « Suivis », les filtres « Nouvelles personnes » et
+                « Anciens membres » séparent les deux profils.
+            </p>
+
+            <h3>5. Les relances</h3>
             <p>
                 Chaque lundi, chacun reçoit un récapitulatif de ce qui l'attend — par
                 notification, par WhatsApp si un gabarit Meta est approuvé, sinon par SMS.
@@ -304,6 +386,10 @@
             <p>L'administrateur de l'église corrige le numéro de votre compte dans le back-office ; votre responsable vous renvoie ensuite l'invitation.</p>
             <h3>J'ai perdu mon téléphone.</h3>
             <p>L'administrateur ouvre votre compte et touche « Fermer les sessions » : le téléphone perdu n'a plus accès.</p>
+            <h3>Mon import est refusé.</h3>
+            <p>Rien n'a été écrit : lisez les lignes citées, corrigez-les dans le fichier, et importez-le à nouveau. Une valeur « n'est pas une valeur permise » ? Choisissez-la dans la liste déroulante du modèle plutôt que de la taper.</p>
+            <h3>Une personne est enregistrée deux fois.</h3>
+            <p>L'application prévient avant de créer un doublon. S'il en existe un ancien, l'administrateur archive la fiche en trop dans le back-office.</p>
             <h3>Une personne a déménagé.</h3>
             <p>« Interrompre » avec le motif « A déménagé ». Si elle revient, le suivi se reprend depuis « À attribuer ».</p>
         </t>

@@ -31,7 +31,7 @@ class TestTrainingManual(HttpCase):
     def test_every_module_has_its_five_parts(self):
         tree = html.fromstring(self.source)
         modules = tree.xpath('//div[@class="module"]')
-        self.assertEqual(len(modules), 7)
+        self.assertEqual(len(modules), 8)
         for module in modules:
             title = module.xpath('h2')[0].text_content()
             text = module.text_content()

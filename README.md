@@ -96,14 +96,16 @@ Les APKs sont générées dans `flutter_app/build/app/outputs/flutter-apk/`.
 > **But** : Enregistrer une nouvelle personne qui vient à l'église pour la première fois
 
 1. **Membres** > **+ Ajouter**
-2. Remplir : Nom, Prénom, Téléphone, Sexe
+2. Choisir le profil (**Nouvelle personne** ou **Ancien membre**), puis remplir : Nom, Prénom, Téléphone, Sexe
 3. Section **Organisation** : sélectionner le Quartier
 4. Section **Parrainage** :
    - **Invité(e) par** : sélectionner le membre de l'église qui a invité cette personne
    - **Mentor** : sélectionner le membre qui sera responsable du suivi spirituel
 5. Enregistrer
 
-**Résultat** : Le nouveau venu est enregistré avec le statut « Nouvelle personne » et la traçabilité de son parrainage.
+**Résultat** : Le nouveau venu est enregistré avec le profil « Nouvelle personne » et le statut « À attribuer », avec la traçabilité de son parrainage. Si la personne semble déjà enregistrée (même numéro, ou même nom), l'application le dit avant de créer un doublon.
+
+> Le **profil** (nouvelle personne / ancien membre) ne change pas ; le **statut** (`member_type` : à attribuer, en suivi, interrompu, intégré, affermi, ancien membre hors suivi) suit le parcours.
 
 ---
 
@@ -227,6 +229,25 @@ Les APKs sont générées dans `flutter_app/build/app/outputs/flutter-apk/`.
 2. **Rapports** > sélectionner un évangéliste pour voir le détail :
    - Liste de ses suivis avec état et scores
    - Taux de réussite
+
+---
+
+### Flux 11 — Importer les listes d'une église (Excel)
+
+> **Acteur** : Pasteur / responsable, Super Administrateur (app, PWA ou back-office)
+
+1. **Plus › Importer** : six imports, dans l'ordre — Quartiers, Cellules de prière, Groupes d'âge, Évangélistes, Membres, Personnes à suivre.
+2. **Modèle** : classeur généré pour l'église (onglet de saisie, mode d'emploi, listes déroulantes de l'église), téléchargé par un lien signé (15 min) ou **Partager**.
+3. **Importer** : le fichier est contrôlé en entier ; **à la moindre erreur rien n'est écrit** et chaque ligne fautive est citée.
+4. Une fiche existante est **complétée** (cases vides), jamais écrasée ; réimporter ne crée pas de doublon.
+
+Moteur : `models/church_import.py` (`church.import`, `church.import.log`). Back-office : *Configuration › Importer un fichier / Historique des imports*.
+
+---
+
+### Flux 12 — Organiser l'église depuis l'application
+
+Cellules, groupes d'âge et quartiers se créent, se modifient et s'archivent depuis **Plus** (pasteur / responsable). Le responsable de cellule modifie seulement le jour, l'heure, le lieu et les notes de **sa** cellule.
 
 ---
 
