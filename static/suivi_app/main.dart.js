@@ -49365,7 +49365,7 @@ if(r!==!1){r=p.Q
 s.push(A.cP(new A.ap(B.ao,A.K("Aucun responsable assign\xe9",i,i,i,r==null?i:r.b2(B.aL),i,i,i),i),i,i))}else{r=j.d
 r.toString
 B.b.O(s,J.jg(t.j.a(J.T(r,h)),new A.ax7(),t.l7))}s.push(B.ab)
-s.push(A.aQH(B.jq,B.a5d,j.gars(),i))
+s.push(A.aQH(B.jq,B.a5e,j.gars(),i))
 s=A.iV(A.ht(s,B.ao,i,B.S,!1),j.gVL())}return A.el(f,s,i,i,i)},
 arB(){var s=this.c
 s.toString
@@ -49566,7 +49566,7 @@ Y(){return new A.a0a()}}
 A.a0a.prototype={
 a9(){this.an()
 $.a5.k4$.push(new A.aGh(this))},
-D(a){var s,r=null,q=A.aF(a,!0,t.u),p=A.aF(a,!0,t.d),o=A.eE(A.b([A.eI(r,r,r,B.ch,r,r,new A.aGd(q),r,r,r,r)],t.p),B.a58)
+D(a){var s,r=null,q=A.aF(a,!0,t.u),p=A.aF(a,!0,t.d),o=A.eE(A.b([A.eI(r,r,r,B.ch,r,r,new A.aGd(q),r,r,r,r)],t.p),B.a59)
 if(J.cd(q.f)&&q.w>0)s=B.dc
 else s=J.cd(q.f)?B.LP:A.iV(A.lD(new A.aGe(this,q,p),J.bX(q.f),B.r8),new A.aGf(q))
 return A.el(o,s,r,r,A.QI(B.jq,B.a4y,new A.aGg(this,p)))},
@@ -49703,7 +49703,7 @@ $0(){return this.a.aex(this.b.gbt()==="super_admin")},
 $S:0}
 A.aFy.prototype={
 $1(a){var s=null,r=this.a,q=A.b([A.dr(!1,s,s,s,!0,s,s,!0,s,B.t4,s,s,new A.aFv(r,a),!1,s,s,s,s,B.a5t,s,B.a5q,s,s,s),A.dr(!1,s,s,s,!0,s,s,!0,s,B.t3,s,s,new A.aFw(r,a),!1,s,s,s,s,B.a5r,s,B.a4K,s,s,s)],t.p)
-if(this.b)q.push(A.dr(!1,s,s,s,!0,s,s,!0,s,B.Nl,s,s,new A.aFx(r,a),!1,s,s,s,s,B.a4E,s,B.a4W,s,s,s))
+if(this.b)q.push(A.dr(!1,s,s,s,!0,s,s,!0,s,B.Nl,s,s,new A.aFx(r,a),!1,s,s,s,s,B.a4E,s,B.a4X,s,s,s))
 return A.hx(!0,A.aS(q,B.o,s,B.j,B.a0),!1,B.O,!0)},
 $S:250}
 A.aFv.prototype={
@@ -49851,7 +49851,7 @@ if(r.gbt()==="super_admin"){p=J.fF(s,new A.aFN())
 l=p.$ti.i("cb<1,dq<p>>")
 p=A.a0(new A.cb(p,new A.aFO(),l),l.i("o.E"))
 B.b.O(o,A.b([B.ac,A.eT(B.OH,j,!1,p,j,new A.aFP(n,b),j,t.S)],m))}p=A.yh(A.aS(o,B.o,j,B.j,B.a0),j)
-return A.ji(A.b([A.e_(B.cp,j,j,new A.aFQ(a),j,j),A.eW(!1,B.kw,B.n,j,j,j,j,j,new A.aFR(n,i,h,q,r,a),j,j)],m),p,B.a55)},
+return A.ji(A.b([A.e_(B.cp,j,j,new A.aFQ(a),j,j),A.eW(!1,B.kw,B.n,j,j,j,j,j,new A.aFR(n,i,h,q,r,a),j,j)],m),p,B.a56)},
 $S:56}
 A.aFK.prototype={
 $1(a){var s=null
@@ -50019,7 +50019,7 @@ h=l.aq6(r)
 i=A.fJ(i,A.ce(h,o?B.L:B.aL,k,k),k)
 h=t.p
 n=A.b([A.c6(A.K(g,k,k,k,B.cP,k,k,k),1)],h)
-if(!o)n.push(A.cu(k,B.a56,B.n,k,new A.bY(B.f4.bj(0.1),k,k,A.be(4),k,k,B.Z),k,k,k,B.LB,k,k,k))
+if(!o)n.push(A.cu(k,B.a57,B.n,k,new A.bY(B.f4.bj(0.1),k,k,A.be(4),k,k,B.Z),k,k,k,B.LB,k,k,k))
 n=A.bz(n,B.o,B.j,B.l,0)
 m=A.b([],h)
 if(J.eC(s))m.push(A.K(s,k,k,k,k,k,k,k))
@@ -50268,14 +50268,14 @@ A.hl(m,"Pr\xe9sence enregistr\xe9e ("+j.a+" pr\xe9sents)")}else{m.toString
 o=o.h(h,"message")
 A.ec(m,o==null?"Erreur":o)}case 1:return A.r(q,r)}})
 return A.t($async$Cm,r)},
-D(a){var s,r=this,q=null,p=A.aF(a,!0,t.u),o=r.gae_(),n=A.eE(q,B.a50),m=r.e,l=J.fF(p.b,new A.av4()),k=l.$ti.i("cb<1,dq<p>>")
+D(a){var s,r=this,q=null,p=A.aF(a,!0,t.u),o=r.gae_(),n=A.eE(q,B.a51),m=r.e,l=J.fF(p.b,new A.av4()),k=l.$ti.i("cb<1,dq<p>>")
 l=A.a0(new A.cb(l,new A.av5(),k),k.i("o.E"))
 m=A.eT(B.tc,m,!1,l,new A.cy("cell-"+A.k(m),t.kK),new A.av6(r),q,t.S)
 l=A.be(12)
 k=r.d
 s=t.p
 k=A.b([new A.ap(B.ao,A.aS(A.b([m,B.ac,A.fN(!1,l,!0,A.Ry(q,A.K(B.c.fP(B.f.k(A.cT(k)),2,"0")+"/"+B.c.fP(B.f.k(A.bN(k)),2,"0")+"/"+A.bs(k),q,q,q,q,q,q,q),B.Oz,!1,!1,!1,!1,q,q),q,!0,q,q,q,q,q,q,q,q,q,q,new A.av7(r,a),q,q,q,q,q,q,q)],s),B.o,q,B.j,B.l),q)],s)
-if(r.e!=null){m=A.bz(A.b([A.K(""+r.f.a+"/"+o.length+" pr\xe9sents",q,q,q,B.oD,q,q,q),B.er,A.e_(B.a57,q,q,new A.av8(r,o),q,q),A.e_(B.a5H,q,q,new A.av9(r),q,q)],s),B.o,B.j,B.l,0)
+if(r.e!=null){m=A.bz(A.b([A.K(""+r.f.a+"/"+o.length+" pr\xe9sents",q,q,q,B.oD,q,q,q),B.er,A.e_(B.a58,q,q,new A.av8(r,o),q,q),A.e_(B.a5H,q,q,new A.av9(r),q,q)],s),B.o,B.j,B.l,0)
 l=o.length
 B.b.O(k,A.b([new A.ap(B.d5,m,q),A.c6(l===0?B.LI:A.lD(new A.ava(r,o),l,B.cD),1)],s))}else k.push(B.LW)
 m=A.aS(k,B.o,q,B.j,B.l)
@@ -50420,7 +50420,7 @@ s=A.be(12)
 r=p.e
 s=A.cu(o,A.bz(A.b([i,B.c6,A.cu(o,A.K(""+r.a+"/"+J.bX(n.b),o,o,o,B.a3y,o,o,o),B.n,o,new A.bY(j,o,o,s,o,o,B.Z),o,o,o,B.Lm,o,o,o)],l),B.o,B.j,B.l,0),B.n,o,o,o,o,o,B.ao,o,o,o)
 j=A.fy(o,B.aP,!1,o,!0,B.D,o,A.fY(),o,o,o,o,o,o,2,B.OW,B.M,!0,o,!0,o,!1,o,B.aJ,o,o,o,o,o,o,o,o,1,o,o,!1,"\u2022",o,new A.avo(p),o,o,o,!1,o,o,!1,o,!0,o,B.ax,o,o,o,o,o,o,o,o,o,o,o,o,!0,B.V,o,B.aV,o,o,o,o)
-i=A.bz(A.b([A.e_(B.a5A,o,o,new A.avp(p,n),o,o),A.e_(B.a5b,o,o,new A.avq(p),o,o)],l),B.o,B.j,B.l,0)
+i=A.bz(A.b([A.e_(B.a5A,o,o,new A.avp(p,n),o,o),A.e_(B.a5c,o,o,new A.avq(p),o,o)],l),B.o,B.j,B.l,0)
 if(n.d)q=B.dc
 else{q=J.Z(m)
 q=q.gah(m)?B.LL:A.lD(new A.avr(p,m),q.gA(m),B.cD)}l=A.aS(A.b([s,new A.ap(B.d5,j,o),B.ab,new A.ap(B.d5,i,o),A.c6(q,1)],l),B.o,o,B.j,B.l)
@@ -51305,7 +51305,7 @@ o=n.h(o,q)
 o=A.ck(o)?o:0
 n=t.p
 s=A.aS(A.b([m,B.ay,new A.Hz(r,new A.aAD(s,b),p),B.ab,A.K("Nouvelle dur\xe9e : "+(o+s.a)+" semaines",p,p,p,B.cP,p,p,p)],n),B.o,p,B.j,B.a0)
-return A.ji(A.b([A.e_(B.cp,p,p,new A.aAE(a),p,p),A.eW(!1,B.a5x,B.n,p,p,p,p,p,new A.aAF(a),p,A.oT(B.al,p,p,p,p,p))],n),s,B.a52)},
+return A.ji(A.b([A.e_(B.cp,p,p,new A.aAE(a),p,p),A.eW(!1,B.a5x,B.n,p,p,p,p,p,new A.aAF(a),p,A.oT(B.al,p,p,p,p,p))],n),s,B.a53)},
 $S:56}
 A.aAD.prototype={
 $1(a){return this.b.$1(new A.aAC(this.a,a))},
@@ -51331,10 +51331,10 @@ else s=!1
 r=B.yx.gf8(B.yx)
 r=A.aS(r.fc(r,new A.aAv(),t.GW).eh(0),B.o,p,B.j,B.l)
 q=t.p
-r=A.yh(A.aS(A.b([B.a5i,B.ac,new A.xH(n,new A.aAw(o,b),r,p,t.eY),A.fy(p,B.aP,!1,p,!0,B.D,p,A.fY(),this.b,p,p,p,p,p,2,A.wT(p,p,p,p,p,p,p,p,!0,p,p,p,p,p,p,p,p,p,p,p,p,p,p,p,p,p,p,p,p,p,p,p,p,p,p,p,p,p,p,p,m?"Pr\xe9cisions (obligatoires)":"Pr\xe9cisions (facultatives)",!0,!0,p,p,p,p,p,p,p,p,p,p,p,p,p,p),B.M,!0,p,!0,p,!1,p,B.aJ,p,p,p,p,p,p,p,p,2,p,p,!1,"\u2022",p,new A.aAx(b),p,p,p,!1,p,p,!1,p,!0,p,B.ax,p,p,p,p,p,p,p,p,p,p,p,p,!0,B.V,p,B.aV,p,p,p,p)],q),B.P,p,B.j,B.a0),p)
+r=A.yh(A.aS(A.b([B.a5j,B.ac,new A.xH(n,new A.aAw(o,b),r,p,t.eY),A.fy(p,B.aP,!1,p,!0,B.D,p,A.fY(),this.b,p,p,p,p,p,2,A.wT(p,p,p,p,p,p,p,p,!0,p,p,p,p,p,p,p,p,p,p,p,p,p,p,p,p,p,p,p,p,p,p,p,p,p,p,p,p,p,p,p,m?"Pr\xe9cisions (obligatoires)":"Pr\xe9cisions (facultatives)",!0,!0,p,p,p,p,p,p,p,p,p,p,p,p,p,p),B.M,!0,p,!0,p,!1,p,B.aJ,p,p,p,p,p,p,p,p,2,p,p,!1,"\u2022",p,new A.aAx(b),p,p,p,!1,p,p,!1,p,!0,p,B.ax,p,p,p,p,p,p,p,p,p,p,p,p,!0,B.V,p,B.aV,p,p,p,p)],q),B.P,p,B.j,B.a0),p)
 o=A.e_(B.cp,p,p,new A.aAy(a),p,p)
 n=s?new A.aAz(a):p
-return A.ji(A.b([o,A.eW(!1,B.a5a,B.n,p,p,p,p,p,n,p,A.oT(B.aw,p,p,p,p,p))],q),r,B.a4H)},
+return A.ji(A.b([o,A.eW(!1,B.a5b,B.n,p,p,p,p,p,n,p,A.oT(B.aw,p,p,p,p,p))],q),r,B.a4H)},
 $S:56}
 A.aAw.prototype={
 $1(a){return this.b.$1(new A.aAu(this.a,a))},
@@ -51492,7 +51492,7 @@ h.push(A.as_(B.O,g,A.ce(B.jp,m?B.aa:k,k,k),s,B.a4B,m))
 g=q.c
 h.push(A.as_(B.O,new A.aBc(q,b),A.ce(B.hd,g?B.aa:k,k,k),k,B.a4T,g))
 g=q.d
-h.push(A.as_(B.O,new A.aBd(q,b),A.ce(B.mZ,g?B.aa:k,k,k),k,B.a54,g))
+h.push(A.as_(B.O,new A.aBd(q,b),A.ce(B.mZ,g?B.aa:k,k,k),k,B.a55,g))
 h.push(B.ab)
 g=q.e
 s=B.jJ.gf8(B.jJ)
@@ -51752,7 +51752,7 @@ A.bq(k,!1).bZ(!0)}else{l.toString
 k=k.h(m,"message")
 A.ec(l,k==null?"Erreur":k)}case 1:return A.r(q,r)}})
 return A.t($async$Bo,r)},
-D(a){var s,r,q,p,o,n=this,m=null,l=A.aF(a,!0,t.ek),k=A.aF(a,!0,t.J),j=A.aF(a,!0,t.d).gbt(),i=A.x(a),h=n.VX(n.e),g=A.ci(h==null?m:J.T(h,"proposed_followup_label"),""),f=n.S2(l.b),e=A.eE(m,B.a5j)
+D(a){var s,r,q,p,o,n=this,m=null,l=A.aF(a,!0,t.ek),k=A.aF(a,!0,t.J),j=A.aF(a,!0,t.d).gbt(),i=A.x(a),h=n.VX(n.e),g=A.ci(h==null?m:J.T(h,"proposed_followup_label"),""),f=n.S2(l.b),e=A.eE(m,B.a5k)
 if(l.d&&f.length===0)s=B.PC
 else{s=f.length
 r=A.a4(f).i("aa<1,dq<p>>")
@@ -52026,7 +52026,7 @@ return A.n(A.bq(o,!1).ff(p),$async$vW)
 case 2:if(c===!0)q.tx()
 return A.r(null,r)}})
 return A.t($async$vW,r)},
-D(a){var s,r,q,p=this,o=null,n=J.cd(p.d)&&J.cd(p.e),m=A.eE(o,B.a51)
+D(a){var s,r,q,p=this,o=null,n=J.cd(p.d)&&J.cd(p.e),m=A.eE(o,B.a52)
 if(p.f&&n)s=B.ki
 else{s=p.r
 if(s!=null&&n)s=new A.hT(s,p.gYS(),o)
@@ -52323,7 +52323,7 @@ if(q.gbt()==="manager"||q.gbt()==="super_admin"||q.gbt()==="evangelist"||q.gbt()
 if(q.gbt()==="manager"||q.gbt()==="super_admin"||q.gbt()==="cell_leader")o.push(new A.hH("Pr\xe9sence cell.",B.rZ,B.al,new A.aGI(s,a)))
 o.push(new A.hH("Param\xe8tres",B.t0,B.aL,new A.aGz(s,a)))
 B.b.O(n,o)
-return A.el(A.eE(r,B.a4Z),A.aVg(r,B.M,B.a_9,new A.aGA(n,p),n.length,B.ao),r,r,r)},
+return A.el(A.eE(r,B.a5_),A.aVg(r,B.M,B.a_9,new A.aGA(n,p),n.length,B.ao),r,r,r)},
 jJ(a,b){var s=A.kx(new A.aGv(b),null,t.z)
 A.bq(a,!1).ff(s)}}
 A.aGw.prototype={
@@ -52984,7 +52984,7 @@ Y(){return new A.WK()}}
 A.WK.prototype={
 a9(){this.an()
 $.a5.k4$.push(new A.aui(this))},
-D(a){var s,r=null,q=A.aF(a,!0,t.u),p=A.eE(A.b([A.eI(r,r,r,B.ch,r,r,new A.aue(q),r,r,r,r)],t.p),B.a5g)
+D(a){var s,r=null,q=A.aF(a,!0,t.u),p=A.eE(A.b([A.eI(r,r,r,B.ch,r,r,new A.aue(q),r,r,r,r)],t.p),B.a5h)
 if(q.w>0&&J.cd(q.c))s=B.dc
 else if(q.x!=null&&J.cd(q.c)){s=q.x
 s.toString
@@ -53192,13 +53192,13 @@ p.push(A.K(A.ci(J.T(h,"phone"),""),n,n,n,r.Q,n,n,n))}f=A.cP(new A.ap(B.ax,A.bz(A
 s=A.b([],o)
 if((e?n:J.T(h,m))!=null){h.toString
 s.push(new A.uZ(B.f1,"\xc9glise",J.T(h,m),n))}r=j.y.length
-if(r>1)s.push(A.dr(!1,n,n,n,!0,n,n,!0,n,B.O5,n,n,new A.aqQ(a),!1,n,n,n,n,A.K("Vous avez un compte dans "+r+" \xe9glises",n,n,n,n,n,n,n),n,B.a5k,n,B.hf,n))
+if(r>1)s.push(A.dr(!1,n,n,n,!0,n,n,!0,n,B.O5,n,n,new A.aqQ(a),!1,n,n,n,n,A.K("Vous avez un compte dans "+r+" \xe9glises",n,n,n,n,n,n,n),n,B.a5l,n,B.hf,n))
 if((e?n:J.T(h,l))!=null){h.toString
 s.push(new A.uZ(B.mY,"Cellule",J.T(h,l),n))}if((e?n:J.T(h,k))!=null){h.toString
 s.push(new A.uZ(B.dw,"Groupe d'\xe2ge",J.T(h,k),n))}s.push(new A.uZ(B.MP,"Serveur",j.w,n))
 e=A.cP(A.aS(s,B.o,n,B.j,B.l),n,n)
-s=A.b([B.PM,B.m_],o)
-s.push(A.dr(!1,n,n,n,!0,n,n,!0,n,B.Nv,n,n,new A.aqR(j),!1,n,n,n,n,n,n,B.a5f,n,B.O6,n))
+s=A.b([B.PK,B.m_],o)
+s.push(A.dr(!1,n,n,n,!0,n,n,!0,n,B.Nv,n,n,new A.aqR(j),!1,n,n,n,n,n,n,B.a5g,n,B.O6,n))
 s.push(B.m_)
 s.push(A.dr(!1,n,n,n,!0,n,n,!0,n,B.NF,n,n,new A.aqS(a),!1,n,n,n,n,n,n,B.a4x,n,n,n))
 return A.el(g,A.ht(A.b([f,B.dd,B.a8K,e,B.dd,B.a8I,A.cP(A.aS(s,B.o,n,B.j,B.l),n,n),B.dd,B.a8O,A.cP(A.aS(A.b([B.PN,B.m_,A.dr(!1,n,n,n,!0,n,n,!0,n,B.O0,n,n,n,!1,n,n,n,n,n,n,B.a5B,n,A.bz(A.b([A.eI(n,n,n,B.Nu,n,n,new A.aqT(),n,n,n,"Appeler"),A.eI(n,n,n,B.Nr,n,n,new A.aqU(),n,n,n,"WhatsApp")],o),B.o,B.j,B.a0,0),n)],o),B.o,n,B.j,B.l),n,n),B.oq,A.c7(A.aQH(B.Nh,B.a4L,new A.aqV(this,a),A.aWo(n,n,n,n,n,n,n,n,n,n,n,n,B.m7,n,n,B.FI,n,n,n,n)),n,1/0),B.a_5],o),B.ao,n,B.S,!1),n,n,n)},
@@ -53926,7 +53926,7 @@ break}p=4
 j=t.N
 l=t.z
 s=7
-return A.n(n.$2("/api/mobile/v1/apps/suivi-evangelisation/latest",A.a6(["current_version","2.3.1+6"],j,l)),$async$Du)
+return A.n(n.$2("/api/mobile/v1/apps/suivi-evangelisation/latest",A.a6(["current_version","2.4.0+7"],j,l)),$async$Du)
 case 7:m=b
 j=t.f.b(m)&&J.c(J.T(m,"status"),"success")?A.d_(m,j,l):null
 q=j
@@ -54278,7 +54278,7 @@ h=t.p
 j=A.bz(A.b([k,B.c6,A.c6(A.aS(A.b([A.K(p,f,f,f,i==null?f:i.dJ(B.N),f,f,f),B.cn,A.K(o,f,f,f,j.Q,f,f,f)],h),B.P,f,B.j,B.l),1)],h),B.P,B.j,B.l,0)
 k=A.b([A.e_(A.K(e===B.ES?"Compris":"Plus tard",f,f,f,f,f,f,f),f,f,g.gafJ(),f,f)],h)
 if(e===B.ER)k.push(A.acX(!1,B.Eo,B.n,f,f,f,f,f,g.gag1(),f,f))
-if(e===B.ET)k.push(A.acX(!1,B.a59,B.n,f,f,f,f,f,g.gamm(),f,f))
+if(e===B.ET)k.push(A.acX(!1,B.a5a,B.n,f,f,f,f,f,g.gamm(),f,f))
 return A.e8(!1,B.G,!0,f,A.hx(!1,new A.ap(B.r4,A.aS(A.b([j,new A.db(B.ii,f,f,A.q6(B.c_,k,B.dj,0,4),f)],h),B.P,f,B.j,B.l),f),!1,B.O,!0),B.n,r,0,f,f,f,f,f,B.bq)}}
 A.aDu.prototype={
 $0(){return this.a.d=this.b},
@@ -54292,7 +54292,7 @@ $S:323}
 A.aOX.prototype={
 $1(a){var s=this,r=null,q=s.b,p=s.c,o=s.d,n=t.p
 q=A.aS(A.b([A.K("Envoyez ce message \xe0 "+s.a+" :",r,r,r,r,r,r,r),B.ac,A.cu(r,new A.FT(q,B.ku,r),B.n,r,new A.bY(B.L.bj(0.06),r,r,A.be(10),r,r,B.Z),r,r,r,B.cg,r,r,r),B.ay,A.bz(A.b([new A.tp(B.mW,B.ee,"WhatsApp",new A.aOS(a,p,o,q),r),new A.tp(B.t1,B.yH,"SMS",new A.aOT(a,p,o,q),r),new A.tp(B.rK,B.yG,"Copier",new A.aOU(q,a),r),new A.tp(B.rU,B.L,"Partager",new A.aOV(a,q),r)],n),B.o,B.nv,B.l,0)],n),B.P,r,B.j,B.a0)
-return A.ji(A.b([A.eW(!1,B.a5l,B.n,r,r,r,r,r,new A.aOW(a),r,r)],n),q,B.a4X)},
+return A.ji(A.b([A.eW(!1,B.a5m,B.n,r,r,r,r,r,new A.aOW(a),r,r)],n),q,B.a4Y)},
 $S:72}
 A.aOS.prototype={
 $0(){var s=this
@@ -54377,7 +54377,7 @@ o=t.p
 q=A.bz(A.b([B.Nx,B.c6,A.c6(A.aS(A.b([A.K("Recevez les relances sur ce navigateur",l,l,l,p==null?l:p.dJ(B.N),l,l,l),B.cn,A.K("Une personne confi\xe9e, une d\xe9cision \xe0 prendre, le r\xe9capitulatif du lundi.",l,l,l,q.Q,l,l,l)],o),B.P,l,B.j,B.l),1)],o),B.P,B.j,B.l,0)
 p=m.e
 n=A.e_(B.Em,l,l,p?l:m.gatQ(),l,l)
-return A.e8(!1,B.G,!0,l,new A.ap(B.r4,A.aS(A.b([q,new A.db(B.ii,l,l,A.q6(B.c_,A.b([n,A.acX(!1,B.a5_,B.n,l,l,l,l,l,p?l:m.gagq(),l,l)],o),B.dj,0,4),l)],o),B.P,l,B.j,B.l),l),B.n,r,0,l,l,l,l,l,B.bq)}}
+return A.e8(!1,B.G,!0,l,new A.ap(B.r4,A.aS(A.b([q,new A.db(B.ii,l,l,A.q6(B.c_,A.b([n,A.acX(!1,B.a50,B.n,l,l,l,l,l,p?l:m.gagq(),l,l)],o),B.dj,0,4),l)],o),B.P,l,B.j,B.l),l),B.n,r,0,l,l,l,l,l,B.bq)}}
 A.aMk.prototype={
 $0(){return this.a.d=!1},
 $S:0}
@@ -113881,12 +113881,12 @@ B.PJ=new A.t8(4,"bottom")
 B.Nq=new A.b9(B.rN,null,null,null,null)
 B.a4P=new A.aM("Version",null,null,null,null,null,null,null,null,null)
 B.Ek=new A.z(!0,B.aL,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null)
-B.a5m=new A.aM("2.3.1+6",null,B.Ek,null,null,null,null,null,null,null)
-B.PM=new A.lC(B.Nq,B.a4P,null,B.a5m,null,null,null,null,null,null,!0,null,null,!1,null,null,null,!1,null,null,null,null,null,!0,null)
+B.a4W=new A.aM("2.4.0+7",null,B.Ek,null,null,null,null,null,null,null)
+B.PK=new A.lC(B.Nq,B.a4P,null,B.a4W,null,null,null,null,null,null,!0,null,null,!1,null,null,null,!1,null,null,null,null,null,!0,null)
 B.No=new A.b9(B.f_,null,B.L,null,null)
 B.a4O=new A.aM("DIBI Bi Kavola Augustin",null,null,null,null,null,null,null,null,null)
-B.a5c=new A.aM("D\xe9veloppeur",null,null,null,null,null,null,null,null,null)
-B.PN=new A.lC(B.No,B.a4O,B.a5c,null,null,null,null,null,null,null,!0,null,null,!1,null,null,null,!1,null,null,null,null,null,!0,null)
+B.a5d=new A.aM("D\xe9veloppeur",null,null,null,null,null,null,null,null,null)
+B.PN=new A.lC(B.No,B.a4O,B.a5d,null,null,null,null,null,null,null,!0,null,null,!1,null,null,null,!1,null,null,null,null,null,!0,null)
 B.tr=s(["text","multiline","number","phone","datetime","emailAddress","url","visiblePassword","name","address","none","webSearch","twitter"],t.s)
 B.PQ=s([239,191,189],t.t)
 B.PT=s(["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"],t.s)
@@ -113996,8 +113996,8 @@ B.a5s=new A.aM("Oui, elle tient",null,null,null,null,null,null,null,null,null)
 B.GE=new A.mz("favorable",B.NJ,B.a5s,t.Zx)
 B.N1=new A.ai(62525,"MaterialIcons",!1)
 B.NH=new A.b9(B.N1,null,null,null,null)
-B.a5e=new A.aM("Elle ne vient plus",null,null,null,null,null,null,null,null,null)
-B.GF=new A.mz("unfavorable",B.NH,B.a5e,t.Zx)
+B.a5f=new A.aM("Elle ne vient plus",null,null,null,null,null,null,null,null,null)
+B.GF=new A.mz("unfavorable",B.NH,B.a5f,t.Zx)
 B.R5=s([B.GE,B.GF],A.au("M<mz<m>>"))
 B.DX=new A.GF(0,"left")
 B.DY=new A.GF(1,"right")
@@ -115249,8 +115249,8 @@ B.VZ=new A.ap(B.cg,B.a4D,null)
 B.W_=new A.ap(B.j3,B.pR,null)
 B.r2=new A.ah(0,8,0,0)
 B.a2T=new A.z(!0,B.al,null,null,null,null,12,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null)
-B.a53=new A.aM("Le responsable sera alert\xe9 et un rattrapage planifi\xe9 dans un mois.",null,B.a2T,null,null,null,null,null,null,null)
-B.W0=new A.ap(B.r2,B.a53,null)
+B.a54=new A.aM("Le responsable sera alert\xe9 et un rattrapage planifi\xe9 dans un mois.",null,B.a2T,null,null,null,null,null,null,null)
+B.W0=new A.ap(B.r2,B.a54,null)
 B.a3m=new A.z(!0,B.aw,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null)
 B.a5u=new A.aM("Deux contr\xf4les d\xe9favorables de suite : rouvrir un suivi est propos\xe9.",null,B.a3m,null,null,null,null,null,null,null)
 B.W1=new A.ap(B.r2,B.a5u,null)
@@ -115258,8 +115258,8 @@ B.Lv=new A.ah(20,20,20,8)
 B.a3b=new A.z(!0,null,null,null,null,null,18,B.N,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null)
 B.a4G=new A.aM("Changer d'\xe9glise",null,B.a3b,null,null,null,null,null,null,null)
 B.W2=new A.ap(B.Lv,B.a4G,null)
-B.a5h=new A.aM("Aucun membre",null,B.Ek,null,null,null,null,null,null,null)
-B.z1=new A.ap(B.cg,B.a5h,null)
+B.a5i=new A.aM("Aucun membre",null,B.Ek,null,null,null,null,null,null,null)
+B.z1=new A.ap(B.cg,B.a5i,null)
 B.W3=new A.EB(null)
 B.bk=new A.SS(0,"fill")
 B.aQ=new A.SS(1,"stroke")
@@ -115293,12 +115293,12 @@ B.WN=new A.xx(1,"scroll")
 B.WO=new A.xx(3,"scale")
 B.WP=new A.xx(4,"unknown")
 B.ND=new A.b9(B.mX,null,null,null,null)
-B.a4Y=new A.aM("Modifier le r\xf4le",null,null,null,null,null,null,null,null,null)
-B.PK=new A.lC(B.ND,B.a4Y,null,null,null,null,null,null,null,null,!0,null,null,!1,null,null,null,!1,null,null,null,null,null,!0,null)
-B.WQ=new A.kF("edit_role",B.PK,null,t.wI)
+B.a4Z=new A.aM("Modifier le r\xf4le",null,null,null,null,null,null,null,null,null)
+B.PL=new A.lC(B.ND,B.a4Z,null,null,null,null,null,null,null,null,!0,null,null,!1,null,null,null,!1,null,null,null,null,null,!0,null)
+B.WQ=new A.kF("edit_role",B.PL,null,t.wI)
 B.a5I=new A.aM("Envoyer l'invitation",null,null,null,null,null,null,null,null,null)
-B.PL=new A.lC(B.t7,B.a5I,null,null,null,null,null,null,null,null,!0,null,null,!1,null,null,null,!1,null,null,null,null,null,!0,null)
-B.WT=new A.kF("share",B.PL,null,t.wI)
+B.PM=new A.lC(B.t7,B.a5I,null,null,null,null,null,null,null,null,!0,null,null,!1,null,null,null,!1,null,null,null,null,null,!0,null)
+B.WT=new A.kF("share",B.PM,null,t.wI)
 B.WW=new A.xB(null,null,null,null,null,null,null,null,null,null,null,null,null)
 B.nP=new A.EN(null)
 B.CD=new A.tN(1,"inAppWebView")
@@ -116088,31 +116088,31 @@ B.a4U=new A.aM("\xc0 faire",null,null,null,null,null,null,null,null,null)
 B.a4V=new A.aM("Ouvrir le suivi",null,B.i4,null,null,null,null,null,null,null)
 B.Em=new A.aM("Plus tard",null,null,null,null,null,null,null,null,null)
 B.cp=new A.aM("Annuler",null,null,null,null,null,null,null,null,null)
-B.a4W=new A.aM("Autre compte",null,null,null,null,null,null,null,null,null)
-B.a4X=new A.aM("Invitation \xe0 transmettre",null,null,null,null,null,null,null,null,null)
-B.a4Z=new A.aM("Plus",null,null,null,null,null,null,null,null,null)
-B.a5_=new A.aM("Activer",null,null,null,null,null,null,null,null,null)
-B.a50=new A.aM("Pr\xe9sence cellule",null,null,null,null,null,null,null,null,null)
-B.a51=new A.aM("\xc0 attribuer",null,null,null,null,null,null,null,null,null)
-B.a52=new A.aM("Prolonger le suivi",null,null,null,null,null,null,null,null,null)
+B.a4X=new A.aM("Autre compte",null,null,null,null,null,null,null,null,null)
+B.a4Y=new A.aM("Invitation \xe0 transmettre",null,null,null,null,null,null,null,null,null)
+B.a5_=new A.aM("Plus",null,null,null,null,null,null,null,null,null)
+B.a50=new A.aM("Activer",null,null,null,null,null,null,null,null,null)
+B.a51=new A.aM("Pr\xe9sence cellule",null,null,null,null,null,null,null,null,null)
+B.a52=new A.aM("\xc0 attribuer",null,null,null,null,null,null,null,null,null)
+B.a53=new A.aM("Prolonger le suivi",null,null,null,null,null,null,null,null,null)
 B.En=new A.aM("Enregistrer",null,null,null,null,null,null,null,null,null)
-B.a54=new A.aM("Visite effectu\xe9e",null,null,null,null,null,null,null,null,null)
-B.a55=new A.aM("Nouvel utilisateur",null,null,null,null,null,null,null,null,null)
+B.a55=new A.aM("Visite effectu\xe9e",null,null,null,null,null,null,null,null,null)
+B.a56=new A.aM("Nouvel utilisateur",null,null,null,null,null,null,null,null,null)
 B.a1t=new A.z(!0,B.f4,null,null,null,null,10,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null)
-B.a56=new A.aM("Inactif",null,B.a1t,null,null,null,null,null,null,null)
-B.a57=new A.aM("Tous",null,null,null,null,null,null,null,null,null)
-B.a58=new A.aM("Utilisateurs mobiles",null,null,null,null,null,null,null,null,null)
-B.a59=new A.aM("Installer",null,null,null,null,null,null,null,null,null)
+B.a57=new A.aM("Inactif",null,B.a1t,null,null,null,null,null,null,null)
+B.a58=new A.aM("Tous",null,null,null,null,null,null,null,null,null)
+B.a59=new A.aM("Utilisateurs mobiles",null,null,null,null,null,null,null,null,null)
+B.a5a=new A.aM("Installer",null,null,null,null,null,null,null,null,null)
 B.Eo=new A.aM("T\xe9l\xe9charger",null,null,null,null,null,null,null,null,null)
-B.a5a=new A.aM("Interrompre",null,null,null,null,null,null,null,null,null)
-B.a5b=new A.aM("Tout d\xe9s\xe9lectionner",null,null,null,null,null,null,null,null,null)
-B.a5d=new A.aM("Ajouter un responsable",null,null,null,null,null,null,null,null,null)
-B.a5f=new A.aM("Guide d'utilisation",null,null,null,null,null,null,null,null,null)
-B.a5g=new A.aM("Groupes d'\xe2ge",null,null,null,null,null,null,null,null,null)
-B.a5i=new A.aM("La personne passera en \xab Suivi interrompu \xbb. Son suivi pourra \xeatre repris plus tard.",null,null,null,null,null,null,null,null,null)
-B.a5j=new A.aM("Nouveau suivi",null,null,null,null,null,null,null,null,null)
-B.a5k=new A.aM("Changer d'\xe9glise",null,null,null,null,null,null,null,null,null)
-B.a5l=new A.aM("Fermer",null,null,null,null,null,null,null,null,null)
+B.a5b=new A.aM("Interrompre",null,null,null,null,null,null,null,null,null)
+B.a5c=new A.aM("Tout d\xe9s\xe9lectionner",null,null,null,null,null,null,null,null,null)
+B.a5e=new A.aM("Ajouter un responsable",null,null,null,null,null,null,null,null,null)
+B.a5g=new A.aM("Guide d'utilisation",null,null,null,null,null,null,null,null,null)
+B.a5h=new A.aM("Groupes d'\xe2ge",null,null,null,null,null,null,null,null,null)
+B.a5j=new A.aM("La personne passera en \xab Suivi interrompu \xbb. Son suivi pourra \xeatre repris plus tard.",null,null,null,null,null,null,null,null,null)
+B.a5k=new A.aM("Nouveau suivi",null,null,null,null,null,null,null,null,null)
+B.a5l=new A.aM("Changer d'\xe9glise",null,null,null,null,null,null,null,null,null)
+B.a5m=new A.aM("Fermer",null,null,null,null,null,null,null,null,null)
 B.a5n=new A.aM("Mettre \xe0 jour",null,null,null,null,null,null,null,null,null)
 B.a5o=new A.aM("\xc9vang\xe9listes",null,null,null,null,null,null,null,null,null)
 B.a5p=new A.aM("D\xe9sactiv\xe9, l'\xe9glise quitte cette liste ; ses donn\xe9es restent.",null,null,null,null,null,null,null,null,null)
