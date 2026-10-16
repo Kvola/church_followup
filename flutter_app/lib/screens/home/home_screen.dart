@@ -24,6 +24,7 @@ import '../admin/report_screen.dart';
 import '../admin/church_management_screen.dart';
 import '../settings/settings_screen.dart';
 import '../../widgets/install_banner.dart';
+import '../../widgets/web_notifications_banner.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -151,6 +152,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         children: [
           // Version navigateur seulement ; ailleurs, elle ne prend aucune place.
           const InstallBanner(),
+          const WebNotificationsBanner(),
           Expanded(
             child: IndexedStack(
               index: _currentIndex,

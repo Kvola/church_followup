@@ -45,12 +45,21 @@ fi
 BASE_HREF='/suivi-evangelisation/'
 VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //')
 DEFINES=(--dart-define="APP_VERSION=$VERSION")
+# Clé « navigateur » du projet Firebase (publique : elle identifie le projet,
+# elle n'autorise rien à elle seule).
+FCM_WEB_API_KEY="${FCM_WEB_API_KEY:-AIzaSyCYwYEwbRAawKGA9jHRN296hiZiWOkse7Y}"
 if [ -n "${FCM_WEB_APP_ID:-}" ] && [ -n "${FCM_VAPID_KEY:-}" ]; then
-    DEFINES+=(--dart-define="FCM_WEB_APP_ID=$FCM_WEB_APP_ID" --dart-define="FCM_VAPID_KEY=$FCM_VAPID_KEY")
+    DEFINES+=(--dart-define="FCM_WEB_APP_ID=$FCM_WEB_APP_ID" --dart-define="FCM_VAPID_KEY=$FCM_VAPID_KEY"
+              --dart-define="FCM_WEB_API_KEY=$FCM_WEB_API_KEY")
     info "▶ Notifications web : activées (app Web $FCM_WEB_APP_ID)"
 else
     info "▶ Notifications web : désactivées (FCM_WEB_APP_ID / FCM_VAPID_KEY non fournis)"
 fi
+
+# `flutter build web` ne vide pas build/web : un service worker d'une
+# construction précédente (notifications activées) survivrait à une
+# construction qui les désactive, avec un identifiant d'app périmé.
+rm -f "$APP_DIR/build/web/firebase-messaging-sw.js"
 
 info "▶ Construction du bundle web (base-href $BASE_HREF)…"
 # Aucun BASE_URL : sur le web l'adresse reste vide (AppConstants.serverUrl).
@@ -73,8 +82,13 @@ ok "✓ base-href et scope accordés à $BASE_HREF"
 # Service worker des notifications : écrit depuis les MÊMES valeurs que l'app.
 SW="$APP_DIR/build/web/firebase-messaging-sw.js"
 if [ -n "${FCM_WEB_APP_ID:-}" ] && [ -n "${FCM_VAPID_KEY:-}" ]; then
-    sed "s|__FCM_WEB_APP_ID__|$FCM_WEB_APP_ID|" "$APP_DIR/web/firebase-messaging-sw.template.js" > "$SW"
-    grep -c "__FCM_WEB_APP_ID__" "$SW" >/dev/null && die "service worker non renseigné." || true
+    sed -e "s|__FCM_WEB_APP_ID__|$FCM_WEB_APP_ID|" -e "s|__FCM_WEB_API_KEY__|$FCM_WEB_API_KEY|" \
+        "$APP_DIR/web/firebase-messaging-sw.template.js" > "$SW"
+    RESTE=$(grep -c "__FCM_" "$SW" || true)
+    [ "${RESTE:-0}" -eq 0 ] || die "service worker non renseigné."
+    # Le même identifiant dans l'app et dans le service worker, vérifié sur le binaire.
+    DANS_APP=$(grep -c "$FCM_WEB_APP_ID" "$APP_DIR/build/web/main.dart.js" || true)
+    [ "${DANS_APP:-0}" -gt 0 ] || die "l'app Web Firebase n'est pas compilée dans le bundle."
     ok '✓ Service worker des notifications écrit'
 fi
 rm -f "$APP_DIR/build/web/firebase-messaging-sw.template.js"

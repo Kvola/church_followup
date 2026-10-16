@@ -49,3 +49,14 @@ class TestSuiviPwa(HttpCase):
         self.assertEqual(app.pwa_url, '/suivi-evangelisation')
         page = self.url_open('/apps/suivi-evangelisation')
         self.assertIn('/suivi-evangelisation', page.text)
+
+    def test_the_service_worker_template_never_ships(self):
+        """Le gabarit porte des marqueurs (__FCM_…) : servi tel quel, il ferait
+        s'abonner les navigateurs à une app Firebase inexistante."""
+        page = self.url_open('/suivi-evangelisation/firebase-messaging-sw.template.js')
+        self.assertNotIn('__FCM_', page.text)
+
+    def test_the_page_carries_its_install_and_push_relays(self):
+        page = self.url_open('/suivi-evangelisation/').text
+        for relay in ('suiviPromptInstall', 'suiviIsStandalone', 'suiviWebPushToken'):
+            self.assertIn(relay, page, "Relais absent : la banderole ou les notifications se tairaient")

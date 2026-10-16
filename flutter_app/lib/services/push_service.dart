@@ -2,7 +2,11 @@ import 'dart:async';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
+
+import 'web_push/web_push.dart' as web_push;
 
 /// Notifications push : personne confiée, décision à prendre, récapitulatif
 /// du lundi, contrôle défavorable.
@@ -25,9 +29,43 @@ class PushService {
 
   String get deviceLabel => kIsWeb ? 'Navigateur' : defaultTargetPlatform.name;
 
+  // ── Notifications web ─────────────────────────────────────────────
+  // Identifiants PUBLICS de l'app Web Firebase, compilés par build_pwa.sh.
+  // Absents : la PWA fonctionne, sans notifications.
+  static const _webAppId = String.fromEnvironment('FCM_WEB_APP_ID');
+  static const _webVapidKey = String.fromEnvironment('FCM_VAPID_KEY');
+  static const _webApiKey = String.fromEnvironment('FCM_WEB_API_KEY');
+
+  /// La version navigateur sait-elle recevoir des notifications ?
+  bool get webPushConfigured =>
+      kIsWeb && _webAppId.isNotEmpty && _webVapidKey.isNotEmpty && _webApiKey.isNotEmpty;
+
+  /// 'default' (pas encore demandé), 'granted', 'denied' ou 'unsupported'.
+  String get webPermission => webPushConfigured ? web_push.webPushPermission() : 'unsupported';
+
+  String get _webConfig => jsonEncode({'apiKey': _webApiKey, 'appId': _webAppId, 'vapidKey': _webVapidKey});
+
+  /// Active les notifications de ce navigateur : DEMANDE la permission. À
+  /// n'appeler que sur un geste de l'utilisateur (Safari l'exige).
+  Future<bool> enableWebNotifications() async {
+    if (!webPushConfigured) return false;
+    _token = await web_push.webPushToken(_webConfig, ask: true);
+    return _token != null;
+  }
+
   /// Prépare Firebase et demande la permission. Ne lève jamais.
+  ///
+  /// Sur le web, rien n'est demandé ici : le jeton n'est repris que si la
+  /// permission a déjà été donnée (un navigateur refuse une demande qui ne
+  /// suit pas un geste, et ne la repose plus).
   Future<void> initialize() async {
-    if (_ready || kIsWeb) return;
+    if (kIsWeb) {
+      if (webPushConfigured && web_push.webPushPermission() == 'granted') {
+        _token = await web_push.webPushToken(_webConfig, ask: false);
+      }
+      return;
+    }
+    if (_ready) return;
     try {
       await Firebase.initializeApp();
       final messaging = FirebaseMessaging.instance;

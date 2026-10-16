@@ -101,6 +101,11 @@ class SettingsScreen extends StatelessWidget {
                       style: TextStyle(color: Colors.grey)),
                 ),
                 const Divider(height: 1),
+                // Version navigateur : où en sont les notifications ici.
+                if (auth.push.webPushConfigured) ...[
+                  _WebNotificationsTile(auth: auth),
+                  const Divider(height: 1),
+                ],
                 // Le guide vit sur le serveur (une seule source pour la page et
                 // le PDF) : il est à jour sans nouvelle version de l'app.
                 ListTile(
@@ -240,6 +245,32 @@ class _InfoTile extends StatelessWidget {
       leading: Icon(icon, color: AppColors.primary),
       title: Text(label, style: const TextStyle(fontSize: 13, color: Colors.grey)),
       subtitle: Text(value, style: const TextStyle(fontWeight: FontWeight.w500)),
+    );
+  }
+}
+
+class _WebNotificationsTile extends StatelessWidget {
+  const _WebNotificationsTile({required this.auth});
+  final AuthProvider auth;
+
+  @override
+  Widget build(BuildContext context) {
+    final (String subtitle, bool canEnable) = switch (auth.push.webPermission) {
+      'granted' => ('Activées sur ce navigateur', false),
+      'denied' => ('Bloquées : autorisez-les dans les réglages du navigateur (cadenas près de l\'adresse).', false),
+      'default' => ('Pas encore activées', true),
+      _ => ('Indisponibles ici. Sur iPhone, ajoutez d\'abord l\'app à l\'écran d\'accueil.', false),
+    };
+    return ListTile(
+      leading: const Icon(Icons.notifications_outlined),
+      title: const Text('Notifications'),
+      subtitle: Text(subtitle),
+      trailing: canEnable
+          ? FilledButton.tonal(
+              onPressed: () => auth.enableWebNotifications(),
+              child: const Text('Activer'),
+            )
+          : null,
     );
   }
 }

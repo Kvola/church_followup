@@ -204,6 +204,15 @@ class AuthProvider extends ChangeNotifier {
     await _endSession();
   }
 
+  /// Version navigateur : active les notifications de CE navigateur (demande la
+  /// permission, sur le geste de l'utilisateur) et l'enregistre auprès du serveur.
+  Future<bool> enableWebNotifications() async {
+    final ok = await push.enableWebNotifications();
+    if (ok && _isAuthenticated) await _registerDevice();
+    notifyListeners();
+    return ok;
+  }
+
   /// Enregistre ce téléphone pour les notifications push. Ne lève jamais :
   /// sans push, l'application fonctionne, elle ne sonne simplement pas.
   Future<void> _registerDevice() async {
