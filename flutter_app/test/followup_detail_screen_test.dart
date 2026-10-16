@@ -51,7 +51,7 @@ void main() {
       return http.Response(jsonEncode({'result': result}), 200,
           headers: {'content-type': 'application/json; charset=utf-8'});
     });
-    final api = ApiService(client: client)..configure(baseUrl: 'https://test', userId: 1, token: 't');
+    final api = ApiService(client: client)..configure(baseUrl: 'https://test', token: 't');
     final auth = AuthProvider(api: api);
     await tester.pumpWidget(MultiProvider(
       providers: [

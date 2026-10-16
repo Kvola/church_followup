@@ -32,7 +32,7 @@ class AppConstants {
     'abandoned': 'Interrompu',
     'extended': 'Prolongé',
     'transferred': 'Transféré',
-    'pin_missing': 'PIN non communiqué',
+    'never_logged': 'Jamais connecté',
   };
 
   static const Map<String, String> spiritualLabels = {

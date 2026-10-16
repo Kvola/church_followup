@@ -31,7 +31,7 @@ class AppColors {
         return extended;
       case 'transferred':
         return transferred;
-      case 'pin_missing':
+      case 'never_logged':
         return extended;
       // Statuts de la personne
       case 'new':

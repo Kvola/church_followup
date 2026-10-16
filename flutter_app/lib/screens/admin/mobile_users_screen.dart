@@ -7,7 +7,7 @@ import '../../core/theme.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/organization_provider.dart';
 import '../../widgets/common.dart';
-import '../../widgets/pin_share_dialog.dart';
+import '../../widgets/invitation_dialog.dart';
 
 class MobileUsersScreen extends StatefulWidget {
   const MobileUsersScreen({super.key});
@@ -59,10 +59,9 @@ class _MobileUsersScreenState extends State<MobileUsersScreen> {
                       final user = provider.mobileUsers[index];
                       return _UserCard(
                         data: user,
-                        onShare: () => _shareCredentials(user),
+                        onShare: () => _shareInvitation(user),
                         isSuperAdmin: auth.isSuperAdmin,
                         onEditRole: auth.isSuperAdmin ? () => _showEditRoleDialog(user) : null,
-                        onResetPin: auth.isSuperAdmin ? () => _resetPin(user) : null,
                         onToggleActive: auth.isSuperAdmin ? () => _toggleActive(user) : null,
                       );
                     },
@@ -118,21 +117,13 @@ class _MobileUsersScreenState extends State<MobileUsersScreen> {
     );
   }
 
-  Future<void> _shareCredentials(Map<String, dynamic> user) async {
+  /// L'invitation à installer l'app et à s'y connecter. Sans secret : on peut
+  /// la renvoyer autant de fois qu'il faut, rien n'est invalidé.
+  Future<void> _shareInvitation(Map<String, dynamic> user) async {
     final userId = user['id'];
     if (userId == null) return;
 
-    // Le PIN n'est plus conservé en clair : partager, c'est en générer un nouveau.
-    final confirmed = await showConfirmDialog(
-      context,
-      title: 'Partager les identifiants',
-      message: 'Un nouveau PIN va être généré pour ${user['name'] ?? 'cet utilisateur'}. '
-          'L\'ancien cessera de fonctionner et sa session en cours sera fermée.',
-      confirmLabel: 'Générer et partager',
-    );
-    if (!confirmed || !mounted) return;
-
-    final result = await context.read<OrganizationProvider>().shareCredentials(userId);
+    final result = await context.read<OrganizationProvider>().shareInvitation(userId);
     if (!mounted) return;
 
     if (result['status'] != 'success') {
@@ -231,28 +222,6 @@ class _MobileUsersScreenState extends State<MobileUsersScreen> {
         ),
       ),
     );
-  }
-
-  Future<void> _resetPin(Map<String, dynamic> user) async {
-    final userId = user['id'];
-    if (userId == null) return;
-
-    final confirmed = await showConfirmDialog(
-      context,
-      title: 'Régénérer le PIN',
-      message: 'Régénérer le PIN de ${user['name'] ?? 'cet utilisateur'} ? L\'ancien PIN sera invalidé.',
-    );
-    if (!confirmed || !mounted) return;
-
-    final result = await context.read<OrganizationProvider>().adminResetPin(userId);
-    if (mounted) {
-      if (result['status'] == 'success') {
-        final pin = result['pin'] ?? '';
-        showPinShareDialog(context, pin, user['name'] ?? 'Utilisateur', AppConstants.safeStr(user['phone']));
-      } else {
-        showErrorSnackbar(context, result['message'] ?? 'Erreur');
-      }
-    }
   }
 
   Future<void> _toggleActive(Map<String, dynamic> user) async {
@@ -439,8 +408,8 @@ class _MobileUsersScreenState extends State<MobileUsersScreen> {
 
                   if (mounted) {
                     if (result['status'] == 'success') {
-                      final pin = result['user']?['pin'] ?? '';
-                      showPinShareDialog(context, pin, nameCtrl.text.trim(), phoneCtrl.text.trim());
+                      final invitation = AppConstants.safeStr(result['user']?['invitation']);
+                      showInvitationDialog(context, invitation, nameCtrl.text.trim(), phoneCtrl.text.trim());
                     } else {
                       showErrorSnackbar(context, result['message'] ?? 'Erreur');
                     }
@@ -532,9 +501,9 @@ class _MobileUsersScreenState extends State<MobileUsersScreen> {
                 if (mounted) {
                   if (result['status'] == 'success') {
                     provider.loadMobileUsers();
-                    final pin = AppConstants.safeStr(result['pin']);
-                    if (pin.isNotEmpty) {
-                      showPinShareDialog(context, pin, nameCtrl.text.trim(), phoneCtrl.text.trim());
+                    final invitation = AppConstants.safeStr(result['invitation']);
+                    if (invitation.isNotEmpty) {
+                      showInvitationDialog(context, invitation, nameCtrl.text.trim(), phoneCtrl.text.trim());
                     } else {
                       showSuccessSnackbar(context, '$title créé');
                     }
@@ -558,14 +527,12 @@ class _UserCard extends StatelessWidget {
   final VoidCallback onShare;
   final bool isSuperAdmin;
   final VoidCallback? onEditRole;
-  final VoidCallback? onResetPin;
   final VoidCallback? onToggleActive;
   const _UserCard({
     required this.data,
     required this.onShare,
     this.isSuperAdmin = false,
     this.onEditRole,
-    this.onResetPin,
     this.onToggleActive,
   });
 
@@ -576,7 +543,7 @@ class _UserCard extends StatelessWidget {
     final phone = data['phone'] ?? '';
     final role = data['role'] ?? '';
     final lastLogin = _shortDate(AppConstants.safeStr(data['last_login']));
-    final pinMissing = data['pin_set'] == false;
+    final neverLogged = lastLogin.isEmpty;
     final isActive = data['active'] ?? true;
 
     return Card(
@@ -619,8 +586,8 @@ class _UserCard extends StatelessWidget {
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 StateBadge(state: role, small: true),
-                if (pinMissing)
-                  const StateBadge(state: 'pin_missing', small: true),
+                if (neverLogged)
+                  const StateBadge(state: 'never_logged', small: true),
                 if (lastLogin.isNotEmpty)
                   Text('Vu le $lastLogin', style: theme.textTheme.bodySmall),
               ],
@@ -637,18 +604,14 @@ class _UserCard extends StatelessWidget {
                     case 'edit_role':
                       onEditRole?.call();
                       break;
-                    case 'reset_pin':
-                      onResetPin?.call();
-                      break;
                     case 'toggle_active':
                       onToggleActive?.call();
                       break;
                   }
                 },
                 itemBuilder: (_) => [
-                  const PopupMenuItem(value: 'share', child: ListTile(leading: Icon(Icons.share_outlined), title: Text('Partager identifiants'))),
+                  const PopupMenuItem(value: 'share', child: ListTile(leading: Icon(Icons.share_outlined), title: Text('Envoyer l\'invitation'))),
                   const PopupMenuItem(value: 'edit_role', child: ListTile(leading: Icon(Icons.edit_outlined), title: Text('Modifier le rôle'))),
-                  const PopupMenuItem(value: 'reset_pin', child: ListTile(leading: Icon(Icons.refresh), title: Text('Régénérer PIN'))),
                   PopupMenuItem(
                     value: 'toggle_active',
                     child: ListTile(
@@ -660,7 +623,7 @@ class _UserCard extends StatelessWidget {
               )
             : IconButton(
                 icon: const Icon(Icons.share_outlined),
-                tooltip: 'Partager les identifiants',
+                tooltip: 'Envoyer l\'invitation',
                 onPressed: onShare,
               ),
       ),

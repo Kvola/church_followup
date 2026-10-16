@@ -134,9 +134,9 @@ class OrganizationProvider extends ChangeNotifier {
   }
 
   // Admin actions
-  Future<Map<String, dynamic>> shareCredentials(int targetUserId) async {
+  Future<Map<String, dynamic>> shareInvitation(int targetUserId) async {
     try {
-      return await _api.shareCredentials(targetUserId);
+      return await _api.shareInvitation(targetUserId);
     } catch (e) {
       return {'status': 'error', 'message': '$e'};
     }
@@ -184,14 +184,6 @@ class OrganizationProvider extends ChangeNotifier {
     }
   }
 
-  Future<Map<String, dynamic>> adminResetPin(int targetUserId) async {
-    try {
-      return await _api.adminResetPin(targetUserId);
-    } catch (e) {
-      return {'status': 'error', 'message': '$e'};
-    }
-  }
-
   // Reports
   Future<Map<String, dynamic>> getFollowupReport(int evangelistId) async {
     return await _api.getFollowupReport(evangelistId);
@@ -208,6 +200,16 @@ class OrganizationProvider extends ChangeNotifier {
       _error = e.toString();
     } finally {
       _stopLoading();
+    }
+  }
+
+  /// Les églises de l'annuaire du réseau qui ne sont pas encore dans le suivi.
+  Future<List<Map<String, dynamic>>> searchDirectory(String query) async {
+    try {
+      return await _api.searchDirectory(query);
+    } catch (e) {
+      _error = e.toString();
+      return [];
     }
   }
 
@@ -240,9 +242,9 @@ class OrganizationProvider extends ChangeNotifier {
     }
   }
 
-  Future<Map<String, dynamic>> createManager(String name, String phone, int churchId) async {
+  Future<Map<String, dynamic>> createManager(String name, String phone, int churchId, {String email = ''}) async {
     try {
-      final result = await _api.createManager(name, phone, churchId);
+      final result = await _api.createManager(name, phone, churchId, email: email);
       if (result['status'] == 'success') await loadChurches();
       return result;
     } catch (e) {
@@ -250,7 +252,7 @@ class OrganizationProvider extends ChangeNotifier {
     }
   }
 
-  // ─── Pastor Management ────────────────────────────────────────────
+  // ─── Pasteurs : ceux de l'annuaire du réseau, en lecture ─────────
 
   Future<List<Map<String, dynamic>>> getPastors({int? churchId}) async {
     try {
@@ -258,31 +260,6 @@ class OrganizationProvider extends ChangeNotifier {
     } catch (e) {
       _error = e.toString();
       return [];
-    }
-  }
-
-  Future<Map<String, dynamic>> createPastor(Map<String, dynamic> data) async {
-    try {
-      final result = await _api.createPastor(data);
-      return result;
-    } catch (e) {
-      return {'status': 'error', 'message': '$e'};
-    }
-  }
-
-  Future<Map<String, dynamic>> updatePastor(int pastorId, Map<String, dynamic> data) async {
-    try {
-      return await _api.updatePastor(pastorId, data);
-    } catch (e) {
-      return {'status': 'error', 'message': '$e'};
-    }
-  }
-
-  Future<Map<String, dynamic>> deletePastor(int pastorId) async {
-    try {
-      return await _api.deletePastor(pastorId);
-    } catch (e) {
-      return {'status': 'error', 'message': '$e'};
     }
   }
 }

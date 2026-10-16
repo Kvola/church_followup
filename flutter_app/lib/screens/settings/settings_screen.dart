@@ -5,6 +5,7 @@ import '../../core/constants.dart';
 import '../../core/theme.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/cache_service.dart';
+import '../../widgets/account_switcher.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -70,6 +71,14 @@ class SettingsScreen extends StatelessWidget {
               children: [
                 if (userData?['church_name'] != null)
                   _InfoTile(icon: Icons.church_outlined, label: 'Église', value: userData!['church_name']),
+                if (auth.hasSeveralAccounts)
+                  ListTile(
+                    leading: const Icon(Icons.swap_horiz, color: AppColors.primary),
+                    title: const Text('Changer d\'église'),
+                    subtitle: Text('Vous avez un compte dans ${auth.accounts.length} églises'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => showAccountSwitcher(context),
+                  ),
                 if (userData?['prayer_cell_name'] != null)
                   _InfoTile(icon: Icons.group_outlined, label: 'Cellule', value: userData!['prayer_cell_name']),
                 if (userData?['age_group_name'] != null)
@@ -88,7 +97,8 @@ class SettingsScreen extends StatelessWidget {
                 const ListTile(
                   leading: Icon(Icons.info_outline),
                   title: Text('Version'),
-                  trailing: Text('2.1.0', style: TextStyle(color: Colors.grey)),
+                  trailing: Text(AppConstants.appVersion == '' ? '—' : AppConstants.appVersion,
+                      style: TextStyle(color: Colors.grey)),
                 ),
                 const Divider(height: 1),
                 ListTile(

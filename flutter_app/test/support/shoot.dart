@@ -59,7 +59,7 @@ Future<void> _shoot(
     return http.Response(jsonEncode({'result': demoResponse(request.url.path, params, role)}), 200,
         headers: {'content-type': 'application/json; charset=utf-8'});
   });
-  final api = ApiService(client: client)..configure(baseUrl: 'https://demo', userId: 1, token: 'demo');
+  final api = ApiService(client: client)..configure(baseUrl: 'https://demo', token: 'demo');
   final auth = AuthProvider(api: api);
   await tester.pump();
   if (role.isNotEmpty) auth.debugSignIn(demoUser(role));

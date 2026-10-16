@@ -27,28 +27,29 @@ Future<void> launchSms(BuildContext context, String phone, String message) async
   }
 }
 
-/// Montre un PIN fraîchement généré — la seule fois où il est lisible — avec
-/// de quoi le transmettre aussitôt.
-void showPinShareDialog(BuildContext context, String pin, String userName, String phone) {
-  final message = '🔐 ${AppConstants.appName}\n'
-      'Bonjour $userName,\n'
-      'Votre PIN : $pin\n'
-      'Serveur : ${AppConstants.defaultUrl}\n'
-      'Base de données : ${AppConstants.defaultDatabase}';
-
+/// Montre l'invitation à installer l'application, prête à transmettre.
+///
+/// Elle ne contient aucun secret : le code de connexion arrive sur le numéro
+/// du compte au moment de se connecter. On peut donc la renvoyer sans risque.
+void showInvitationDialog(BuildContext context, String message, String userName, String phone) {
   showDialog(
     context: context,
     builder: (ctx) => AlertDialog(
-      title: const Text('PIN à transmettre'),
+      title: const Text('Invitation à transmettre'),
       content: Column(
         mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Le PIN de $userName est :'),
+          Text('Envoyez ce message à $userName :'),
           const SizedBox(height: 12),
-          SelectableText(pin, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, letterSpacing: 4)),
-          const SizedBox(height: 8),
-          const Text('Il ne sera plus jamais affiché : transmettez-le maintenant.',
-              textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: AppColors.abandoned)),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.06),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: SelectableText(message, style: const TextStyle(fontSize: 13)),
+          ),
           const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -86,7 +87,7 @@ void showPinShareDialog(BuildContext context, String pin, String userName, Strin
                 label: 'Partager',
                 onTap: () {
                   Navigator.pop(ctx);
-                  Share.share(message, subject: 'PIN ${AppConstants.appName}');
+                  Share.share(message, subject: AppConstants.appName);
                 },
               ),
             ],

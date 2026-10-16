@@ -6,13 +6,15 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
 /// Un serveur factice qui répond `result` et retient les paramètres reçus.
-ApiService apiReplying(Map<String, dynamic> result, {List<Map<String, dynamic>>? sent}) {
+ApiService apiReplying(Map<String, dynamic> result,
+    {List<Map<String, dynamic>>? sent, List<Map<String, String>>? headers}) {
   final client = MockClient((request) async {
     sent?.add(Map<String, dynamic>.from(jsonDecode(request.body)['params']));
+    headers?.add(request.headers);
     return http.Response(jsonEncode({'jsonrpc': '2.0', 'result': result}), 200,
         headers: {'content-type': 'application/json; charset=utf-8'});
   });
-  return ApiService(client: client)..configure(baseUrl: 'https://test', userId: 7, token: 'tok');
+  return ApiService(client: client)..configure(baseUrl: 'https://test', token: 'tok');
 }
 
 void main() {
@@ -32,7 +34,7 @@ void main() {
       final api = ApiService(client: client)
         ..configure(baseUrl: 'https://test')
         ..onSessionExpired = (_) => called = true;
-      await api.call('/api/church/auth/login', {});
+      await api.call('/api/church/auth/request_otp', {});
       expect(called, isFalse);
     });
   });
@@ -62,11 +64,14 @@ void main() {
   group('Paramètres envoyés', () {
     test("l'interruption envoie le motif et les précisions", () async {
       final sent = <Map<String, dynamic>>[];
-      final api = apiReplying({'status': 'success'}, sent: sent);
+      final headers = <Map<String, String>>[];
+      final api = apiReplying({'status': 'success'}, sent: sent, headers: headers);
       await api.followupAction(3, 'abandon', reason: 'moved', note: 'Parti à Bouaké');
       expect(sent.single, containsPair('reason', 'moved'));
       expect(sent.single, containsPair('note', 'Parti à Bouaké'));
-      expect(sent.single, containsPair('token', 'tok'));
+      // La session voyage dans l'en-tête, jamais dans le corps.
+      expect(headers.single, containsPair('Authorization', 'Bearer tok'));
+      expect(sent.single.containsKey('token'), isFalse);
     });
 
     test('la prolongation envoie le nombre de semaines, la justification seulement si fournie', () async {
@@ -76,6 +81,31 @@ void main() {
       await api.followupAction(3, 'integrate', cellId: 1, groupId: 2, justification: '');
       expect(sent[0], containsPair('weeks', 6));
       expect(sent[1].containsKey('justification'), isFalse);
+    });
+  });
+
+  group('Connexion par code', () {
+    test('la demande de code part sans session et rend le numéro masqué', () async {
+      final sent = <Map<String, dynamic>>[];
+      final headers = <Map<String, String>>[];
+      final client = MockClient((request) async {
+        sent.add(Map<String, dynamic>.from(jsonDecode(request.body)['params']));
+        headers.add(request.headers);
+        return http.Response(
+            jsonEncode({'result': {'status': 'success', 'identifier_masked': '+225070 •• •• •• 01'}}), 200,
+            headers: {'content-type': 'application/json; charset=utf-8'});
+      });
+      final api = ApiService(client: client)..configure(baseUrl: 'https://test');
+      final res = await api.requestOtp('07 00 00 00 01');
+      expect(res['identifier_masked'], contains('01'));
+      expect(sent.single, {'identifier': '07 00 00 00 01'});
+      expect(headers.single.containsKey('Authorization'), isFalse);
+    });
+
+    test('un code refusé est une erreur, pas une session vide', () async {
+      final api = apiReplying({'status': 'error', 'code': 'auth_failed', 'message': 'Code incorrect ou expiré.'});
+      await expectLater(api.verifyOtp('0700000001', '000000', 'test'),
+          throwsA(isA<ApiException>().having((e) => e.code, 'code', 'auth_failed')));
     });
   });
 }
