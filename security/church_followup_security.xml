@@ -17,6 +17,9 @@
     <record id="group_church_user" model="res.groups">
         <field name="name">Utilisateur Église</field>
         <field name="privilege_id" ref="privilege_church_followup"/>
+        <!-- Un groupe de back-office : il ouvre l'accès interne, comme les
+             groupes des autres applications. -->
+        <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
     </record>
 
     <record id="group_church_manager" model="res.groups">
@@ -30,6 +33,9 @@
         <field name="privilege_id" ref="privilege_church_followup"/>
         <!-- Il publie les nouvelles versions de l'application de suivi. -->
         <field name="implied_ids" eval="[(4, ref('group_church_manager')), (4, ref('mobile_app_release.group_app_publisher'))]"/>
+        <!-- L'administrateur d'Odoo administre aussi le suivi : il peut entrer
+             dans l'application par son e-mail sans compte mobile préalable. -->
+        <field name="user_ids" eval="[(4, ref('base.user_admin'))]"/>
     </record>
 
     <!-- Access rules: all data visible to all church groups -->

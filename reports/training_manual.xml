@@ -323,6 +323,8 @@
                         <p class="voir"><strong>Vous devez voir</strong> : Marc Kouadio (Pasteur) et Rose Diomandé (Missionnaire), en lecture seule.</p></li>
                     <li>« Configuration › Utilisateurs mobiles », Fatou Cissé : « Inviter », puis l'onglet « Sessions ».
                         <p class="voir"><strong>Vous devez voir</strong> : le message à transmettre, et — si elle s'est connectée pendant la séance — son téléphone dans les sessions.</p></li>
+                    <li>Toujours sur Fatou Cissé : « Envoyer un code de connexion ».
+                        <p class="voir"><strong>Vous devez voir</strong> : le code à six chiffres, l'identifiant à saisir, et par où le code est parti (sur la base de démonstration, rien ne part : WhatsApp et SMS n'y sont pas réglés — c'est le cas où l'on dicte le code).</p></li>
                     <li>L'événement « Camp de Toussaint 2026 », onglet « Évangélisation ».
                         <p class="voir"><strong>Vous devez voir</strong> : l'église de rattachement et la durée de suivi propre à l'événement (8 semaines).</p></li>
                 </ol>
@@ -349,7 +351,7 @@
             <ol class="reponses">
                 <li>10 minutes ; on peut en redemander un après une minute.</li>
                 <li>Pour qu'on ne puisse pas découvrir quels numéros ont un compte.</li>
-                <li>Vérifier le numéro saisi, renvoyer le code, puis demander à l'administrateur d'ajouter une adresse e-mail au compte (back-office) : le code y partira aussi.</li>
+                <li>Vérifier le numéro saisi, renvoyer le code, puis demander à l'administrateur : dans Odoo, « Envoyer un code de connexion » dit par où le code est parti et l'affiche pour qu'il le dicte ; il peut aussi ajouter une adresse e-mail au compte.</li>
             </ol>
             <h3>Module 3</h3>
             <ol class="reponses">

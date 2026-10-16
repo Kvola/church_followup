@@ -10,7 +10,7 @@ from odoo.http import request
 from odoo.addons.otp_auth.tools.client_ip import client_ip
 
 from ..models.church_mobile_user import phone_key
-from ..models.church_tools import ACTIVE_FOLLOWUP_STATES
+from ..models.church_tools import ACTIVE_FOLLOWUP_STATES, OTP_SCOPE
 
 _logger = logging.getLogger(__name__)
 
@@ -19,7 +19,6 @@ _logger = logging.getLogger(__name__)
 # * demandes par adresse : une machine ne fait pas pleuvoir les SMS ;
 # * demandes par identifiant : un numéro ne reçoit pas dix codes d'affilée ;
 # * vérifications par adresse : on n'essaie pas numéro après numéro.
-OTP_SCOPE = 'church_followup'
 OTP_DEBUG_PARAM = 'church_followup.otp_debug_return'
 _OTP_LIMITS = {
     'request_ip': (10, 15 * 60, 15 * 60),
@@ -322,13 +321,18 @@ class ChurchMobileApi(http.Controller):
                 'expires_in_seconds': 600,
                 'resend_after_seconds': 60,
             }
-            accounts = request.env['church.mobile.user'].sudo()._accounts_for_identifier(identifier, kind)
+            Account = request.env['church.mobile.user'].sudo()
+            accounts = Account._accounts_for_identifier(identifier, kind)
             if accounts:
-                account = accounts[0]
-                code = request.env['otp.code'].sudo()._issue(
-                    identifier, OTP_SCOPE, phone=account.phone_e164 or None, email=account.email or None)
+                code = Account._issue_login_code(identifier, accounts[0])
                 if code and request.env['ir.config_parameter'].sudo().get_param(OTP_DEBUG_PARAM):
                     payload['debug_otp'] = code
+            else:
+                # L'app répond pareil (anti-énumération) ; le journal, lui, dit
+                # pourquoi rien n'est parti — c'est la première question posée.
+                _logger.info("Code de connexion demandé pour %s : aucun compte du suivi "
+                             "(ni utilisateur mobile, ni administrateur Odoo du suivi).",
+                             _mask(identifier, kind))
             return payload
         except ApiInputError as e:
             return _error(str(e), 'invalid')

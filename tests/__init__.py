@@ -10,3 +10,4 @@ from . import test_leaders_pastors
 from . import test_app_distribution
 from . import test_user_guide
 from . import test_training_manual
+from . import test_login_code

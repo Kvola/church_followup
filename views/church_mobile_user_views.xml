@@ -9,6 +9,9 @@
                     <button name="action_share_invitation" string="Inviter" type="object"
                             class="btn-primary" icon="fa-whatsapp"
                             help="Un message à envoyer : installer l'application, puis se connecter avec ce numéro."/>
+                    <button name="action_send_login_code" string="Envoyer un code de connexion" type="object"
+                            class="btn-secondary" icon="fa-key"
+                            help="Envoie un code comme le ferait l'application, dit par où il est parti, et l'affiche pour pouvoir le dicter."/>
                     <button name="action_close_session" string="Fermer les sessions" type="object"
                             class="btn-secondary" icon="fa-sign-out" invisible="not open_session_count"
                             confirm="Les téléphones connectés à ce compte devront redemander un code. Continuer ?"/>
@@ -19,12 +22,13 @@
                     </div>
                     <group>
                         <group string="Connexion par code">
-                            <field name="phone" widget="phone"/>
+                            <field name="phone" widget="phone" required="role != 'super_admin' or not email"/>
                             <field name="phone_e164"/>
                             <field name="email" widget="email" placeholder="Facultatif"/>
                             <field name="last_login"/>
                             <field name="role"/>
                             <field name="active" widget="boolean_toggle"/>
+                            <field name="user_id" invisible="not user_id"/>
                         </group>
                         <group string="Affectation">
                             <field name="church_id" required="role != 'super_admin'"
@@ -75,6 +79,28 @@
                     <!-- Sans widget de copie : il écrase les retours à la ligne. -->
                     <field name="message"/>
                     <field name="whatsapp_url" widget="url" string="WhatsApp" text="Envoyer par WhatsApp"/>
+                </group>
+                <footer>
+                    <button string="Fermer" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_church_mobile_user_code_form" model="ir.ui.view">
+        <field name="name">church.mobile.user.code.form</field>
+        <field name="model">church.mobile.user.code</field>
+        <field name="arch" type="xml">
+            <form string="Code de connexion">
+                <div class="alert alert-info" role="alert">
+                    Le code vaut 10 minutes, une seule fois. Si rien n'arrive sur le téléphone,
+                    dictez-le : la personne saisit l'identifiant ci-dessous, puis ce code.
+                </div>
+                <group>
+                    <field name="mobile_user_id" readonly="1"/>
+                    <field name="identifier"/>
+                    <field name="code" class="fs-3 fw-bold"/>
+                    <field name="report"/>
                 </group>
                 <footer>
                     <button string="Fermer" class="btn-secondary" special="cancel"/>
