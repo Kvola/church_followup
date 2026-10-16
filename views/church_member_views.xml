@@ -217,7 +217,7 @@
                 <field name="mentor_id"/>
                 <separator/>
                 <filter name="filter_profile_new" string="Nouvelles personnes" domain="[('person_profile', '=', 'new')]"/>
-                <filter name="filter_profile_old" string="Anciens membres (profil)" domain="[('person_profile', '=', 'old_member')]"/>
+                <filter name="filter_profile_old" string="Anciens membres" domain="[('person_profile', '=', 'old_member')]"/>
                 <separator/>
                 <filter name="filter_new" string="À attribuer" domain="[('member_type', '=', 'new')]"/>
                 <filter name="filter_in_followup" string="En suivi" domain="[('member_type', '=', 'in_followup')]"/>

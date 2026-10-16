@@ -301,7 +301,10 @@ class ImportResultScreen extends StatelessWidget {
               leading: Icon(ok ? Icons.check_circle : Icons.error_outline, color: color, size: 32),
               title: Text(ok ? 'Import réussi' : 'Rien n\'a été importé',
                   style: TextStyle(fontWeight: FontWeight.bold, color: color)),
-              subtitle: Text('${result['message'] ?? ''}'),
+              // Refusé : le titre dit déjà « rien n'a été importé », le sous-titre dit combien corriger.
+              subtitle: Text(ok
+                  ? '${result['message'] ?? ''}'
+                  : '${result['error_count'] ?? errors.length} erreur(s) à corriger dans le fichier.'),
             ),
           ),
           if (errors.isNotEmpty) ...[

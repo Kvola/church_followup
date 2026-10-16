@@ -240,7 +240,7 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
     final isManager = context.watch<AuthProvider>().isManager;
 
     return Scaffold(
-      appBar: AppBar(title: Text(!_canEdit ? 'Fiche du membre' : _isEdit ? 'Modifier le membre' : 'Nouveau membre')),
+      appBar: AppBar(title: Text(!_canEdit ? 'Fiche du membre' : _isEdit ? 'Modifier le membre' : 'Enregistrer une personne')),
       body: Form(
         key: _formKey,
         child: ListView(

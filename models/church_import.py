@@ -830,7 +830,7 @@ class ChurchImport(models.AbstractModel):
             'errors': '\n'.join(errors) or False,
             'warnings': '\n'.join(warnings) or False,
         })
-        return dict(stats, ok=ok, errors=shown, warnings=warnings[:MAX_SHOWN_ERRORS],
+        return dict(stats, ok=ok, errors=shown, error_count=len(errors), warnings=warnings[:MAX_SHOWN_ERRORS],
                     message=message, log_id=log.id)
 
     def _check_rows(self, spec, env, church, rows, errors):
