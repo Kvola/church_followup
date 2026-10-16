@@ -107,6 +107,8 @@
                 <field name="name"/>
                 <field name="evangelist_id"/>
                 <field name="member_id"/>
+                <field name="person_profile" widget="badge" decoration-info="person_profile == 'new'"
+                       decoration-muted="person_profile == 'old_member'" optional="show"/>
                 <field name="church_id" optional="hide"/>
                 <field name="start_date"/>
                 <field name="end_date"/>
@@ -204,6 +206,9 @@
                 <field name="member_id"/>
                 <field name="church_id"/>
                 <separator/>
+                <filter name="filter_profile_new" string="Nouvelles personnes" domain="[('person_profile', '=', 'new')]"/>
+                <filter name="filter_profile_old" string="Anciens membres" domain="[('person_profile', '=', 'old_member')]"/>
+                <separator/>
                 <filter name="filter_active" string="En cours" domain="[('state', '=', 'in_progress')]"/>
                 <filter name="filter_extended" string="Prolongés" domain="[('state', '=', 'extended')]"/>
                 <filter name="filter_integrated" string="Intégrés" domain="[('state', '=', 'integrated')]"/>
@@ -217,6 +222,7 @@
                 <group>
                     <filter name="group_evangelist" string="Évangéliste" context="{'group_by': 'evangelist_id'}"/>
                     <filter name="group_state" string="État" context="{'group_by': 'state'}"/>
+                    <filter name="group_profile" string="Profil" context="{'group_by': 'person_profile'}"/>
                     <filter name="group_church" string="Église" context="{'group_by': 'church_id'}"/>
                     <filter name="group_start_date" string="Date de début" context="{'group_by': 'start_date:month'}"/>
                 </group>

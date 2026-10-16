@@ -48,6 +48,8 @@
                     <group>
                         <group string="Église">
                             <field name="church_id"/>
+                            <field name="person_profile" widget="badge" decoration-info="person_profile == 'new'"
+                                   decoration-muted="person_profile == 'old_member'"/>
                             <field name="member_type" widget="badge"
                                    decoration-info="member_type == 'new'"
                                    decoration-danger="member_type == 'interrupted'"
@@ -141,6 +143,8 @@
                 <field name="gender"/>
                 <field name="church_id" optional="hide"/>
                 <field name="district_id" optional="show"/>
+                <field name="person_profile" widget="badge" decoration-info="person_profile == 'new'"
+                       decoration-muted="person_profile == 'old_member'" optional="show"/>
                 <field name="member_type" widget="badge"
                        decoration-info="member_type == 'new'"
                        decoration-danger="member_type == 'interrupted'"
@@ -212,12 +216,15 @@
                 <field name="invited_by_id"/>
                 <field name="mentor_id"/>
                 <separator/>
-                <filter name="filter_new" string="Nouvelles personnes" domain="[('member_type', '=', 'new')]"/>
+                <filter name="filter_profile_new" string="Nouvelles personnes" domain="[('person_profile', '=', 'new')]"/>
+                <filter name="filter_profile_old" string="Anciens membres (profil)" domain="[('person_profile', '=', 'old_member')]"/>
+                <separator/>
+                <filter name="filter_new" string="À attribuer" domain="[('member_type', '=', 'new')]"/>
                 <filter name="filter_in_followup" string="En suivi" domain="[('member_type', '=', 'in_followup')]"/>
                 <filter name="filter_interrupted" string="Suivis interrompus" domain="[('member_type', '=', 'interrupted')]"/>
                 <filter name="filter_integrated" string="Intégrés" domain="[('member_type', '=', 'integrated')]"/>
                 <filter name="filter_established" string="Fidèles affermis" domain="[('member_type', '=', 'established')]"/>
-                <filter name="filter_old_member" string="Anciens membres" domain="[('member_type', '=', 'old_member')]"/>
+                <filter name="filter_old_member" string="Anciens membres hors suivi" domain="[('member_type', '=', 'old_member')]"/>
                 <separator/>
                 <filter name="filter_male" string="Hommes" domain="[('gender', '=', 'male')]"/>
                 <filter name="filter_female" string="Femmes" domain="[('gender', '=', 'female')]"/>

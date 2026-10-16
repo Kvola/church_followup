@@ -29,6 +29,9 @@ from psycopg2 import IntegrityError
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
 
+from .church_member import name_tokens
+from .church_tools import MAX_PROPOSED_WEEKS
+
 _logger = logging.getLogger(__name__)
 
 MAX_ROWS = 2000
@@ -72,7 +75,7 @@ class Column:
     """
 
     def __init__(self, key, header, kind='text', required=False, help='', choices=None,
-                 example='', width=22, default=None):
+                 example='', width=22, default=None, minimum=None, maximum=None):
         self.key = key
         self.header = header
         self.kind = kind
@@ -82,6 +85,8 @@ class Column:
         self.example = example
         self.width = width
         self.default = default
+        self.minimum = minimum
+        self.maximum = maximum
 
     @property
     def title(self):
@@ -114,16 +119,33 @@ class ImportSpec:
     def identity(self, values):
         return norm_key(values.get('name'))
 
-    def existing(self, env, church):
+    def prepare_context(self, env, church):
+        """Ce que l'import charge une fois avant d'écrire (fiches existantes…)."""
         records = env[self.model].with_context(active_test=False).search([('church_id', '=', church.id)])
-        return {norm_key(r.name): r for r in records}
+        return {'existing': {norm_key(r.name): r for r in records}}
+
+    def match(self, env, church, values, ctx):
+        """La fiche existante qui correspond à la ligne, ou None. ValueError si ambigu."""
+        return ctx['existing'].get(self.identity(values))
+
+    def remember(self, ctx, values, record):
+        ctx['existing'][self.identity(values)] = record
 
     def to_vals(self, env, church, values, row, ctx):
         """Les valeurs du modèle Odoo pour cette ligne (déjà contrôlée)."""
         return {k: v for k, v in values.items() if k in env[self.model]._fields}
 
-    def after_write(self, env, church, record, values, created):
-        """Ce qui suit l'écriture (compte du responsable…). Peut lever."""
+    def create_vals(self, values):
+        """Ce qu'on ne pose qu'à la création (jamais pour compléter une fiche)."""
+        return {}
+
+    def after_write(self, env, church, record, values, created, ctx, row):
+        """Ce qui suit l'écriture (compte du responsable, suivi…). Peut lever."""
+
+    def notes(self, ctx):
+        """Ce qu'il faut dire en plus du décompte (quartiers créés, suivis démarrés…)."""
+        created = ctx.get('created_districts') or []
+        return [_("Quartiers créés : %s.") % ', '.join(created)] if created else []
 
 
 class LeaderColumnsMixin:
@@ -140,9 +162,36 @@ class LeaderColumnsMixin:
                     "se connecter avec son numéro. Un numéro n'ouvre qu'une église."),
     ]
 
-    def after_write(self, env, church, record, values, created):
+    def after_write(self, env, church, record, values, created, ctx, row):
         if values.get('create_account', True) and record.leader_phone and not record.mobile_user_id.active:
             record.action_create_leader_account()
+
+
+def _districts_context(env, church):
+    districts = env['church.district'].with_context(active_test=False).search([('church_id', '=', church.id)])
+    return {'districts': {norm_key(d.name): d for d in districts}, 'created_districts': []}
+
+
+def _district(env, church, ctx, name):
+    """Le quartier de ce nom dans l'église ; créé s'il n'existe pas (et signalé)."""
+    district = ctx['districts'].get(norm_key(name))
+    if not district:
+        district = env['church.district'].create({'name': name, 'church_id': church.id})
+        ctx['districts'][norm_key(name)] = district
+        ctx['created_districts'].append(name)
+    return district
+
+
+def _church_names(model, label_extra=None):
+    """Les fiches actives de l'église, par nom ; deux homonymes se distinguent."""
+    def choices(env, church):
+        records = env[model].search([('church_id', '=', church.id)], order='name')
+        counts = {}
+        for r in records:
+            counts[norm_key(r.name)] = counts.get(norm_key(r.name), 0) + 1
+        return [('%s (%s)' % (r.name, label_extra(r)) if label_extra and counts[norm_key(r.name)] > 1
+                 else r.name, r.id) for r in records]
+    return choices
 
 
 class DistrictImport(ImportSpec):
@@ -187,20 +236,11 @@ class PrayerCellImport(LeaderColumnsMixin, ImportSpec):
         vals = super().to_vals(env, church, values, row, ctx)
         names = values.get('district_names') or []
         if names:
-            districts = env['church.district']
-            for name in names:
-                district = ctx['districts'].get(norm_key(name))
-                if not district:
-                    district = env['church.district'].create({'name': name, 'church_id': church.id})
-                    ctx['districts'][norm_key(name)] = district
-                    ctx['created_districts'].append(name)
-                districts |= district
-            vals['district_ids'] = districts.ids
+            vals['district_ids'] = [_district(env, church, ctx, name).id for name in names]
         return vals
 
     def prepare_context(self, env, church):
-        districts = env['church.district'].with_context(active_test=False).search([('church_id', '=', church.id)])
-        return {'districts': {norm_key(d.name): d for d in districts}, 'created_districts': []}
+        return dict(super().prepare_context(env, church), **_districts_context(env, church))
 
 
 class AgeGroupImport(LeaderColumnsMixin, ImportSpec):
@@ -227,7 +267,210 @@ class AgeGroupImport(LeaderColumnsMixin, ImportSpec):
         ]
 
 
-SPECS = {spec.kind: spec for spec in (DistrictImport(), PrayerCellImport(), AgeGroupImport())}
+def _phone_identity(values):
+    return ('phone', values['phone']) if values.get('phone') else None
+
+
+class EvangelistImport(ImportSpec):
+    kind = 'evangelist'
+    label = 'Évangélistes'
+    sheet = 'Evangelistes'
+    model = 'church.evangelist'
+    intro = ("Les évangélistes de l'église. Leur compte de l'application est ouvert : ils se "
+             "connectent avec leur numéro. Un numéro n'ouvre qu'une église.")
+    columns = [
+        Column('name', 'Nom et prénoms', required=True, example='Awa Koné', width=28),
+        Column('phone', 'Téléphone', kind='phone', required=True, example='07 00 01 01 01',
+               help="Son numéro de connexion à l'application."),
+        Column('email', 'E-mail', example='awa.kone@exemple.ci', width=28),
+    ]
+
+    def identity(self, values):
+        return _phone_identity(values) or ('name', ' '.join(sorted(name_tokens(values.get('name')))))
+
+    def prepare_context(self, env, church):
+        Otp = env['otp.code']
+        by_phone, by_name = {}, {}
+        for ev in env[self.model].with_context(active_test=False).search([('church_id', '=', church.id)]):
+            try:
+                if ev.phone:
+                    by_phone[Otp._norm_phone(ev.phone)] = ev
+            except ValidationError:
+                pass
+            by_name.setdefault(' '.join(sorted(name_tokens(ev.name))), ev)
+        return {'by_phone': by_phone, 'by_name': by_name}
+
+    def match(self, env, church, values, ctx):
+        found = ctx['by_phone'].get(values.get('phone'))
+        if not found:
+            other = ctx['by_name'].get(' '.join(sorted(name_tokens(values.get('name')))))
+            # Même nom mais autre numéro : un homonyme, pas la même personne.
+            if other and not other.phone:
+                found = other
+        return found
+
+    def remember(self, ctx, values, record):
+        ctx['by_phone'][values['phone']] = record
+        ctx['by_name'][' '.join(sorted(name_tokens(values.get('name'))))] = record
+
+
+class PersonImport(ImportSpec):
+    """Ce qui est commun aux membres et aux personnes à suivre : une personne."""
+
+    model = 'church.member'
+
+    def person_columns(self, extra_before=(), extra_after=()):
+        return list(extra_before) + [
+            Column('name', 'Nom', required=True, example='KONAN', width=18),
+            Column('first_name', 'Prénoms', required=True, example='Aya Marie', width=22),
+            Column('gender', 'Sexe', kind='choice', choices=_selection('church.member', 'gender'),
+                   example='Femme', width=10, help="Facultatif : la fiche sera alors « à compléter »."),
+            Column('phone', 'Téléphone', kind='phone', example='07 08 09 10 11',
+                   help="Sert aussi à reconnaître une personne déjà enregistrée."),
+            Column('email', 'E-mail', width=24),
+            Column('date_of_birth', 'Date de naissance', kind='date', example='25/12/1995', width=14,
+                   help="Au format JJ/MM/AAAA. Distingue deux homonymes."),
+            Column('marital_status', 'Situation matrimoniale', kind='choice',
+                   choices=_selection('church.member', 'marital_status'), example='Célibataire', width=18),
+            Column('profession', 'Profession', example='Commerçante'),
+            Column('district_name', 'Quartier', kind='choice', example='Angré 8e tranche', width=24,
+                   choices=lambda env, church: [(d.name, d.name) for d in env['church.district'].search(
+                       [('church_id', '=', church.id)], order='name')],
+                   help="Un quartier absent de la liste est créé."),
+            Column('address', "Lieu d'habitation", example='Près de la pharmacie', width=26),
+            Column('city', 'Ville', example='Abidjan', width=14),
+            Column('salvation_date', 'Date de conversion', kind='date', example='12/05/2026', width=14),
+        ] + list(extra_after) + [
+            Column('notes', 'Notes', width=30),
+        ]
+
+    def identity(self, values):
+        return _phone_identity(values) or (
+            'name', ' '.join(sorted(name_tokens(values.get('name'), values.get('first_name')))),
+            values.get('date_of_birth'))
+
+    def prepare_context(self, env, church):
+        pool = env['church.member'].with_context(active_test=False).search([('church_id', '=', church.id)])
+        return dict(_districts_context(env, church), pool=pool, started=0, to_assign=0, already=[])
+
+    def match(self, env, church, values, ctx):
+        same, _reason, ambiguous = env['church.member']._find_same_person(
+            church, values.get('name'), values.get('first_name'), values.get('phone'),
+            values.get('date_of_birth'), pool=ctx['pool'])
+        if ambiguous:
+            raise ValueError(_("plusieurs personnes s'appellent « %s » : indiquez le téléphone ou la "
+                               "date de naissance pour savoir laquelle.") % same.display_name_custom)
+        return same or None
+
+    def remember(self, ctx, values, record):
+        ctx['pool'] |= record
+
+    def to_vals(self, env, church, values, row, ctx):
+        vals = super().to_vals(env, church, values, row, ctx)
+        if values.get('district_name'):
+            vals['district_id'] = _district(env, church, ctx, values['district_name']).id
+        return vals
+
+
+class MemberImport(PersonImport):
+    kind = 'member'
+    label = 'Membres'
+    sheet = 'Membres'
+    intro = ("Les membres de l'église (anciens membres), avec leur cellule et leur groupe. Une "
+             "personne déjà enregistrée (même numéro, ou même nom et date de naissance) est complétée.")
+
+    @property
+    def columns(self):
+        return self.person_columns(extra_after=[
+            Column('prayer_cell_id', 'Cellule de prière', kind='choice', width=26,
+                   choices=_church_names('church.prayer.cell', lambda r: r.meeting_location or r.id),
+                   example='Cellule Angré 8e tranche'),
+            Column('age_group_id', "Groupe d'âge", kind='choice', width=20,
+                   choices=_church_names('church.age.group', lambda r: r.id), example='Mariés 25-35'),
+            Column('baptism_date', 'Date de baptême', kind='date', example='04/08/2019', width=14),
+            Column('integration_date', "Date d'intégration", kind='date', width=14),
+        ])
+
+    def create_vals(self, values):
+        return {'member_type': 'old_member', 'person_profile': 'old_member'}
+
+
+class ToFollowImport(PersonImport):
+    kind = 'to_follow'
+    label = 'Personnes à suivre'
+    sheet = 'A suivre'
+    intro = ("Les personnes à suivre : nouvelles personnes ou anciens membres repris en suivi. "
+             "Avec un évangéliste, le suivi démarre ; sans, la personne attend dans « À attribuer ».")
+
+    @property
+    def columns(self):
+        return self.person_columns(
+            extra_before=[
+                Column('person_profile', 'Profil', kind='choice', default='new', width=18,
+                       choices=_selection('church.member', 'person_profile'), example='Nouvelle personne',
+                       help="Nouvelle personne (par défaut) ou ancien membre repris en suivi."),
+            ],
+            extra_after=[
+                Column('evangelist_id', 'Évangéliste', kind='choice', width=24,
+                       choices=_church_names('church.evangelist', lambda r: r.phone or r.id),
+                       example='Awa Koné',
+                       help="Facultatif. Indiqué : le suivi démarre. Vide : « À attribuer »."),
+                Column('duration_weeks', 'Durée du suivi (semaines)', kind='int', minimum=1,
+                       maximum=MAX_PROPOSED_WEEKS, width=14, example='6',
+                       help="Facultatif : la durée de l'église s'applique (1 à %d)." % MAX_PROPOSED_WEEKS),
+                Column('start_date', 'Début du suivi', kind='date', width=14, example='19/10/2026',
+                       help="Facultatif : aujourd'hui."),
+            ])
+
+    def to_vals(self, env, church, values, row, ctx):
+        vals = super().to_vals(env, church, values, row, ctx)
+        # Le profil, le statut et le référent se décident à la création ou au suivi,
+        # jamais en « complétant » une fiche.
+        for key in ('person_profile', 'evangelist_id', 'duration_weeks', 'start_date'):
+            vals.pop(key, None)
+        return vals
+
+    def create_vals(self, values):
+        return {'person_profile': values.get('person_profile') or 'new', 'member_type': 'new'}
+
+    def after_write(self, env, church, record, values, created, ctx, row):
+        member = record
+        if member.member_type == 'in_followup' or member.followup_ids.filtered(
+                lambda f: f.state in ('in_progress', 'extended')):
+            ctx['already'].append(member.display_name_custom)
+            return
+        evangelist = env['church.evangelist'].browse(values['evangelist_id']) if values.get('evangelist_id') else None
+        if evangelist:
+            vals = {'church_id': church.id, 'evangelist_id': evangelist.id, 'member_id': member.id,
+                    'start_date': values.get('start_date') or fields.Date.context_today(member)}
+            if values.get('duration_weeks'):
+                vals['duration_weeks'] = values['duration_weeks']
+            env['church.followup'].create(vals)
+            ctx['started'] += 1
+            return
+        # Sans évangéliste : la personne attend qu'on lui en confie un.
+        changes = {}
+        if member.member_type not in ('new', 'interrupted'):  # un suivi interrompu y est déjà
+            changes['member_type'] = 'new'
+        if values.get('duration_weeks'):
+            changes['planned_followup_weeks'] = values['duration_weeks']
+        if changes:
+            member.write(changes)
+        ctx['to_assign'] += 1
+
+    def notes(self, ctx):
+        notes = super().notes(ctx)
+        notes.append(_("%(s)s suivi(s) démarré(s), %(a)s personne(s) dans « À attribuer ».",
+                       s=ctx.get('started', 0), a=ctx.get('to_assign', 0)))
+        if ctx.get('already'):
+            notes.append(_("Déjà en suivi, laissé(e)s tel quel : %s.") % ', '.join(ctx['already']))
+        return notes
+
+
+SPECS = {spec.kind: spec for spec in (
+    DistrictImport(), PrayerCellImport(), AgeGroupImport(),
+    EvangelistImport(), MemberImport(), ToFollowImport(),
+)}
 IMPORT_KINDS = [(spec.kind, spec.label) for spec in SPECS.values()]
 
 
@@ -436,7 +679,7 @@ class ChurchImport(models.AbstractModel):
         if raw is None or (isinstance(raw, str) and not raw.strip()):
             if column.required:
                 raise ValueError(_("obligatoire."))
-            return column.default if column.kind == 'bool' else None
+            return column.default
         kind = column.kind
         if kind == 'text':
             if isinstance(raw, float) and raw.is_integer():
@@ -470,9 +713,17 @@ class ChurchImport(models.AbstractModel):
             return self._convert_date(raw)
         if kind == 'int':
             try:
-                return int(float(str(raw).replace(',', '.')))
+                number = float(str(raw).replace(',', '.'))
             except ValueError:
                 raise ValueError(_("« %s » n'est pas un nombre.") % raw)
+            if not number.is_integer():
+                raise ValueError(_("« %s » n'est pas un nombre entier.") % raw)
+            number = int(number)
+            if (column.minimum is not None and number < column.minimum) or \
+                    (column.maximum is not None and number > column.maximum):
+                raise ValueError(_("%(n)s : attendu entre %(lo)s et %(hi)s.",
+                                   n=number, lo=column.minimum, hi=column.maximum))
+            return number
         return raw
 
     def _convert_phone(self, raw):
@@ -538,7 +789,8 @@ class ChurchImport(models.AbstractModel):
             prepared = self._check_rows(spec, env, church, rows, errors)
             if errors:
                 raise ImportRefused(errors)
-            ctx = spec.prepare_context(env, church) if hasattr(spec, 'prepare_context') else {}
+            ctx = spec.prepare_context(env, church)
+            ctx['warnings'] = warnings
             try:
                 with env.cr.savepoint():
                     self._write_rows(spec, env, church, prepared, ctx, stats, errors, warnings)
@@ -554,9 +806,7 @@ class ChurchImport(models.AbstractModel):
 
         ok = not errors
         if ok:
-            created_districts = ctx.get('created_districts') or []
-            if created_districts:
-                warnings.insert(0, _("Quartiers créés : %s.") % ', '.join(created_districts))
+            warnings[:0] = spec.notes(ctx)
             message = _("%(label)s : %(c)s créé(s), %(u)s complété(s), %(n)s déjà à jour.",
                         label=spec.label, c=stats['created'], u=stats['updated'], n=stats['unchanged'])
         else:
@@ -620,12 +870,11 @@ class ChurchImport(models.AbstractModel):
     def _write_rows(self, spec, env, church, prepared, ctx, stats, errors, warnings):
         """Écrit les lignes contrôlées ; une ligne qui échoue est notée, pas fatale ici."""
         Model = env[spec.model]
-        existing = spec.existing(env, church)
         for row, values in prepared:
             try:
                 with env.cr.savepoint():
+                    record = spec.match(env, church, values, ctx)
                     vals = spec.to_vals(env, church, values, row, ctx)
-                    record = existing.get(spec.identity(values))
                     if record:
                         changes = self._complete(record, vals, row, warnings)
                         if changes:
@@ -635,20 +884,22 @@ class ChurchImport(models.AbstractModel):
                             stats['unchanged'] += 1
                         created = False
                     else:
-                        vals['church_id'] = church.id
+                        vals.update(spec.create_vals(values), church_id=church.id)
                         vals = {k: v for k, v in vals.items() if v not in (None, '', [])}
                         record = Model.create(vals)
-                        existing[spec.identity(values)] = record
                         stats['created'] += 1
                         created = True
-                    spec.after_write(env, church, record, values, created)
+                    spec.remember(ctx, values, record)
+                    spec.after_write(env, church, record, values, created, ctx, row)
+            except ValueError as e:  # rapprochement impossible (homonymes…)
+                errors.append(_("Ligne %(row)s : %(msg)s", row=row, msg=e))
             except (UserError, ValidationError) as e:
                 errors.append(_("Ligne %(row)s : %(msg)s", row=row, msg=e.args[0] if e.args else e))
             except IntegrityError:
                 errors.append(_("Ligne %s : cette fiche existe déjà sous une autre forme.") % row)
 
     @staticmethod
-    def _complete(record, vals, row, warnings):
+    def _complete(record, vals, row, warnings):  # noqa: C901
         """Les champs à remplir sur une fiche existante : ses cases vides seulement."""
         changes = {}
         if 'active' in record._fields and not record.active:
@@ -668,12 +919,22 @@ class ChurchImport(models.AbstractModel):
                 changes[name] = value
             elif field.type in ('char', 'text') and norm_key(current_value) == norm_key(value):
                 continue  # même texte, à la casse ou aux accents près
+            elif name == 'phone' and _same_phone(record.env, current_value, value):
+                continue  # même numéro, écrit autrement
             elif current_value != value:
                 shown = current.display_name if field.type == 'many2one' else current
                 warnings.append(_("Ligne %(row)s — %(col)s : « %(old)s » conservé (le fichier dit « %(new)s »).",
                                   row=row, col=field.string, old=shown, new=value if field.type != 'many2one'
                                   else record.env[field.comodel_name].browse(value).display_name))
         return changes
+
+
+def _same_phone(env, a, b):
+    Otp = env['otp.code'].sudo()
+    try:
+        return Otp._norm_phone(a) == Otp._norm_phone(b)
+    except ValidationError:
+        return False
 
 
 class ChurchImportLog(models.Model):

@@ -12,6 +12,7 @@ from odoo.http import request
 from odoo.addons.otp_auth.tools.client_ip import client_ip
 
 from ..models.church_import import XLSX_MIMETYPE
+from ..models.church_member import PERSON_PROFILES
 from ..models.church_mobile_user import phone_key
 from ..models.church_tools import ACTIVE_FOLLOWUP_STATES, OTP_SCOPE
 
@@ -584,6 +585,8 @@ class ChurchMobileApi(http.Controller):
             'district_id': m.district_id.id or False,
             'district_name': m.district_id.name or '',
             'member_type': m.member_type,
+            'person_profile': m.person_profile,
+            'person_profile_label': dict(PERSON_PROFILES).get(m.person_profile, ''),
             'prayer_cell_id': m.prayer_cell_id.id or False,
             'prayer_cell_name': m.prayer_cell_id.name or '',
             'age_group_id': m.age_group_id.id or False,
@@ -623,6 +626,9 @@ class ChurchMobileApi(http.Controller):
             vals['gender'] = _choice('church.member', 'gender', kwargs.get('gender'), 'sexe')
             if not vals['gender']:
                 raise ApiInputError('Le champ « sexe » est requis.')
+        if 'person_profile' in kwargs:
+            vals['person_profile'] = _choice('church.member', 'person_profile',
+                                             kwargs.get('person_profile') or 'new', 'profil')
         if creating or 'marital_status' in kwargs:
             vals['marital_status'] = _choice('church.member', 'marital_status',
                                              kwargs.get('marital_status') or 'single', 'statut matrimonial')
@@ -659,7 +665,24 @@ class ChurchMobileApi(http.Controller):
             vals.update(prayer_cell_id=user.prayer_cell_id.id, member_type='old_member')
         if user.role == 'group_leader' and user.age_group_id:
             vals.update(age_group_id=user.age_group_id.id, member_type='old_member')
-        member = request.env['church.member'].sudo().create(vals)
+        Member = request.env['church.member'].sudo()
+        if not kwargs.get('confirm_new'):
+            # Déjà enregistrée ? On le dit avant de créer un doublon ; l'app
+            # renvoie `confirm_new` si c'est vraiment une autre personne.
+            church = request.env['equipment.church'].sudo().browse(vals['church_id'])
+            same, reason, _ambiguous = Member._find_same_person(
+                church, vals.get('name'), vals.get('first_name'), vals.get('phone'), vals.get('date_of_birth'))
+            if same:
+                why = 'même numéro' if reason == 'phone' else 'même nom'
+                return {
+                    'status': 'error',
+                    'code': 'duplicate_person',
+                    'message': "Cette personne semble déjà enregistrée (%s) : %s%s." % (
+                        why, same.display_name_custom,
+                        ', %s' % same.prayer_cell_id.name if same.prayer_cell_id else ''),
+                    'duplicate': self._member_summary(same),
+                }
+        member = Member.create(vals)
         return {
             'status': 'success',
             'message': 'Membre créé',
@@ -735,6 +758,8 @@ class ChurchMobileApi(http.Controller):
                 'profession': member.profession or '',
                 'marital_status': member.marital_status,
                 'member_type': member.member_type,
+                'person_profile': member.person_profile,
+                'person_profile_label': dict(PERSON_PROFILES).get(member.person_profile, ''),
                 'salvation_date': str(member.salvation_date) if member.salvation_date else '',
                 'district_id': member.district_id.id or False,
                 'prayer_cell_id': member.prayer_cell_id.id or False,
@@ -810,6 +835,8 @@ class ChurchMobileApi(http.Controller):
                 'evangelist_name': f.evangelist_id.name,
                 'member_id': f.member_id.id,
                 'member_name': f.member_id.display_name_custom,
+                'person_profile': f.person_profile,
+                'person_profile_label': dict(PERSON_PROFILES).get(f.person_profile, ''),
                 'member_phone': f.member_id.phone or '',
                 'start_date': str(f.start_date) if f.start_date else '',
                 'end_date': str(f.end_date) if f.end_date else '',
@@ -871,6 +898,8 @@ class ChurchMobileApi(http.Controller):
                 'reference': f.name,
                 'evangelist_name': f.evangelist_id.name,
                 'member_name': f.member_id.display_name_custom,
+                'person_profile': f.person_profile,
+                'person_profile_label': dict(PERSON_PROFILES).get(f.person_profile, ''),
                 'member_phone': f.member_id.phone or '',
                 'start_date': str(f.start_date) if f.start_date else '',
                 'planned_end_date': str(f.end_date) if f.end_date else '',
@@ -1225,6 +1254,8 @@ class ChurchMobileApi(http.Controller):
                     'name': f.name,
                     'duration_weeks': f.duration_weeks,
                     'member_name': f.member_id.display_name_custom,
+                    'person_profile': f.person_profile,
+                    'person_profile_label': dict(PERSON_PROFILES).get(f.person_profile, ''),
                     'start_date': str(f.start_date) if f.start_date else '',
                     'end_date': str(f.end_date) if f.end_date else '',
                     'state': f.state,

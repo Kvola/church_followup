@@ -9,9 +9,8 @@ from odoo.tests import tagged
 from odoo.tests.common import HttpCase
 
 
-@tagged('post_install', '-at_install')
-class TestChurchImport(HttpCase):
-    """Imports Excel : le modèle de l'église, puis un import tout ou rien."""
+class ImportCase(HttpCase):
+    """Une église, un responsable, et de quoi remplir un modèle comme un utilisateur."""
 
     @classmethod
     def setUpClass(cls):
@@ -55,6 +54,12 @@ class TestChurchImport(HttpCase):
         headers = {'Content-Type': 'application/json',
                    'Authorization': 'Bearer %s' % account._open_session('test')}
         return self.url_open(path, data=json.dumps(payload).encode(), headers=headers).json()['result']
+
+
+
+@tagged('post_install', '-at_install')
+class TestChurchImport(ImportCase):
+    """Imports Excel : le modèle de l'église, puis un import tout ou rien."""
 
     # ─── Le modèle ────────────────────────────────────────────────────
 

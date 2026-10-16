@@ -1,9 +1,29 @@
+import re
+import unicodedata
+
 from odoo import api, fields, models, _
+from odoo.exceptions import ValidationError
 from dateutil.relativedelta import relativedelta
 
 from .church_tools import (
     DEFAULT_FOLLOWUP_WEEKS, FOLLOWUP_ORIGINS, MAX_PROPOSED_WEEKS, check_same_church, check_weeks,
 )
+
+
+#: Qui est la personne, une fois pour toutes — à ne pas confondre avec son
+#: statut (`member_type`), qui suit le parcours : un ancien membre qu'on
+#: reprend en suivi reste un ancien membre « en suivi ».
+PERSON_PROFILES = [
+    ('new', 'Nouvelle personne'),
+    ('old_member', 'Ancien membre'),
+]
+
+
+def name_tokens(*parts):
+    """Les mots d'un nom, sans accents ni casse : « KONAN Aya » = « Aya Konan »."""
+    text = unicodedata.normalize('NFKD', ' '.join(p or '' for p in parts))
+    text = ''.join(c for c in text if not unicodedata.combining(c)).lower()
+    return [t for t in re.sub(r'[^0-9a-z]+', ' ', text).split() if t]
 
 
 class ChurchMember(models.Model):
@@ -18,6 +38,16 @@ class ChurchMember(models.Model):
     first_name = fields.Char(string='Prénom(s)', required=True)
     display_name_custom = fields.Char(compute='_compute_display_name_custom', store=True, string='Nom complet')
     phone = fields.Char(string='Téléphone', tracking=True)
+    phone_e164 = fields.Char(
+        string='Numéro international', compute='_compute_phone_e164', store=True, index=True,
+        help="Le numéro normalisé : c'est lui qui reconnaît une personne déjà enregistrée.")
+    name_key = fields.Char(
+        string='Clé du nom', compute='_compute_name_key', store=True, index=True,
+        help="Nom et prénoms sans accents ni casse, mots triés : « KONAN Aya » = « Aya Konan ».")
+    person_profile = fields.Selection(
+        PERSON_PROFILES, string='Profil', required=True, default='new', tracking=True, index=True,
+        help="Nouvelle personne (venue à la foi, à l'église depuis peu) ou ancien membre (déjà de "
+             "l'église, qu'on reprend en suivi). Le profil ne change pas avec le parcours.")
     email = fields.Char(string='Email')
     photo = fields.Binary(string='Photo')
     gender = fields.Selection([
@@ -66,7 +96,7 @@ class ChurchMember(models.Model):
     baptism_date = fields.Date(string='Date de baptême')
     integration_date = fields.Date(string='Date d\'intégration')
     member_type = fields.Selection([
-        ('new', 'Nouvelle personne'),
+        ('new', 'À attribuer'),
         ('in_followup', 'En suivi'),
         ('interrupted', 'Suivi interrompu'),
         ('integrated', 'Intégré(e)'),
@@ -158,6 +188,58 @@ class ChurchMember(models.Model):
             'context': {'default_member_ids': self.ids},
         }
 
+    @api.depends('phone')
+    def _compute_phone_e164(self):
+        Otp = self.env['otp.code'].sudo()
+        for rec in self:
+            try:
+                rec.phone_e164 = Otp._norm_phone(rec.phone) if rec.phone else False
+            except ValidationError:
+                rec.phone_e164 = False
+
+    @api.depends('name', 'first_name')
+    def _compute_name_key(self):
+        for rec in self:
+            rec.name_key = ' '.join(sorted(name_tokens(rec.name, rec.first_name))) or False
+
+    @api.model
+    def _find_same_person(self, church, name, first_name, phone=None, date_of_birth=None, pool=None):
+        """La personne déjà enregistrée dans cette église, s'il y en a une.
+
+        Rend (membre, raison, ambiguë) :
+        - même numéro ET au moins un mot du nom en commun : la même personne
+          (un numéro partagé en famille ne confond pas la mère et l'enfant) ;
+        - sinon même nom complet (mots dans n'importe quel ordre), sans numéro
+          ni date de naissance qui se contredisent ;
+        - plusieurs homonymes possibles : `ambiguë`, rien n'est rapproché.
+
+        `pool` : les membres de l'église déjà chargés (imports en lot).
+        """
+        tokens = name_tokens(name, first_name)
+        key = ' '.join(sorted(tokens))
+        e164 = False
+        if phone:
+            try:
+                e164 = self.env['otp.code'].sudo()._norm_phone(phone)
+            except ValidationError:
+                e164 = False
+        if pool is None:
+            domain = [('church_id', '=', church.id)]
+            criteria = [('name_key', '=', key)] + ([('phone_e164', '=', e164)] if e164 else [])
+            domain += ['|'] * (len(criteria) - 1) + criteria
+            pool = self.sudo().with_context(active_test=False).search(domain)
+        if e164:
+            same_phone = pool.filtered(lambda m: m.phone_e164 == e164
+                                       and set(name_tokens(m.name, m.first_name)) & set(tokens))
+            if same_phone:
+                return same_phone[:1], 'phone', len(same_phone) > 1
+        same_name = pool.filtered(lambda m: m.name_key == key
+                                  and not (e164 and m.phone_e164 and m.phone_e164 != e164)
+                                  and not (date_of_birth and m.date_of_birth and m.date_of_birth != date_of_birth))
+        if len(same_name) > 1:
+            return same_name[:1], 'name', True
+        return same_name, ('name' if same_name else None), False
+
     @api.depends('gender')
     def _compute_to_complete(self):
         for rec in self:
@@ -174,6 +256,9 @@ class ChurchMember(models.Model):
         for vals in vals_list:
             if vals.get('planned_followup_weeks') and not vals.get('planned_followup_origin'):
                 vals['planned_followup_origin'] = 'manual'
+            # Enregistré comme ancien membre : c'est aussi son profil.
+            if vals.get('member_type') == 'old_member' and not vals.get('person_profile'):
+                vals['person_profile'] = 'old_member'
         records = super().create(vals_list)
         records._ensure_partner()
         records.church_id._enable_followup()
