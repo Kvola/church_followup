@@ -71,7 +71,8 @@ class ApiService {
 
   bool get hasSession => _token != null;
 
-  Future<dynamic> call(String endpoint, Map<String, dynamic> params, {int retries = 0}) async {
+  Future<dynamic> call(String endpoint, Map<String, dynamic> params,
+      {int retries = 0, Duration? timeout}) async {
     final url = Uri.parse('$_baseUrl$endpoint');
 
     final body = jsonEncode({
@@ -89,7 +90,7 @@ class ApiService {
             // journal de requêtes ne la recopie pas.
             if (_token != null) 'Authorization': 'Bearer $_token',
           }, body: body)
-          .timeout(AppConstants.requestTimeout);
+          .timeout(timeout ?? AppConstants.requestTimeout);
 
       if (response.statusCode != 200) {
         throw ApiException('Erreur serveur (${response.statusCode})', statusCode: response.statusCode);
@@ -289,19 +290,64 @@ class ApiService {
 
   // ─── Organization ─────────────────────────────────────────────────
 
-  Future<List<Map<String, dynamic>>> getPrayerCells() async {
-    final result = await call('/api/church/cells', {});
+  Future<List<Map<String, dynamic>>> getPrayerCells({bool includeArchived = false}) async {
+    final result = await call('/api/church/cells', {if (includeArchived) 'include_archived': true});
     return _successList(result, 'cells');
   }
 
-  Future<List<Map<String, dynamic>>> getAgeGroups() async {
-    final result = await call('/api/church/age_groups', {});
+  Future<List<Map<String, dynamic>>> getAgeGroups({bool includeArchived = false}) async {
+    final result = await call('/api/church/age_groups', {if (includeArchived) 'include_archived': true});
     return _successList(result, 'age_groups');
   }
 
-  Future<List<Map<String, dynamic>>> getDistricts() async {
-    final result = await call('/api/church/districts', {});
+  Future<List<Map<String, dynamic>>> getDistricts({bool includeArchived = false}) async {
+    final result = await call('/api/church/districts', {if (includeArchived) 'include_archived': true});
     return _successList(result, 'districts');
+  }
+
+  Future<List<Map<String, dynamic>>> getAgeRanges() async {
+    final result = await call('/api/church/age_ranges', {});
+    return _successList(result, 'age_ranges');
+  }
+
+  /// Crée (sans `cell_id`) ou modifie une cellule ; rend la cellule enregistrée.
+  Future<Map<String, dynamic>> saveCell(Map<String, dynamic> data) async =>
+      _successMap(await call('/api/church/cell/save', data), 'cell');
+
+  Future<Map<String, dynamic>> saveAgeGroup(Map<String, dynamic> data) async =>
+      _successMap(await call('/api/church/age_group/save', data), 'age_group');
+
+  Future<Map<String, dynamic>> saveDistrict(Map<String, dynamic> data) async =>
+      _successMap(await call('/api/church/district/save', data), 'district');
+
+  // ─── Imports Excel ────────────────────────────────────────────────
+
+  Future<List<Map<String, dynamic>>> getImportKinds() async =>
+      _successList(await call('/api/church/import/kinds', {}), 'kinds');
+
+  /// Le modèle de l'église : `filename`, `content_base64`, `download_path`.
+  Future<Map<String, dynamic>> getImportTemplate(String kind) async {
+    final result = await call('/api/church/import/template', {'kind': kind});
+    _ensureSuccess(result);
+    return Map<String, dynamic>.from(result);
+  }
+
+  /// Importe un fichier, tout ou rien. Un refus n'est pas une exception : il
+  /// rend `ok: false` et la liste des erreurs à corriger.
+  Future<Map<String, dynamic>> runImport(String kind, String filename, Uint8List bytes) async {
+    final result = await call(
+      '/api/church/import/run',
+      {'kind': kind, 'filename': filename, 'content_base64': base64Encode(bytes)},
+      // Un gros fichier se vérifie puis s'écrit d'un bloc : on attend, et on ne
+      // renvoie pas la requête en double.
+      retries: AppConstants.maxRetries,
+      timeout: const Duration(minutes: 3),
+    );
+    if (result is Map && (result['status'] == 'success' || result['code'] == 'import_refused')) {
+      return Map<String, dynamic>.from(result);
+    }
+    _ensureSuccess(result);
+    return Map<String, dynamic>.from(result);
   }
 
   // ─── Attendance ───────────────────────────────────────────────────

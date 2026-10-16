@@ -2,21 +2,26 @@ import base64
 import binascii
 import functools
 import logging
+import time
+from urllib.parse import urlencode
 
 from psycopg2 import IntegrityError
 
 from odoo import fields, http
 from odoo.exceptions import AccessDenied, AccessError, UserError, ValidationError
 from odoo.http import request
+from odoo.tools.misc import consteq, hmac as odoo_hmac
 
 from odoo.addons.otp_auth.tools.client_ip import client_ip
 
-from ..models.church_import import XLSX_MIMETYPE
+from ..models.church_import import XLSX_MIMETYPE, norm_key
 from ..models.church_member import PERSON_PROFILES
 from ..models.church_mobile_user import phone_key
 from ..models.church_tools import ACTIVE_FOLLOWUP_STATES, OTP_SCOPE
 
 _logger = logging.getLogger(__name__)
+
+TEMPLATE_LINK_SECONDS = 15 * 60
 
 # Connexion par code à usage unique (otp_auth). Le code lui-même est limité à
 # 5 essais et 10 minutes par le socle ; ces compteurs-ci protègent la porte :
@@ -66,10 +71,11 @@ def church_endpoint(roles=ALL_ROLES):
                     return func(self, user, **kwargs)
             except ApiInputError as e:
                 return _error(str(e), 'invalid')
+            except AccessError:
+                # Avant UserError : AccessError en hérite, et passait pour un simple refus.
+                return _error('Action non autorisée.', 'forbidden')
             except (UserError, ValidationError) as e:
                 return _error(e.args[0] if e.args else str(e), 'refused')
-            except AccessError:
-                return _error('Action non autorisée.', 'forbidden')
             except IntegrityError:
                 return _error('Cet enregistrement existe déjà.', 'duplicate')
             except Exception:
@@ -439,12 +445,51 @@ class ChurchMobileApi(http.Controller):
         kind = _text(kwargs, 'kind', True, 'import')
         Import = request.env['church.import'].sudo()
         content = Import._template(kind, church)
+        expires = int(time.time()) + TEMPLATE_LINK_SECONDS
+        params = {'a': user.id, 'c': church.id, 'k': kind, 'e': expires}
+        params['s'] = self._template_signature(params)
         return {
             'status': 'success',
             'filename': Import._template_filename(kind, church),
             'mimetype': XLSX_MIMETYPE,
             'content_base64': base64.b64encode(content).decode(),
+            # Un lien à ouvrir dans le navigateur : le fichier arrive dans les
+            # Téléchargements du téléphone, sans permission à demander.
+            'download_path': '/api/church/import/modele?%s' % urlencode(params),
         }
+
+    @staticmethod
+    def _template_signature(params):
+        message = '%(a)s:%(c)s:%(k)s:%(e)s' % params
+        return odoo_hmac(request.env(su=True), 'church_followup.import_template', message)
+
+    @http.route('/api/church/import/modele', type='http', auth='public', methods=['GET'], csrf=False,
+                sitemap=False)
+    def import_template_download(self, a=None, c=None, k=None, e=None, s=None, **kwargs):
+        """Le modèle, par le lien signé que l'app a reçu (valable quelques minutes)."""
+        try:
+            params = {'a': int(a), 'c': int(c), 'k': k or '', 'e': int(e)}
+        except (TypeError, ValueError):
+            return request.not_found()
+        if not s or not consteq(s, self._template_signature(params)) or params['e'] < time.time():
+            return request.make_response(
+                "Ce lien a expiré : touchez à nouveau « Télécharger le modèle » dans l'application.",
+                headers=[('Content-Type', 'text/plain; charset=utf-8')], status=410)
+        account = request.env['church.mobile.user'].sudo().browse(params['a']).exists()
+        church = request.env['equipment.church'].sudo().browse(params['c']).exists()
+        if not account or not account.active or account.role not in MANAGERS or not church:
+            return request.not_found()
+        Import = request.env['church.import'].sudo()
+        try:
+            content = Import._template(params['k'], church)
+        except UserError:
+            return request.not_found()
+        return request.make_response(content, headers=[
+            ('Content-Type', XLSX_MIMETYPE),
+            ('Content-Length', len(content)),
+            ('Content-Disposition', http.content_disposition(Import._template_filename(params['k'], church))),
+            ('Cache-Control', 'no-store'),
+        ])
 
     @http.route('/api/church/import/run', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     @church_endpoint(roles=MANAGERS)
@@ -1070,31 +1115,239 @@ class ChurchMobileApi(http.Controller):
     @http.route('/api/church/cells', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     @church_endpoint()
     def get_prayer_cells(self, user, **kwargs):
-        """Liste des cellules de prière."""
+        """Liste des cellules de prière (archivées comprises sur demande d'un responsable)."""
         domain = self._church_domain(user, kwargs)
         if user.role == 'cell_leader':
             domain.append(('id', '=', user.prayer_cell_id.id))
-        cells = request.env['church.prayer.cell'].sudo().search(domain)
+        cells = self._org_model('church.prayer.cell', user, kwargs).search(domain)
         # Les numéros des membres ne sont donnés qu'à qui en a la charge.
         with_phones = self._is_manager(user) or user.role == 'cell_leader'
+        return {'status': 'success', 'cells': [self._cell_json(c, with_phones) for c in cells]}
+
+    def _org_model(self, model, user, kwargs):
+        Model = request.env[model].sudo()
+        if self._is_manager(user) and kwargs.get('include_archived'):
+            Model = Model.with_context(active_test=False)
+        return Model
+
+    @staticmethod
+    def _cell_json(c, with_phones):
+        days = dict(c._fields['meeting_day']._description_selection(c.env))
         return {
-            'status': 'success',
-            'cells': [{
-                'id': c.id,
-                'name': c.name,
-                'leader_name': c.leader_name or '',
-                'leader_phone': c.leader_phone or '',
-                'meeting_day': c.meeting_day or '',
-                'meeting_time': c.meeting_time or '',
-                'meeting_location': c.meeting_location or '',
-                'member_count': c.member_count,
-                'members': [{
-                    'id': m.id,
-                    'name': m.display_name_custom,
-                    'phone': (m.phone or '') if with_phones else '',
-                } for m in c.member_ids],
-            } for c in cells],
+            'id': c.id,
+            'name': c.name,
+            'active': c.active,
+            'leader_name': c.leader_name or '',
+            'leader_phone': c.leader_phone or '',
+            'has_leader_account': bool(c.mobile_user_id.active),
+            'meeting_day': c.meeting_day or '',
+            'meeting_day_label': days.get(c.meeting_day, ''),
+            'meeting_time': c.meeting_time or '',
+            'meeting_location': c.meeting_location or '',
+            'notes': c.notes or '',
+            'district_ids': c.district_ids.ids,
+            'district_names': c.district_ids.mapped('name'),
+            'member_count': c.member_count,
+            'members': [{
+                'id': m.id,
+                'name': m.display_name_custom,
+                'phone': (m.phone or '') if with_phones else '',
+            } for m in c.member_ids],
         }
+
+    @staticmethod
+    def _group_json(g, with_phones):
+        types = dict(g._fields['group_type']._description_selection(g.env))
+        genders = dict(g._fields['gender']._description_selection(g.env))
+        return {
+            'id': g.id,
+            'name': g.name,
+            'active': g.active,
+            'group_type': g.group_type,
+            'group_type_label': types.get(g.group_type, ''),
+            'gender': g.gender,
+            'gender_label': genders.get(g.gender, ''),
+            'age_range_id': g.age_range_id.id or False,
+            'age_range_name': g.age_range_id.name or '',
+            'notes': g.notes or '',
+            'leader_name': g.leader_name or '',
+            'leader_phone': g.leader_phone or '',
+            'has_leader_account': bool(g.mobile_user_id.active),
+            'member_count': g.member_count,
+            'members': [{
+                'id': m.id,
+                'name': m.display_name_custom,
+                'phone': (m.phone or '') if with_phones else '',
+                'age': m.age,
+            } for m in g.member_ids],
+        }
+
+    @staticmethod
+    def _district_json(d):
+        return {
+            'id': d.id, 'name': d.name, 'city': d.city or '', 'description': d.description or '',
+            'active': d.active, 'prayer_cell_name': d.prayer_cell_id.name or '', 'member_count': d.member_count,
+        }
+
+    # ─── Organisation : créer, modifier, archiver ─────────────────────
+
+    def _unique_name(self, model, church_id, name, record=None, label='Cette fiche'):
+        """Deux unités du même nom dans une église : l'import les confondrait."""
+        key = norm_key(name)
+        others = request.env[model].sudo().with_context(active_test=False).search([
+            ('church_id', '=', church_id), ('id', '!=', record.id if record else 0)])
+        same = others.filtered(lambda r: norm_key(r.name) == key)
+        if same:
+            raise ApiInputError('%s « %s » existe déjà%s.' % (
+                label, same[0].name, '' if same[0].active else ' (archivée)'))
+
+    @staticmethod
+    def _meeting_time(kwargs):
+        raw = _text(kwargs, 'meeting_time')
+        if not raw:
+            return False
+        try:
+            return request.env['church.import']._convert_time(raw)
+        except ValueError:
+            raise ApiInputError("« %s » n'est pas une heure (ex. 19:00)." % raw)
+
+    @staticmethod
+    def _leader_phone(kwargs):
+        raw = _text(kwargs, 'leader_phone')
+        if not raw:
+            return False
+        try:
+            return request.env['otp.code'].sudo()._norm_phone(raw)
+        except ValidationError:
+            raise ApiInputError("« %s » n'est pas un numéro de téléphone lisible." % raw)
+
+    def _save_unit(self, user, kwargs, model, key, label, manager_fields, open_fields=()):
+        """Crée (sans `<key>`) ou modifie une cellule, un groupe, un quartier.
+
+        `open_fields` : ce que le responsable de CETTE unité peut aussi modifier.
+        """
+        record_id = _int(kwargs, key, label=label)
+        manager = self._is_manager(user)
+        if record_id:
+            record = self._get(model, user, record_id, label.capitalize())
+            if not record.exists():
+                raise ApiInputError('%s introuvable.' % label.capitalize())
+            own = (user.role == 'cell_leader' and record == user.prayer_cell_id) or \
+                  (user.role == 'group_leader' and record == user.age_group_id)
+            if not manager and not own:
+                raise AccessError('forbidden')
+        else:
+            if not manager:
+                raise AccessError('forbidden')
+            record = request.env[model]
+        vals = {}
+        for name, reader in list(open_fields) + (list(manager_fields) if manager else []):
+            # À la création, chaque champ est lu : un champ requis absent est refusé ici.
+            if name in kwargs or not record:
+                vals[name] = reader(kwargs)
+        if not record:
+            # Rien de saisi : les valeurs par défaut du modèle s'appliquent (vendredi, 19:00…).
+            vals = {k: v for k, v in vals.items() if v not in (False, None, '', [(6, 0, [])])}
+        if manager and 'active' in kwargs:
+            vals['active'] = bool(kwargs.get('active'))
+        church_id = record.church_id.id if record else self._resolve_church_id(user, kwargs)
+        if not record or 'name' in vals:
+            if not vals.get('name'):
+                raise ApiInputError('Le champ « nom » est requis.')
+            self._unique_name(model, church_id, vals['name'], record, label=label.capitalize())
+        if record:
+            record.sudo().write(vals)
+        else:
+            record = request.env[model].sudo().create(dict(vals, church_id=church_id))
+        if vals.get('active') is False and 'mobile_user_id' in record._fields:
+            # Unité archivée : le compte de son responsable n'ouvre plus rien.
+            record._leader_accounts().write({'active': False})
+        if manager and 'leader_phone' in record._fields and kwargs.get('create_account', True) \
+                and record.active and record.leader_phone and not record.mobile_user_id.active:
+            record.action_create_leader_account()
+        return record
+
+    @staticmethod
+    def _text_reader(name, label, required=False):
+        return lambda kwargs: _text(kwargs, name, required, label) or False
+
+    @http.route('/api/church/cell/save', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
+    @church_endpoint(roles=MANAGERS + ('cell_leader',))
+    def save_cell(self, user, **kwargs):
+        """Créer ou modifier une cellule. Son responsable n'en change que l'horaire et le lieu."""
+        t = self._text_reader
+        cell = self._save_unit(
+            user, kwargs, 'church.prayer.cell', 'cell_id', 'cellule',
+            manager_fields=[
+                ('name', t('name', 'nom', True)),
+                ('district_ids', lambda kw: [(6, 0, [self._get('church.district', user, i, 'Quartier').id
+                                                     for i in _id_list(kw, 'district_ids')])]),
+                ('leader_name', t('leader_name', 'responsable')),
+                ('leader_phone', self._leader_phone),
+            ],
+            open_fields=[
+                ('meeting_day', lambda kw: _choice('church.prayer.cell', 'meeting_day',
+                                                   kw.get('meeting_day'), 'jour')),
+                ('meeting_time', self._meeting_time),
+                ('meeting_location', t('meeting_location', 'lieu')),
+                ('notes', t('notes', 'notes')),
+            ])
+        return {'status': 'success', 'message': 'Cellule enregistrée', 'cell': self._cell_json(cell, True)}
+
+    @http.route('/api/church/age_group/save', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
+    @church_endpoint(roles=MANAGERS)
+    def save_age_group(self, user, **kwargs):
+        t = self._text_reader
+        group = self._save_unit(
+            user, kwargs, 'church.age.group', 'age_group_id', "groupe d'âge",
+            manager_fields=[
+                ('name', t('name', 'nom', True)),
+                ('group_type', lambda kw: _choice('church.age.group', 'group_type', kw.get('group_type'), 'type')
+                 or self._raise('Le champ « type » est requis.')),
+                ('gender', lambda kw: _choice('church.age.group', 'gender', kw.get('gender'), 'sexe')
+                 or self._raise('Le champ « sexe » est requis.')),
+                ('age_range_id', lambda kw: self._age_range(user, kw)),
+                ('notes', t('notes', 'notes')),
+                ('leader_name', t('leader_name', 'responsable')),
+                ('leader_phone', self._leader_phone),
+            ])
+        return {'status': 'success', 'message': 'Groupe enregistré', 'age_group': self._group_json(group, True)}
+
+    @staticmethod
+    def _raise(message):
+        raise ApiInputError(message)
+
+    def _age_range(self, user, kwargs):
+        range_id = _int(kwargs, 'age_range_id', label="tranche d'âge")
+        if not range_id:
+            return False
+        age_range = request.env['church.age.range'].sudo().browse(range_id).exists()
+        if not age_range or (age_range.church_id and not self._in_scope(user, age_range.church_id)):
+            raise ApiInputError("Tranche d'âge introuvable.")
+        return age_range.id
+
+    @http.route('/api/church/district/save', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
+    @church_endpoint(roles=MANAGERS)
+    def save_district(self, user, **kwargs):
+        t = self._text_reader
+        district = self._save_unit(
+            user, kwargs, 'church.district', 'district_id', 'quartier',
+            manager_fields=[
+                ('name', t('name', 'nom', True)),
+                ('city', t('city', 'ville')),
+                ('description', t('description', 'description')),
+            ])
+        return {'status': 'success', 'message': 'Quartier enregistré', 'district': self._district_json(district)}
+
+    @http.route('/api/church/age_ranges', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
+    @church_endpoint()
+    def get_age_ranges(self, user, **kwargs):
+        domain = [('church_id', '=', False)]
+        if user.church_id:
+            domain = ['|', ('church_id', '=', False), ('church_id', '=', user.church_id.id)]
+        ranges = request.env['church.age.range'].sudo().search(domain, order='sequence, age_min')
+        return {'status': 'success', 'age_ranges': [
+            {'id': r.id, 'name': r.name, 'age_min': r.age_min, 'age_max': r.age_max} for r in ranges]}
 
     # ─── Age Groups ───────────────────────────────────────────────────
 
@@ -1105,26 +1358,9 @@ class ChurchMobileApi(http.Controller):
         domain = self._church_domain(user, kwargs)
         if user.role == 'group_leader':
             domain.append(('id', '=', user.age_group_id.id))
-        groups = request.env['church.age.group'].sudo().search(domain)
+        groups = self._org_model('church.age.group', user, kwargs).search(domain)
         with_phones = self._is_manager(user) or user.role == 'group_leader'
-        return {
-            'status': 'success',
-            'age_groups': [{
-                'id': g.id,
-                'name': g.name,
-                'group_type': g.group_type,
-                'gender': g.gender,
-                'leader_name': g.leader_name or '',
-                'leader_phone': g.leader_phone or '',
-                'member_count': g.member_count,
-                'members': [{
-                    'id': m.id,
-                    'name': m.display_name_custom,
-                    'phone': (m.phone or '') if with_phones else '',
-                    'age': m.age,
-                } for m in g.member_ids],
-            } for g in groups],
-        }
+        return {'status': 'success', 'age_groups': [self._group_json(g, with_phones) for g in groups]}
 
     # ─── Districts ────────────────────────────────────────────────────
 
@@ -1132,11 +1368,8 @@ class ChurchMobileApi(http.Controller):
     @church_endpoint()
     def get_districts(self, user, **kwargs):
         """Liste des quartiers de l'église."""
-        districts = request.env['church.district'].sudo().search(self._church_domain(user, kwargs))
-        return {
-            'status': 'success',
-            'districts': [{'id': d.id, 'name': d.name, 'city': d.city or ''} for d in districts],
-        }
+        districts = self._org_model('church.district', user, kwargs).search(self._church_domain(user, kwargs))
+        return {'status': 'success', 'districts': [self._district_json(d) for d in districts]}
 
     # ─── Attendance ───────────────────────────────────────────────────
 

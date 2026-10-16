@@ -23,6 +23,8 @@ import '../admin/mobile_users_screen.dart';
 import '../admin/report_screen.dart';
 import '../admin/church_management_screen.dart';
 import '../settings/settings_screen.dart';
+import '../imports/import_screen.dart';
+import '../organization/district_list_screen.dart';
 import '../../widgets/install_banner.dart';
 import '../../widgets/web_notifications_banner.dart';
 
@@ -338,6 +340,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         () => _navigateTo(const MobileUsersScreen())),
                     _drawerItem(Icons.assessment_outlined, 'Rapports',
                         () => _navigateTo(const ReportScreen())),
+                    _drawerItem(Icons.upload_file_outlined, 'Importer',
+                        () => _navigateTo(const ImportScreen())),
                     const Divider(indent: 16, endIndent: 16),
                   ],
                   if (auth.canSeeFollowups)
@@ -350,6 +354,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   _drawerItem(Icons.diversity_3_outlined, 'Groupes d\'âge',
                       () => _navigateTo(const AgeGroupListScreen())),
                   if (auth.isManager) ...[
+                    _drawerItem(Icons.location_on_outlined, 'Quartiers',
+                        () => _navigateTo(const DistrictListScreen())),
                     _drawerItem(Icons.restaurant_outlined, 'Rotation cuisine',
                         () => _navigateTo(const CookingRotationScreen())),
                   ],
@@ -430,6 +436,10 @@ class _MoreScreen extends StatelessWidget {
             () => _nav(context, const MobileUsersScreen())),
         _QuickAction('Rapports', Icons.assessment_outlined,
             AppColors.integrated, () => _nav(context, const ReportScreen())),
+        _QuickAction('Importer', Icons.upload_file_outlined, AppColors.primary,
+            () => _nav(context, const ImportScreen())),
+        _QuickAction('Quartiers', Icons.location_on_outlined, AppColors.transferred,
+            () => _nav(context, const DistrictListScreen())),
         _QuickAction('Rotation', Icons.restaurant_outlined, AppColors.extended,
             () => _nav(context, const CookingRotationScreen())),
       ]);

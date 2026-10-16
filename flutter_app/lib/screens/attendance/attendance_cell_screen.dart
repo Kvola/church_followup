@@ -83,7 +83,7 @@ class _AttendanceCellScreenState extends State<AttendanceCellScreen> {
                   ),
                   key: ValueKey('cell-$_selectedCellId'),
                   initialValue: _selectedCellId,
-                  items: provider.cells
+                  items: provider.activeCells
                       .where((c) => c['id'] is int)
                       .map((c) => DropdownMenuItem(value: c['id'] as int, child: Text(c['name'] ?? '')))
                       .toList(),

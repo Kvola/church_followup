@@ -17,6 +17,12 @@ class OrganizationProvider extends ChangeNotifier {
   List<Map<String, dynamic>> get cells => _cells;
   List<Map<String, dynamic>> get ageGroups => _ageGroups;
   List<Map<String, dynamic>> get districts => _districts;
+
+  // Pour choisir (fiche d'une personne…) : jamais une unité archivée.
+  static bool _active(Map<String, dynamic> r) => r['active'] != false;
+  List<Map<String, dynamic>> get activeCells => _cells.where(_active).toList();
+  List<Map<String, dynamic>> get activeAgeGroups => _ageGroups.where(_active).toList();
+  List<Map<String, dynamic>> get activeDistricts => _districts.where(_active).toList();
   List<Map<String, dynamic>> get cookingRotation => _cookingRotation;
   List<Map<String, dynamic>> get mobileUsers => _mobileUsers;
   List<Map<String, dynamic>> get churches => _churches;
@@ -61,11 +67,54 @@ class OrganizationProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Les responsables peuvent voir les cellules, groupes et quartiers archivés.
+  bool _showArchived = false;
+  bool get showArchived => _showArchived;
+  set showArchived(bool value) {
+    _showArchived = value;
+    notifyListeners();
+    loadCells();
+    loadAgeGroups();
+    loadDistricts();
+  }
+
+  List<Map<String, dynamic>> _ageRanges = [];
+  List<Map<String, dynamic>> get ageRanges => _ageRanges;
+
+  Future<void> loadAgeRanges() async {
+    if (_auth == null || !_auth!.isAuthenticated) return;
+    try {
+      _ageRanges = await _api.getAgeRanges();
+      notifyListeners();
+    } catch (_) {}
+  }
+
+  /// Enregistre puis recharge la liste. Rend `{success, message, record}`.
+  Future<Map<String, dynamic>> _save(
+      Future<Map<String, dynamic>> Function() send, Future<void> Function() reload, String done) async {
+    try {
+      final record = await send();
+      await reload();
+      return {'success': true, 'message': done, 'record': record};
+    } catch (e) {
+      return {'success': false, 'message': '$e'};
+    }
+  }
+
+  Future<Map<String, dynamic>> saveCell(Map<String, dynamic> data) =>
+      _save(() => _api.saveCell(data), loadCells, 'Cellule enregistrée');
+
+  Future<Map<String, dynamic>> saveAgeGroup(Map<String, dynamic> data) =>
+      _save(() => _api.saveAgeGroup(data), loadAgeGroups, 'Groupe enregistré');
+
+  Future<Map<String, dynamic>> saveDistrict(Map<String, dynamic> data) =>
+      _save(() => _api.saveDistrict(data), loadDistricts, 'Quartier enregistré');
+
   Future<void> loadCells() async {
     if (_auth == null || !_auth!.isAuthenticated) return;
     _startLoading();
     try {
-      _cells = await _api.getPrayerCells();
+      _cells = await _api.getPrayerCells(includeArchived: _showArchived);
     } catch (e) {
       _error = e.toString();
     } finally {
@@ -77,7 +126,7 @@ class OrganizationProvider extends ChangeNotifier {
     if (_auth == null || !_auth!.isAuthenticated) return;
     _startLoading();
     try {
-      _ageGroups = await _api.getAgeGroups();
+      _ageGroups = await _api.getAgeGroups(includeArchived: _showArchived);
     } catch (e) {
       _error = e.toString();
     } finally {
@@ -89,7 +138,7 @@ class OrganizationProvider extends ChangeNotifier {
     if (_auth == null || !_auth!.isAuthenticated) return;
     _startLoading();
     try {
-      _districts = await _api.getDistricts();
+      _districts = await _api.getDistricts(includeArchived: _showArchived);
     } catch (e) {
       _error = e.toString();
     } finally {

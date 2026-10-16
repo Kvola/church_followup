@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants.dart';
 import '../../core/theme.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/organization_provider.dart';
 import '../../widgets/common.dart';
+import 'unit_forms.dart';
 
 class AgeGroupListScreen extends StatefulWidget {
   const AgeGroupListScreen({super.key});
@@ -24,11 +26,26 @@ class _AgeGroupListScreenState extends State<AgeGroupListScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<OrganizationProvider>();
+    final canManage = context.watch<AuthProvider>().isManager;
 
     return Scaffold(
+      floatingActionButton: canManage
+          ? FloatingActionButton.extended(
+              heroTag: 'new-group',
+              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AgeGroupFormScreen())),
+              icon: const Icon(Icons.add),
+              label: const Text('Nouveau groupe'),
+            )
+          : null,
       appBar: AppBar(
         title: const Text('Groupes d\'âge'),
         actions: [
+          if (canManage)
+            IconButton(
+              icon: Icon(provider.showArchived ? Icons.inventory_2 : Icons.inventory_2_outlined),
+              tooltip: provider.showArchived ? 'Masquer les archivés' : 'Afficher les archivés',
+              onPressed: () => provider.showArchived = !provider.showArchived,
+            ),
           IconButton(icon: const Icon(Icons.refresh), onPressed: () => provider.loadAgeGroups()),
         ],
       ),
@@ -41,9 +58,9 @@ class _AgeGroupListScreenState extends State<AgeGroupListScreen> {
                   : RefreshIndicator(
                       onRefresh: () => provider.loadAgeGroups(),
                       child: ListView.builder(
-                        padding: const EdgeInsets.all(16),
+                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
                         itemCount: provider.ageGroups.length,
-                        itemBuilder: (_, index) => _GroupCard(data: provider.ageGroups[index]),
+                        itemBuilder: (_, index) => _GroupCard(data: provider.ageGroups[index], canEdit: canManage),
                       ),
                     ),
     );
@@ -52,7 +69,8 @@ class _AgeGroupListScreenState extends State<AgeGroupListScreen> {
 
 class _GroupCard extends StatelessWidget {
   final Map<String, dynamic> data;
-  const _GroupCard({required this.data});
+  final bool canEdit;
+  const _GroupCard({required this.data, required this.canEdit});
 
   @override
   Widget build(BuildContext context) {
@@ -81,7 +99,11 @@ class _GroupCard extends StatelessWidget {
             child: Icon(_typeIcon(groupType), color: typeColor, size: 22),
           ),
         ),
-        title: Text(name, style: const TextStyle(fontWeight: FontWeight.w600)),
+        title: Row(children: [
+          Flexible(child: Text(name, style: TextStyle(fontWeight: FontWeight.w600,
+              color: data['active'] == false ? Colors.grey : null))),
+          if (data['active'] == false) const ArchivedChip(),
+        ]),
         subtitle: Row(
           children: [
             Container(
@@ -102,11 +124,28 @@ class _GroupCard extends StatelessWidget {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
         children: [
+          if (canEdit)
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: () => Navigator.push(
+                    context, MaterialPageRoute(builder: (_) => AgeGroupFormScreen(group: data))),
+                icon: const Icon(Icons.edit_outlined, size: 18),
+                label: const Text('Modifier'),
+              ),
+            ),
+          if (AppConstants.safeStr(data['age_range_name']).isNotEmpty)
+            ListTile(
+              dense: true,
+              leading: const Icon(Icons.cake_outlined, size: 18),
+              title: Text(AppConstants.safeStr(data['age_range_name'])),
+              contentPadding: EdgeInsets.zero,
+            ),
           if (leaderName.isNotEmpty)
             ListTile(
               dense: true,
               leading: const Icon(Icons.person_pin, size: 18),
-              title: Text('Leader: $leaderName'),
+              title: Text('Responsable : $leaderName'),
               subtitle: leaderPhone.isNotEmpty ? Text(leaderPhone) : null,
               contentPadding: EdgeInsets.zero,
             ),

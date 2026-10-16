@@ -63,7 +63,7 @@ class AppConstants {
   };
 
   static const Map<String, String> memberTypeLabels = {
-    'new': 'Nouveau',
+    'new': 'À attribuer',
     'in_followup': 'En suivi',
     'interrupted': 'Suivi interrompu',
     'integrated': 'Intégré',
@@ -89,6 +89,12 @@ class AppConstants {
 
   static const int minFollowupWeeks = 1;
   static const int maxFollowupWeeks = 26;
+
+  /// Qui est la personne, une fois pour toutes (le statut, lui, suit le parcours).
+  static const Map<String, String> profileLabels = {
+    'new': 'Nouvelle personne',
+    'old_member': 'Ancien membre',
+  };
 
   static const Map<String, String> genderLabels = {
     'male': 'Homme',
@@ -122,7 +128,7 @@ class AppConstants {
   static const Map<String, String> groupTypeLabels = {
     'married': 'Mariés',
     'youth': 'Jeunes',
-    'college': 'Universitaires',
+    'college': 'Collégiens',
     'highschool': 'Lycéens',
     'children': 'Enfants',
   };
