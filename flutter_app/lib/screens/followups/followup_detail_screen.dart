@@ -237,7 +237,7 @@ class _FollowupDetailScreenState extends State<FollowupDetailScreen> {
                   const SizedBox(height: 16),
                   DropdownButtonFormField<int>(
                     decoration: const InputDecoration(labelText: 'Cellule de prière'),
-                    items: orgProvider.cells
+                    items: orgProvider.activeCells
                         .where((c) => c['id'] is int)
                         .map((c) => DropdownMenuItem(value: c['id'] as int, child: Text(AppConstants.safeStr(c['name'], '—'))))
                         .toList(),
@@ -247,7 +247,7 @@ class _FollowupDetailScreenState extends State<FollowupDetailScreen> {
                   const SizedBox(height: 16),
                   DropdownButtonFormField<int>(
                     decoration: const InputDecoration(labelText: 'Groupe d\'âge'),
-                    items: orgProvider.ageGroups
+                    items: orgProvider.activeAgeGroups
                         .where((g) => g['id'] is int)
                         .map((g) => DropdownMenuItem(value: g['id'] as int, child: Text(AppConstants.safeStr(g['name'], '—'))))
                         .toList(),

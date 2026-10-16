@@ -388,3 +388,43 @@ void showErrorSnackbar(BuildContext context, String message) {
     ),
   );
 }
+
+// ─── Profil de la personne ───────────────────────────────────────────
+
+/// « Nouvelle personne » ou « Ancien membre » : qui est la personne, quel que
+/// soit son statut dans le parcours.
+class ProfileBadge extends StatelessWidget {
+  final String? profile;
+  const ProfileBadge({super.key, required this.profile});
+
+  @override
+  Widget build(BuildContext context) {
+    final old = profile == 'old_member';
+    if (profile == null || profile!.isEmpty) return const SizedBox.shrink();
+    final color = old ? Colors.brown : AppColors.primary;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        AppConstants.profileLabels[profile] ?? profile!,
+        style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w600),
+      ),
+    );
+  }
+}
+
+/// Signale une unité archivée dans une liste.
+class ArchivedChip extends StatelessWidget {
+  const ArchivedChip({super.key});
+
+  @override
+  Widget build(BuildContext context) => Container(
+        margin: const EdgeInsets.only(left: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+        decoration: BoxDecoration(color: Colors.grey.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(8)),
+        child: const Text('Archivé', style: TextStyle(fontSize: 10, color: Colors.grey)),
+      );
+}

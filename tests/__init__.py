@@ -12,3 +12,6 @@ from . import test_user_guide
 from . import test_training_manual
 from . import test_login_code
 from . import test_pwa
+from . import test_import
+from . import test_import_people
+from . import test_organization_api

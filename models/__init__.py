@@ -16,3 +16,4 @@ from . import church_attendance_sunday
 from . import church_attendance_cell
 from . import church_cooking_rotation
 from . import res_partner
+from . import church_import

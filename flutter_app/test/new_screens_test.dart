@@ -96,7 +96,7 @@ void main() {
         ],
       },
     });
-    expect(find.text('Nouvelles personnes (1)'), findsOneWidget);
+    expect(find.text('À confier à un évangéliste (1)'), findsOneWidget);
     expect(find.text('8 semaines — Événement d\'origine (Camp)'), findsOneWidget);
     expect(find.text('Suivis interrompus (1)'), findsOneWidget);
     expect(find.text('A déménagé — Bouaké'), findsOneWidget);

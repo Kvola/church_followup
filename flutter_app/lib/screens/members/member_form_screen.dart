@@ -34,6 +34,10 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
 
   String? _gender;
   String? _maritalStatus;
+
+  /// Nouvelle personne ou ancien membre : choisi à l'enregistrement, il ne
+  /// change pas avec le parcours.
+  String _profile = 'new';
   int? _districtId;
   int? _cellId;
   int? _ageGroupId;
@@ -54,6 +58,7 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
     _addressCtrl = TextEditingController(text: d['address'] ?? '');
     _professionCtrl = TextEditingController(text: d['profession'] ?? '');
     _gender = AppConstants.genderLabels.containsKey(d['gender']) ? d['gender'] : null;
+    if (AppConstants.profileLabels.containsKey(d['person_profile'])) _profile = d['person_profile'];
     _maritalStatus = d['marital_status'] is String ? d['marital_status'] : null;
     _districtId = AppConstants.safeId(d['district_id']);
     _cellId = AppConstants.safeId(d['prayer_cell_id']);
@@ -90,6 +95,9 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
               _addressCtrl.text = detail['address'] ?? _addressCtrl.text;
               _professionCtrl.text = detail['profession'] ?? _professionCtrl.text;
               _gender = AppConstants.genderLabels.containsKey(detail['gender']) ? detail['gender'] : _gender;
+              if (AppConstants.profileLabels.containsKey(detail['person_profile'])) {
+                _profile = detail['person_profile'];
+              }
               _maritalStatus = detail['marital_status'] is String ? detail['marital_status'] : _maritalStatus;
 
               _districtId = AppConstants.safeId(detail['district_id']) ?? _districtId;
@@ -128,7 +136,7 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
     super.dispose();
   }
 
-  Future<void> _save() async {
+  Future<void> _save({bool confirmNew = false}) async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isSaving = true);
@@ -141,6 +149,8 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
       'marital_status': _maritalStatus,
       'address': _addressCtrl.text.trim(),
       'profession': _professionCtrl.text.trim(),
+      if (_choosesProfile) 'person_profile': _profile,
+      if (confirmNew) 'confirm_new': true,
     };
 
     if (_districtId != null) data['district_id'] = _districtId;
@@ -165,8 +175,44 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
     if (result['status'] == 'success') {
       showSuccessSnackbar(context, _isEdit ? 'Membre mis à jour' : 'Membre créé');
       Navigator.pop(context, true);
+    } else if (result['code'] == 'duplicate_person') {
+      await _onDuplicate(result);
     } else {
       showErrorSnackbar(context, result['message'] ?? 'Erreur');
+    }
+  }
+
+  /// Le responsable de cellule ou de groupe enregistre des membres de son unité
+  /// (le serveur en fait des anciens membres) : il n'a pas à choisir.
+  bool get _choosesProfile {
+    final auth = context.read<AuthProvider>();
+    return !auth.isCellLeader && !auth.isGroupLeader;
+  }
+
+  /// Cette personne semble déjà enregistrée : la voir, ou confirmer que c'en est une autre.
+  Future<void> _onDuplicate(Map<String, dynamic> result) async {
+    final duplicate = result['duplicate'] is Map ? Map<String, dynamic>.from(result['duplicate']) : null;
+    final choice = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Déjà enregistrée ?'),
+        content: Text('${result['message'] ?? ''}\n\nS\'il s\'agit bien d\'une autre personne, enregistrez-la quand même.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler')),
+          if (duplicate?['id'] is int)
+            TextButton(onPressed: () => Navigator.pop(ctx, 'open'), child: const Text('Voir sa fiche')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, 'new'), child: const Text('C\'est une autre personne')),
+        ],
+      ),
+    );
+    if (!mounted) return;
+    if (choice == 'new') {
+      await _save(confirmNew: true);
+    } else if (choice == 'open') {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => MemberFormScreen(memberId: duplicate!['id'] as int, existingData: duplicate)),
+      );
     }
   }
 
@@ -220,6 +266,17 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
             // Identity section
             const _SectionTitle('Identité'),
             const SizedBox(height: 8),
+            if (_choosesProfile) ...[
+              SegmentedButton<String>(
+                segments: AppConstants.profileLabels.entries
+                    .map((e) => ButtonSegment(value: e.key, label: Text(e.value)))
+                    .toList(),
+                selected: {_profile},
+                onSelectionChanged: _canEdit ? (v) => setState(() => _profile = v.first) : null,
+                showSelectedIcon: false,
+              ),
+              const SizedBox(height: 12),
+            ],
             TextFormField(
               controller: _nameCtrl,
               decoration: const InputDecoration(labelText: 'Nom *', prefixIcon: Icon(Icons.person_outline)),
@@ -299,26 +356,26 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
             const SizedBox(height: 8),
             DropdownButtonFormField<int>(
               decoration: const InputDecoration(labelText: 'Quartier/District', prefixIcon: Icon(Icons.location_on_outlined)),
-              key: ValueKey('district-${_validDropdownValue(_districtId, org.districts)}'),
-              initialValue: _validDropdownValue(_districtId, org.districts),
-              items: org.districts.where((d) => d['id'] is int).map((d) => DropdownMenuItem(value: d['id'] as int, child: Text(AppConstants.safeStr(d['name'], '—')))).toList(),
+              key: ValueKey('district-${_validDropdownValue(_districtId, org.activeDistricts)}'),
+              initialValue: _validDropdownValue(_districtId, org.activeDistricts),
+              items: org.activeDistricts.where((d) => d['id'] is int).map((d) => DropdownMenuItem(value: d['id'] as int, child: Text(AppConstants.safeStr(d['name'], '—')))).toList(),
               onChanged: (v) => setState(() => _districtId = v),
             ),
             const SizedBox(height: 12),
             if (isManager) ...[
               DropdownButtonFormField<int>(
                 decoration: const InputDecoration(labelText: 'Cellule de prière', prefixIcon: Icon(Icons.groups_outlined)),
-                key: ValueKey('cell-${_validDropdownValue(_cellId, org.cells)}'),
-                initialValue: _validDropdownValue(_cellId, org.cells),
-                items: org.cells.where((c) => c['id'] is int).map((c) => DropdownMenuItem(value: c['id'] as int, child: Text(AppConstants.safeStr(c['name'], '—')))).toList(),
+                key: ValueKey('cell-${_validDropdownValue(_cellId, org.activeCells)}'),
+                initialValue: _validDropdownValue(_cellId, org.activeCells),
+                items: org.activeCells.where((c) => c['id'] is int).map((c) => DropdownMenuItem(value: c['id'] as int, child: Text(AppConstants.safeStr(c['name'], '—')))).toList(),
                 onChanged: (v) => setState(() => _cellId = v),
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<int>(
                 decoration: const InputDecoration(labelText: 'Groupe d\'âge', prefixIcon: Icon(Icons.diversity_3_outlined)),
-                key: ValueKey('group-${_validDropdownValue(_ageGroupId, org.ageGroups)}'),
-                initialValue: _validDropdownValue(_ageGroupId, org.ageGroups),
-                items: org.ageGroups.where((g) => g['id'] is int).map((g) => DropdownMenuItem(value: g['id'] as int, child: Text(AppConstants.safeStr(g['name'], '—')))).toList(),
+                key: ValueKey('group-${_validDropdownValue(_ageGroupId, org.activeAgeGroups)}'),
+                initialValue: _validDropdownValue(_ageGroupId, org.activeAgeGroups),
+                items: org.activeAgeGroups.where((g) => g['id'] is int).map((g) => DropdownMenuItem(value: g['id'] as int, child: Text(AppConstants.safeStr(g['name'], '—')))).toList(),
                 onChanged: (v) => setState(() => _ageGroupId = v),
               ),
             ],

@@ -128,6 +128,18 @@
               action="action_church_mobile_user"
               sequence="20"/>
 
+    <menuitem id="menu_church_import"
+              name="Importer un fichier"
+              parent="menu_church_config"
+              action="action_church_import_wizard"
+              sequence="40"/>
+
+    <menuitem id="menu_church_import_log"
+              name="Historique des imports"
+              parent="menu_church_config"
+              action="action_church_import_log"
+              sequence="45"/>
+
     <menuitem id="menu_church_age_range"
               name="Tranches d'âge"
               parent="menu_church_config"

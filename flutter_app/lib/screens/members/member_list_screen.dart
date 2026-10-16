@@ -160,6 +160,8 @@ class _MemberCard extends StatelessWidget {
               spacing: 6,
               runSpacing: 4,
               children: [
+                if (data['person_profile'] == 'old_member' && memberType != 'old_member')
+                  const ProfileBadge(profile: 'old_member'),
                 _tag(AppConstants.memberTypeLabels[memberType] ?? memberType, typeColor),
                 // Le sexe manque : la fiche est à compléter, plutôt qu'un sexe inventé.
                 if (data['to_complete'] == true) _tag('À compléter', AppColors.abandoned),

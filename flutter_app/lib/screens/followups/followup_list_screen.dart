@@ -208,6 +208,11 @@ class _FollowupCard extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                     const SizedBox(height: 6),
+                    // L'ancien membre repris en suivi se distingue d'un coup d'œil.
+                    if (data['person_profile'] == 'old_member') ...[
+                      const ProfileBadge(profile: 'old_member'),
+                      const SizedBox(height: 4),
+                    ],
                     Row(
                       children: [
                         StateBadge(state: state, small: true),

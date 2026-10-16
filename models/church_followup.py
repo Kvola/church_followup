@@ -17,6 +17,9 @@ class ChurchFollowup(models.Model):
     church_id = fields.Many2one('equipment.church', string='Église', required=True, ondelete='restrict')
     evangelist_id = fields.Many2one('church.evangelist', string='Évangéliste', required=True, tracking=True)
     member_id = fields.Many2one('church.member', string='Personne suivie', required=True, tracking=True)
+    person_profile = fields.Selection(
+        related='member_id.person_profile', store=True, string='Profil',
+        help="Nouvelle personne ou ancien membre repris en suivi.")
 
     start_date = fields.Date(string='Date de début', default=fields.Date.today, required=True)
     end_date = fields.Date(string='Date de fin prévue', compute='_compute_end_date', store=True)

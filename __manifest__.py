@@ -1,6 +1,6 @@
 {
     'name': 'Suivi Évangélisation Église',
-    'version': '19.0.2.7.0',
+    'version': '19.0.2.10.0',
     'category': 'Church Management',
     'summary': 'Suivi des classes d\'évangile et gestion des cellules de prière',
     'description': """
@@ -32,6 +32,9 @@
         # ce module, pas dans church_core.
         'bng_equipment_loan',
     ],
+    # Les imports Excel : écrire le modèle (xlsxwriter), lire le fichier rempli (openpyxl).
+    # Tous deux sont dans les images Docker (Dockerfile, Dockerfile-prod).
+    'external_dependencies': {'python': ['openpyxl', 'xlsxwriter']},
     'data': [
         # Security
         'security/church_followup_security.xml',
@@ -62,6 +65,7 @@
         'views/church_age_group_views.xml',
         'views/church_attendance_views.xml',
         'views/church_cooking_rotation_views.xml',
+        'views/church_import_views.xml',
         'views/menus.xml',
     ],
     'assets': {},

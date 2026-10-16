@@ -434,7 +434,7 @@ class _MobileUsersScreenState extends State<MobileUsersScreen> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) {
-          final items = type == 'cell' ? provider.cells : provider.ageGroups;
+          final items = type == 'cell' ? provider.activeCells : provider.activeAgeGroups;
           return AlertDialog(
           title: Text('Nouveau $title'),
           content: Column(
@@ -700,7 +700,7 @@ class _RoleUnitPicker extends StatelessWidget {
     if (!needsUnit(role)) return const SizedBox.shrink();
     final org = context.watch<OrganizationProvider>();
     final isCell = role == 'cell_leader';
-    final items = isCell ? org.cells : org.ageGroups;
+    final items = isCell ? org.activeCells : org.activeAgeGroups;
     return Padding(
       padding: const EdgeInsets.only(top: 12),
       child: DropdownButtonFormField<int>(

@@ -47,3 +47,6 @@ access_church_followup_abandon_user,church.followup.abandon user,model_church_fo
 access_church_member_checkpoint_user,church.member.checkpoint user,model_church_member_checkpoint,group_church_user,1,1,1,0
 access_church_member_checkpoint_manager,church.member.checkpoint manager,model_church_member_checkpoint,group_church_manager,1,1,1,1
 access_church_mobile_user_code_manager,church.mobile.user.code manager,model_church_mobile_user_code,group_church_manager,1,1,1,0
+access_church_import_log_admin,church.import.log admin,model_church_import_log,group_church_admin,1,1,0,1
+access_church_import_log_manager,church.import.log manager,model_church_import_log,group_church_manager,1,0,0,0
+access_church_import_wizard_manager,church.import.wizard manager,model_church_import_wizard,group_church_manager,1,1,1,1

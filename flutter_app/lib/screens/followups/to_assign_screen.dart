@@ -75,7 +75,7 @@ class _ToAssignScreenState extends State<ToAssignScreen> {
                         padding: const EdgeInsets.all(16),
                         children: [
                           if (_fresh.isNotEmpty) ...[
-                            SectionHeader(title: 'Nouvelles personnes (${_fresh.length})'),
+                            SectionHeader(title: 'À confier à un évangéliste (${_fresh.length})'),
                             const SizedBox(height: 8),
                             ..._fresh.map((m) => _PersonCard(
                                   member: m,
@@ -132,7 +132,14 @@ class _PersonCard extends StatelessWidget {
           child: Text(AppConstants.initial(name), style: TextStyle(color: color, fontWeight: FontWeight.bold)),
         ),
         title: Text(name, style: const TextStyle(fontWeight: FontWeight.w600)),
-        subtitle: subtitle.isEmpty ? null : Text(subtitle, maxLines: 3, overflow: TextOverflow.ellipsis),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 2),
+            ProfileBadge(profile: AppConstants.safeStr(member['person_profile'])),
+            if (subtitle.isNotEmpty) Text(subtitle, maxLines: 3, overflow: TextOverflow.ellipsis),
+          ],
+        ),
         trailing: FilledButton.tonal(onPressed: onTap, child: Text(actionLabel)),
         onTap: onTap,
       ),
