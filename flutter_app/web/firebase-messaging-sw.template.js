@@ -22,13 +22,15 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-// Application fermée ou en arrière-plan : on affiche nous-mêmes.
+// Application fermée ou en arrière-plan : on affiche nous-mêmes. Chemins
+// relatifs AU SERVICE WORKER, servi dans le dossier de l'app : « ./ », car
+// « ../ » viserait la racine du site (Odoo), pas l'app.
 messaging.onBackgroundMessage((payload) => {
   const n = payload.notification || {};
   return self.registration.showNotification(n.title || 'Suivi Évangélisation', {
     body: n.body || '',
-    icon: '../icons/Icon-192.png',
-    badge: '../icons/Icon-192.png',
+    icon: './icons/Icon-192.png',
+    badge: './icons/Icon-192.png',
     data: payload.data || {},
   });
 });
@@ -36,7 +38,7 @@ messaging.onBackgroundMessage((payload) => {
 // Toucher la notification ouvre l'application (ou la ramène au premier plan).
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const target = new URL('../', self.location.href).href;
+  const target = new URL('./', self.location.href).href;
   event.waitUntil(clients.matchAll({type: 'window', includeUncontrolled: true}).then((list) => {
     for (const c of list) {
       if (c.url.startsWith(target) && 'focus' in c) return c.focus();

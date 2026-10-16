@@ -60,3 +60,12 @@ class TestSuiviPwa(HttpCase):
         page = self.url_open('/suivi-evangelisation/').text
         for relay in ('suiviPromptInstall', 'suiviIsStandalone', 'suiviWebPushToken'):
             self.assertIn(relay, page, "Relais absent : la banderole ou les notifications se tairaient")
+
+    def test_the_service_worker_opens_the_app_not_the_site_root(self):
+        """Servi dans le dossier de l'app : « ../ » viserait la racine du site
+        (Odoo) — toucher une notification ouvrait Odoo, et l'icône manquait."""
+        worker = self.url_open('/suivi-evangelisation/firebase-messaging-sw.js')
+        if '__FCM_' in worker.text or 'importScripts' not in worker.text:
+            self.skipTest('PWA construite sans notifications web')
+        self.assertIn("new URL('./', self.location.href)", worker.text)
+        self.assertNotIn("'../", worker.text)
