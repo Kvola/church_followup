@@ -65,3 +65,8 @@ ABANDON_REASONS = [
 # Un rapport hebdomadaire est en retard trois jours après la fin de sa semaine :
 # le temps de couvrir le culte du dimanche et d'appeler la personne.
 REPORT_GRACE_DAYS = 3
+
+
+# Portée des codes de connexion de l'application (otp_auth) : la même pour la
+# route qui envoie, celle qui vérifie et le bouton du back-office.
+OTP_SCOPE = 'church_followup'

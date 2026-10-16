@@ -238,6 +238,17 @@
                 l'e-mail est facultatif. « Inviter » prépare le message à envoyer.
                 L'onglet « Sessions » montre chaque téléphone connecté ; « Fermer les sessions » coupe l'accès d'un téléphone perdu.
             </p>
+            <p>
+                <strong>Un code n'arrive pas ?</strong> Sur le compte, « Envoyer un code de connexion »
+                envoie un code comme le ferait l'application, dit par où il est parti (WhatsApp, SMS,
+                e-mail, ou la file du relais humain quand ni WhatsApp ni le SMS ne sont réglés) et
+                l'affiche : vous pouvez le dicter au téléphone. Il vaut 10 minutes, une fois.
+            </p>
+            <p>
+                <strong>L'administrateur entre sans compte préalable.</strong> Un utilisateur Odoo du
+                groupe « Super Administrateur Église » se connecte à l'application avec l'e-mail ou le
+                numéro de son utilisateur Odoo : son compte mobile s'ouvre au premier code.
+            </p>
 
             <div class="bloc">
             <h3>3. Un événement d'évangélisation</h3>
@@ -261,10 +272,11 @@
             <h2>Questions fréquentes</h2>
             <h3>Je ne reçois pas le code.</h3>
             <p>
-                Vérifiez que vous saisissez le numéro enregistré par votre responsable.
-                Attendez une minute, puis « Renvoyer le code ». Si rien n'arrive,
-                demandez à l'administrateur de l'église d'ajouter votre adresse e-mail à votre compte :
-                le code y partira aussi.
+                L'application répond la même chose qu'un compte existe ou non : vérifiez d'abord que
+                vous saisissez le numéro (ou l'adresse) enregistré pour votre compte. Attendez une
+                minute, puis « Renvoyer le code ». Si rien n'arrive, demandez à l'administrateur : depuis
+                Odoo, « Envoyer un code de connexion » lui dit où le code est parti, et le lui affiche
+                pour qu'il vous le dicte. Il peut aussi ajouter votre adresse e-mail à votre compte.
             </p>
             <h3>J'ai changé de numéro.</h3>
             <p>L'administrateur de l'église corrige le numéro de votre compte dans le back-office ; votre responsable vous renvoie ensuite l'invitation.</p>

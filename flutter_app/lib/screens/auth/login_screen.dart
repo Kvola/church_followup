@@ -214,7 +214,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
               labelText: 'Téléphone ou e-mail',
               prefixIcon: Icon(Icons.phone_outlined),
               hintText: '07 00 00 00 00',
-              helperText: 'Le numéro enregistré par votre responsable',
+              helperText: 'Le numéro ou l\'e-mail enregistré pour votre compte',
             ),
             validator: _validateIdentifier,
           ),
@@ -317,6 +317,18 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
               ),
             ],
           ),
+          // Le serveur répond pareil qu'un compte existe ou non : sans cette
+          // aide, celui dont le numéro n'est pas enregistré attend en vain.
+          if (_resendIn == 0) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Pas de code ? Vérifiez que c\'est bien le numéro (ou l\'adresse e-mail) '
+              'enregistré pour votre compte. Sinon, demandez à votre responsable : '
+              'il peut vous envoyer un code depuis Odoo, ou vous le dicter.',
+              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+              textAlign: TextAlign.center,
+            ),
+          ],
         ],
       ),
     );
