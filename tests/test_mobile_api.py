@@ -1,5 +1,6 @@
 import json
 from datetime import timedelta
+from unittest.mock import patch
 
 from odoo import fields
 from odoo.tests import tagged
@@ -39,65 +40,101 @@ class TestChurchMobileApi(HttpCase):
         cls.f2 = cls.env['church.followup'].create({
             'church_id': cls.church.id, 'evangelist_id': cls.ev2.id, 'member_id': cls.m2.id})
 
-        cls.pins = {}
-        for account in (cls.ev1.mobile_user_id, cls.ev2.mobile_user_id, cls.manager, cls.leader):
-            cls.pins[account.id] = account._issue_pin()
-
     # ─── Outils ───────────────────────────────────────────────────────
 
-    def _rpc(self, path, **params):
+    def _rpc(self, path, token=None, **params):
         payload = {'jsonrpc': '2.0', 'method': 'call', 'params': params}
-        resp = self.url_open(path, data=json.dumps(payload).encode(),
-                             headers={'Content-Type': 'application/json'})
+        headers = {'Content-Type': 'application/json'}
+        if token:
+            headers['Authorization'] = 'Bearer %s' % token
+        resp = self.url_open(path, data=json.dumps(payload).encode(), headers=headers)
         body = resp.json()
         self.assertNotIn('error', body, "Une trace technique a fui : %s" % body.get('error'))
         return body['result']
 
-    def _login(self, account, phone=None):
-        res = self._rpc('/api/church/auth/login', phone=phone or account.phone, pin=self.pins[account.id])
-        self.assertEqual(res['status'], 'success', res)
-        return {'user_id': res['user']['id'], 'token': res['token']}
+    def _login(self, account):
+        """Une session ouverte sans passer par le code (le parcours du code a ses tests)."""
+        return {'token': account._open_session('test')}
 
     def _as(self, account, path, **params):
         return self._rpc(path, **self._login(account), **params)
 
-    # ─── Authentification ─────────────────────────────────────────────
+    def _otp(self, identifier):
+        """Demande un code et le rend, comme le ferait le téléphone qui le reçoit."""
+        self.env['ir.config_parameter'].sudo().set_param('church_followup.otp_debug_return', '1')
+        with patch.object(type(self.env['otp.code']), '_send', lambda *a, **k: None):
+            res = self._rpc('/api/church/auth/request_otp', identifier=identifier)
+        self.assertEqual(res['status'], 'success', res)
+        return res
+
+    def _sign_in(self, identifier, **params):
+        code = self._otp(identifier)['debug_otp']
+        return self._rpc('/api/church/auth/verify_otp', identifier=identifier, code=code, **params)
+
+    # ─── Authentification par code (otp_auth) ─────────────────────────
 
     def test_routes_refuse_calls_without_session(self):
         res = self._rpc('/api/church/pastors', church_id=self.church.id)
         self.assertEqual(res['code'], 'auth_required')
-        res = self._rpc('/api/church/pastors')
+        res = self._rpc('/api/church/pastors', token='x' * 43)
         self.assertEqual(res['code'], 'auth_required')
 
-    def test_pin_and_token_are_never_stored_in_clear(self):
-        account = self.ev1.mobile_user_id
-        self.assertNotIn('pin', account._fields)
-        self.assertTrue(account.sudo().pin_hash.startswith('$pbkdf2-sha512$'))
-        session = self._login(account)
-        self.assertNotEqual(account.sudo().token_hash, session['token'])
-        for fname in ('pin_hash', 'token_hash'):
-            self.assertEqual(account._fields[fname].groups, 'base.group_system')
+    def test_code_signs_in_whatever_the_phone_formatting(self):
+        res = self._sign_in('+2250700 0001', device_label='Tecno')
+        self.assertEqual(res['status'], 'success', res)
+        self.assertEqual(res['user']['id'], self.ev1.mobile_user_id.id)
+        session = self.env['church.mobile.session'].search([('mobile_user_id', '=', self.ev1.mobile_user_id.id)])
+        self.assertEqual(session.device_label, 'Tecno')
+        self.assertNotEqual(session.token_hash, res['token'], "Le jeton n'est jamais stocké en clair")
+        self.assertEqual(self._rpc('/api/church/dashboard', token=res['token'])['status'], 'success')
 
-    def test_login_ignores_phone_formatting(self):
-        self._login(self.ev1.mobile_user_id, phone='+2250700 0001')
+    def test_code_can_be_received_by_email(self):
+        self.manager.email = ' Resp@Exemple.CI '
+        self.assertEqual(self.manager.email, 'resp@exemple.ci')
+        res = self._sign_in('resp@exemple.ci')
+        self.assertEqual(res['user']['id'], self.manager.id)
 
-    def test_unknown_phone_and_wrong_pin_answer_alike(self):
-        unknown = self._rpc('/api/church/auth/login', phone='+225 01 99 99 99', pin='000000')
-        wrong = self._rpc('/api/church/auth/login', phone=self.ev1.mobile_user_id.phone, pin='000000')
-        self.assertEqual(unknown['message'], wrong['message'])
+    def test_unknown_identifier_gets_the_same_answer_and_no_code(self):
+        unknown = self._otp('+225 01 99 99 99 99')
+        known = self._otp(self.ev2.mobile_user_id.phone)
+        self.assertEqual(unknown['message'], known['message'])
+        self.assertNotIn('debug_otp', unknown, "Aucun code n'est émis pour un numéro inconnu")
+        self.assertIn('debug_otp', known)
 
-    def test_failed_attempts_lock_phone_from_this_address_only(self):
-        account = self.ev1.mobile_user_id
-        for _i in range(6):
-            self._rpc('/api/church/auth/login', phone=account.phone, pin='000000')
-        res = self._rpc('/api/church/auth/login', phone=account.phone, pin=self.pins[account.id])
-        self.assertEqual(res['status'], 'error', "Le bon PIN doit attendre la fin du blocage")
-        # Un autre compte n'est pas touché par les échecs du premier.
-        self._login(self.ev2.mobile_user_id)
+    def test_wrong_code_is_refused_and_code_is_single_use(self):
+        identifier = self.ev1.mobile_user_id.phone
+        code = self._otp(identifier)['debug_otp']
+        wrong = '000000' if code != '000000' else '111111'
+        res = self._rpc('/api/church/auth/verify_otp', identifier=identifier, code=wrong)
+        self.assertEqual(res['code'], 'auth_failed')
+        self.assertEqual(self._rpc('/api/church/auth/verify_otp', identifier=identifier, code=code)['status'],
+                         'success')
+        again = self._rpc('/api/church/auth/verify_otp', identifier=identifier, code=code)
+        self.assertEqual(again['code'], 'auth_failed', "Un code ne sert qu'une fois")
+
+    def test_requests_for_one_number_are_throttled(self):
+        identifier = self.ev2.mobile_user_id.phone
+        for _i in range(3):
+            self._otp(identifier)
+        res = self._rpc('/api/church/auth/request_otp', identifier=identifier)
+        self.assertEqual(res['code'], 'rate_limited')
+
+    def test_one_number_in_two_churches_can_switch(self):
+        elsewhere = self.env['church.mobile.user'].create({
+            'name': 'Resp', 'phone': '+225 07 00 00 09', 'role': 'evangelist', 'church_id': self.other.id})
+        res = self._sign_in(self.manager.phone)
+        self.assertEqual(sorted(a['id'] for a in res['accounts']), sorted((self.manager | elsewhere).ids))
+        target = elsewhere if res['user']['id'] == self.manager.id else self.manager
+        switched = self._rpc('/api/church/auth/switch', token=res['token'], account_id=target.id)
+        self.assertEqual(switched['user']['id'], target.id)
+        self.assertEqual(self._rpc('/api/church/dashboard', token=res['token'])['code'], 'auth_required',
+                         "L'ancienne session est fermée")
+        stranger = self._rpc('/api/church/auth/switch', token=switched['token'], account_id=self.leader.id)
+        self.assertEqual(stranger['code'], 'invalid', "On ne passe pas sur le compte d'un autre")
 
     def test_expired_session_is_refused(self):
         session = self._login(self.ev1.mobile_user_id)
-        self.ev1.mobile_user_id.sudo().token_expiry = fields.Datetime.now() - timedelta(minutes=1)
+        self.ev1.mobile_user_id.session_ids.sudo().write({'expires_at': fields.Datetime.now() - timedelta(minutes=1)})
         res = self._rpc('/api/church/dashboard', **session)
         self.assertEqual(res['code'], 'auth_required')
 
@@ -106,11 +143,18 @@ class TestChurchMobileApi(HttpCase):
         self.ev1.mobile_user_id.active = False
         self.assertEqual(self._rpc('/api/church/dashboard', **session)['code'], 'auth_required')
 
-    def test_new_pin_closes_session(self):
+    def test_logout_closes_only_this_phone(self):
         account = self.ev1.mobile_user_id
-        session = self._login(account)
-        account._issue_pin()
-        self.assertEqual(self._rpc('/api/church/dashboard', **session)['code'], 'auth_required')
+        first, second = self._login(account), self._login(account)
+        self.assertEqual(self._rpc('/api/church/auth/logout', **first)['status'], 'success')
+        self.assertEqual(self._rpc('/api/church/dashboard', **first)['code'], 'auth_required')
+        self.assertEqual(self._rpc('/api/church/dashboard', **second)['status'], 'success')
+
+    def test_invitation_carries_no_secret(self):
+        message = self.ev1.mobile_user_id.get_invitation_message()
+        self.assertIn('/apps/suivi-evangelisation', message)
+        self.assertIn(self.ev1.mobile_user_id.phone, message)
+        self.assertNotIn('PIN', message)
 
     # ─── Rôles ────────────────────────────────────────────────────────
 
@@ -290,7 +334,7 @@ class TestChurchMobileApi(HttpCase):
         res = self._as(self.manager, '/api/church/cell_leader/create', prayer_cell_id=self.cell.id,
                        name='Nouveau Chef', phone='+225 07 00 00 31')
         self.assertEqual(res['status'], 'success', res)
-        self.assertTrue(res['pin'])
+        self.assertIn('Nouveau Chef', res['invitation'])
         self.assertEqual(self._rpc('/api/church/dashboard', **old_session)['code'], 'auth_required',
                          "L'ancien responsable n'a plus accès")
         self.assertEqual(self.cell.mobile_user_id.phone_key, '22507000031')
@@ -298,7 +342,6 @@ class TestChurchMobileApi(HttpCase):
     def test_adding_a_church_reuses_the_directory(self):
         admin = self.env['church.mobile.user'].create({
             'name': 'Admin', 'phone': '+225 07 00 00 99', 'role': 'super_admin'})
-        self.pins[admin.id] = admin._issue_pin()
         known = self.env['equipment.church'].create({'name': 'Église BNG Angré'})
         self.assertFalse(known.followup_enabled)
         res = self._as(admin, '/api/church/churches/create', name='EGLISE  b.n.g   ANGRE')
@@ -320,7 +363,6 @@ class TestChurchMobileApi(HttpCase):
     def _admin(self):
         admin = self.env['church.mobile.user'].create({
             'name': 'Admin', 'phone': '+225 07 00 00 98', 'role': 'super_admin', 'church_id': self.church.id})
-        self.pins[admin.id] = admin._issue_pin()
         return admin
 
     def test_created_evangelist_account_gets_its_evangelist_record(self):
@@ -331,7 +373,6 @@ class TestChurchMobileApi(HttpCase):
         account = self.env['church.mobile.user'].browse(res['user']['id'])
         self.assertTrue(account.evangelist_id, "Sans fiche, il ne pourrait ouvrir aucun suivi")
         self.assertEqual(account.evangelist_id.church_id, self.church)
-        self.pins[account.id] = res['user']['pin']
         created = self._as(account, '/api/church/followup/create', member_id=self.m1.id)
         self.assertEqual(created['status'], 'success', created)
 
@@ -345,7 +386,7 @@ class TestChurchMobileApi(HttpCase):
                        role='cell_leader', prayer_cell_id=self.cell.id)
         self.assertEqual(res['status'], 'success', res)
         self.assertEqual(self.cell.mobile_user_id.id, res['user']['id'])
-        self.assertTrue(res['user']['pin'])
+        self.assertTrue(res['user']['invitation'])
         self.assertEqual(self._rpc('/api/church/dashboard', **old_session)['code'], 'auth_required')
 
     def test_role_change_requires_the_matching_link(self):
@@ -369,5 +410,5 @@ class TestChurchMobileApi(HttpCase):
         self.assertEqual(report['followups'][0]['duration_weeks'], self.f2.duration_weeks)
         listing = self._as(self.manager, '/api/church/followups')['followups']
         self.assertIn('average_score', listing[0])
-        login = self._rpc('/api/church/auth/login', phone=self.leader.phone, pin=self.pins[self.leader.id])
+        login = self._sign_in(self.leader.phone)
         self.assertEqual(login['user']['prayer_cell_name'], self.cell.name)

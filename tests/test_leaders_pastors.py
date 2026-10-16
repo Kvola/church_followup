@@ -20,12 +20,11 @@ class TestLeadersPastors(TransactionCase):
 
     def test_changing_leader_revokes_the_old_account(self):
         old = self.cell.action_create_leader_account()
-        old._issue_pin()
         old._open_session()
         self.cell.write({'leader_name': 'Nouveau Chef', 'leader_phone': '+225 07 00 00 12'})
         self.assertFalse(old.active)
         self.assertFalse(old.prayer_cell_id)
-        self.assertFalse(old.sudo().token_hash, "Sa session tombe")
+        self.assertTrue(all(old.session_ids.mapped('revoked')), "Sa session tombe")
         self.assertFalse(self.cell.mobile_user_id)
         new = self.cell.action_create_leader_account()
         self.assertNotEqual(new, old)

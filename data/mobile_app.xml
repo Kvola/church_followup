@@ -26,7 +26,7 @@
                     </p>
                 </div>
             </field>
-            <field name="first_run_note">Connectez-vous avec votre numéro de téléphone et le PIN reçu de votre responsable.</field>
+            <field name="first_run_note">Connectez-vous avec le numéro de téléphone que votre responsable a enregistré : un code vous est envoyé par WhatsApp ou SMS.</field>
         </record>
     </data>
 </odoo>

@@ -39,7 +39,8 @@ access_church_cooking_rotation_admin,church.cooking.rotation admin,model_church_
 access_church_cooking_rotation_manager,church.cooking.rotation manager,model_church_cooking_rotation,group_church_manager,1,1,1,1
 access_church_cooking_rotation_user,church.cooking.rotation user,model_church_cooking_rotation,group_church_user,1,0,0,0
 access_church_pastor_user,equipment.pastor followup user,bng_equipment_loan.model_equipment_pastor,group_church_user,1,0,0,0
-access_church_mobile_user_credentials_manager,church.mobile.user.credentials manager,model_church_mobile_user_credentials,group_church_manager,1,1,1,0
+access_church_mobile_user_invite_manager,church.mobile.user.invite manager,model_church_mobile_user_invite,group_church_manager,1,1,1,0
+access_church_mobile_session_manager,church.mobile.session manager,model_church_mobile_session,group_church_manager,1,1,0,0
 access_church_followup_assign_user,church.followup.assign user,model_church_followup_assign,group_church_user,1,1,1,0
 access_church_followup_extend_user,church.followup.extend user,model_church_followup_extend,group_church_user,1,1,1,0
 access_church_followup_abandon_user,church.followup.abandon user,model_church_followup_abandon,group_church_user,1,1,1,0

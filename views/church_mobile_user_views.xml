@@ -6,53 +6,72 @@
         <field name="arch" type="xml">
             <form string="Utilisateur mobile">
                 <header>
-                    <button name="action_regenerate_pin" string="Générer et partager un PIN" type="object"
-                            class="btn-primary" icon="fa-key" invisible="pin_set_date"/>
-                    <button name="action_regenerate_pin" string="Nouveau PIN" type="object"
-                            class="btn-secondary" icon="fa-refresh" invisible="not pin_set_date"
-                            confirm="L'ancien PIN cessera de fonctionner et la session en cours sera fermée. Continuer ?"/>
-                    <button name="action_close_session" string="Fermer la session" type="object"
-                            class="btn-secondary" icon="fa-sign-out" invisible="not token_expiry"/>
+                    <button name="action_share_invitation" string="Inviter" type="object"
+                            class="btn-primary" icon="fa-whatsapp"
+                            help="Un message à envoyer : installer l'application, puis se connecter avec ce numéro."/>
+                    <button name="action_close_session" string="Fermer les sessions" type="object"
+                            class="btn-secondary" icon="fa-sign-out" invisible="not open_session_count"
+                            confirm="Les téléphones connectés à ce compte devront redemander un code. Continuer ?"/>
                 </header>
                 <sheet>
                     <div class="oe_title">
                         <h1><field name="name" placeholder="Nom complet"/></h1>
                     </div>
                     <group>
-                        <group string="Connexion">
+                        <group string="Connexion par code">
                             <field name="phone" widget="phone"/>
-                            <field name="pin_set_date" placeholder="Aucun PIN communiqué"/>
+                            <field name="phone_e164"/>
+                            <field name="email" widget="email" placeholder="Facultatif"/>
                             <field name="last_login"/>
-                            <field name="token_expiry"/>
                             <field name="role"/>
                             <field name="active" widget="boolean_toggle"/>
                         </group>
                         <group string="Affectation">
-                            <field name="church_id" required="role != 'super_admin'"/>
+                            <field name="church_id" required="role != 'super_admin'"
+                                   domain="[('followup_enabled', '=', True)]" options="{'no_create': True}"/>
                             <field name="evangelist_id" invisible="role != 'evangelist'"/>
                             <field name="prayer_cell_id" invisible="role != 'cell_leader'"/>
                             <field name="age_group_id" invisible="role != 'group_leader'"/>
                         </group>
                     </group>
+                    <notebook>
+                        <page string="Sessions" name="page_sessions">
+                            <p class="text-muted">
+                                Une ligne par téléphone connecté. Une session fermée reste ici pour
+                                la trace : quel appareil, coupé quand.
+                            </p>
+                            <field name="open_session_count" invisible="1"/>
+                            <field name="session_ids" readonly="1">
+                                <list decoration-muted="revoked">
+                                    <field name="device_label"/>
+                                    <field name="create_date" string="Ouverte le"/>
+                                    <field name="last_seen"/>
+                                    <field name="expires_at"/>
+                                    <field name="revoked"/>
+                                    <button name="action_revoke" type="object" string="Fermer"
+                                            icon="fa-sign-out" invisible="revoked"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
                 </sheet>
                 <chatter/>
             </form>
         </field>
     </record>
 
-    <record id="view_church_mobile_user_credentials_form" model="ir.ui.view">
-        <field name="name">church.mobile.user.credentials.form</field>
-        <field name="model">church.mobile.user.credentials</field>
+    <record id="view_church_mobile_user_invite_form" model="ir.ui.view">
+        <field name="name">church.mobile.user.invite.form</field>
+        <field name="model">church.mobile.user.invite</field>
         <field name="arch" type="xml">
-            <form string="Identifiants à transmettre">
-                <div class="alert alert-warning" role="alert">
-                    Ce PIN ne sera plus jamais affiché : transmettez-le maintenant.
-                    S'il est perdu, générez-en un nouveau.
+            <form string="Inviter à l'application">
+                <div class="alert alert-info" role="alert">
+                    Aucun secret dans ce message : le code de connexion arrive sur le numéro
+                    du compte, au moment de se connecter.
                 </div>
                 <group>
                     <field name="mobile_user_id"/>
                     <field name="phone" widget="phone"/>
-                    <field name="pin" class="fs-3 fw-bold"/>
                     <field name="message" widget="CopyClipboardText"/>
                     <field name="whatsapp_url" widget="url" string="WhatsApp" text="Envoyer par WhatsApp"/>
                 </group>
@@ -70,6 +89,7 @@
             <list>
                 <field name="name"/>
                 <field name="phone" widget="phone"/>
+                <field name="email" optional="hide"/>
                 <field name="role" widget="badge"
                        decoration-info="role == 'evangelist'"
                        decoration-success="role == 'super_admin'"
@@ -88,6 +108,7 @@
             <search string="Rechercher un utilisateur mobile">
                 <field name="name"/>
                 <field name="phone"/>
+                <field name="email"/>
                 <field name="church_id"/>
                 <separator/>
                 <filter name="filter_evangelist" string="Évangélistes" domain="[('role', '=', 'evangelist')]"/>
