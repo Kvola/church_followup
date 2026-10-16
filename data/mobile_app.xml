@@ -11,6 +11,9 @@
             <field name="summary">Accompagner les nouvelles personnes jusqu'à ce qu'elles deviennent des fidèles</field>
             <field name="icon" type="base64" file="church_followup/static/description/icon.png"/>
             <field name="min_android">8.0</field>
+            <!-- La version navigateur : le catalogue propose « Ouvrir dans le
+                 navigateur » (iPhone, ordinateur). Voir controllers/pwa.py. -->
+            <field name="pwa_url">/suivi-evangelisation</field>
             <!-- Des CHAÎNES que rien ne vérifie au chargement : éprouvées par
                  tests/test_user_guide.py. -->
             <field name="guide_template_xmlid">church_followup.user_guide_content</field>

@@ -19,7 +19,8 @@ cd "$(dirname "$0")/.."
 DEST="../static/help/app"
 mkdir -p "$DEST"
 
-flutter test --tags formation --run-skipped --update-goldens
+# Les captures montrent l'app telle qu'on l'installe : adresse de production compilée.
+flutter test --tags formation --run-skipped --update-goldens --dart-define=BASE_URL=https://iyf.ebng.world --dart-define=DB=iyf.ebng.world
 
 for png in test/formation/*.png; do
   name=$(basename "$png")

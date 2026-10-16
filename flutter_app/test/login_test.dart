@@ -57,7 +57,12 @@ void main() {
     ));
     await tester.pumpAndSettle();
 
+    // Build de test : aucune adresse compilée, l'écran montre donc d'emblée
+    // les paramètres du serveur (c'est voulu) et l'on y saisit l'adresse.
+    expect(find.text('URL du serveur'), findsOneWidget);
+    await tester.enterText(find.widgetWithText(TextFormField, 'URL du serveur'), 'https://test');
     await tester.enterText(find.byType(TextFormField).first, '07 00 00 00 01');
+    await tester.ensureVisible(find.text('Recevoir un code'));
     await tester.tap(find.text('Recevoir un code'));
     await tester.pumpAndSettle();
     expect(calls.last['path'], '/api/church/auth/request_otp');

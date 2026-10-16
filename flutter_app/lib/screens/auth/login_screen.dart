@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -24,10 +25,12 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   final _codeKey = GlobalKey<FormState>();
   final _identifierCtrl = TextEditingController();
   final _codeCtrl = TextEditingController();
-  final _urlCtrl = TextEditingController(text: AppConstants.defaultUrl);
+  final _urlCtrl = TextEditingController(text: AppConstants.serverUrl);
   final _dbCtrl = TextEditingController(text: AppConstants.defaultDatabase);
 
-  bool _showAdvanced = false;
+  // APK construit sans adresse (hors script de publication) : on montre
+  // d'emblée où la saisir, plutôt qu'un échec réseau sans explication.
+  bool _showAdvanced = !kIsWeb && AppConstants.serverUrl.isEmpty;
   bool _isLoading = false;
   bool _codeStep = false;
   String _masked = '';
@@ -219,7 +222,8 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
             validator: _validateIdentifier,
           ),
           const SizedBox(height: 12),
-          Align(
+          // Sur le web, pas de serveur à choisir : c'est celui qui sert la page.
+          if (!kIsWeb) Align(
             alignment: Alignment.centerRight,
             child: TextButton.icon(
               onPressed: () => setState(() => _showAdvanced = !_showAdvanced),
@@ -229,7 +233,10 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
               style: TextButton.styleFrom(textStyle: theme.textTheme.labelMedium),
             ),
           ),
-          AnimatedCrossFade(
+          // Sur le web, ni bouton ni champs : un champ masqué mais présent
+          // resterait dans le formulaire, et sa validation (« Requis », l'adresse
+          // étant volontairement vide) bloquerait l'envoi SANS RIEN AFFICHER.
+          if (!kIsWeb) AnimatedCrossFade(
             firstChild: const SizedBox.shrink(),
             secondChild: Column(
               children: [

@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io' show Platform;
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -20,9 +19,11 @@ class PushService {
   /// Le jeton de l'appareil, ou `null` si le push n'est pas disponible.
   String? get token => _token;
 
-  String get platform => kIsWeb ? 'web' : (Platform.isIOS ? 'ios' : 'android');
+  // `defaultTargetPlatform` plutôt que `dart:io` : il existe aussi sur le web.
+  String get platform =>
+      kIsWeb ? 'web' : (defaultTargetPlatform == TargetPlatform.iOS ? 'ios' : 'android');
 
-  String get deviceLabel => kIsWeb ? 'Navigateur' : Platform.operatingSystem;
+  String get deviceLabel => kIsWeb ? 'Navigateur' : defaultTargetPlatform.name;
 
   /// Prépare Firebase et demande la permission. Ne lève jamais.
   Future<void> initialize() async {

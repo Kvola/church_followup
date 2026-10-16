@@ -105,3 +105,12 @@ write_png(svg(rounded=False), APP / 'icon.png', 1024)
 write_png(svg(with_background=False, scale=0.6), APP / 'icon_foreground.png', 1024)
 # Le logo affiché dans l'application (écran de connexion) : coins arrondis.
 write_png(full, APP / 'logo.png', 512)
+
+# Version navigateur (PWA) : icônes du manifeste et de l'onglet.
+WEB = APP.parent / 'web'
+write_png(svg(rounded=False), WEB / 'icons' / 'Icon-192.png', 192)
+write_png(svg(rounded=False), WEB / 'icons' / 'Icon-512.png', 512)
+# « maskable » : le système rogne en cercle ou en goutte, motif réduit.
+write_png(svg(scale=0.6, rounded=False), WEB / 'icons' / 'Icon-maskable-192.png', 192)
+write_png(svg(scale=0.6, rounded=False), WEB / 'icons' / 'Icon-maskable-512.png', 512)
+write_png(full, WEB / 'favicon.png', 64)

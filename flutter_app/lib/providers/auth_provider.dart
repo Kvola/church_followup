@@ -17,7 +17,7 @@ class AuthProvider extends ChangeNotifier {
   bool _isAuthenticated = false;
   bool _isLoading = true;
   Map<String, dynamic>? _currentUser;
-  String _serverUrl = AppConstants.defaultUrl;
+  String _serverUrl = AppConstants.serverUrl;
   String _database = '';
 
   bool get isAuthenticated => _isAuthenticated;
@@ -77,7 +77,9 @@ class AuthProvider extends ChangeNotifier {
   Future<void> _loadSession() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      _serverUrl = prefs.getString(AppConstants.keyServerUrl) ?? AppConstants.defaultUrl;
+      // Sur le web, jamais d'adresse mémorisée : la page est servie par le
+      // serveur à appeler.
+      _serverUrl = kIsWeb ? '' : (prefs.getString(AppConstants.keyServerUrl) ?? AppConstants.defaultUrl);
       _database = prefs.getString(AppConstants.keyDatabase) ?? '';
 
       final userData = await _secure.read(key: AppConstants.keyUserData);
@@ -122,7 +124,7 @@ class AuthProvider extends ChangeNotifier {
     required String db,
     required String identifier,
   }) async {
-    _serverUrl = url.endsWith('/') ? url.substring(0, url.length - 1) : url;
+    _serverUrl = kIsWeb ? '' : (url.endsWith('/') ? url.substring(0, url.length - 1) : url);
     _database = db;
     _api.configure(baseUrl: _serverUrl);
     try {

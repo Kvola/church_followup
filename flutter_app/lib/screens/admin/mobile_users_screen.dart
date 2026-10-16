@@ -204,7 +204,7 @@ class _MobileUsersScreenState extends State<MobileUsersScreen> {
                     label: 'Autre',
                     onTap: () {
                       Navigator.pop(ctx);
-                      Share.share(message, subject: 'Identifiants ${AppConstants.appName}');
+                      Share.share(message, subject: AppConstants.appName);
                     },
                   ),
                 ],
