@@ -8,7 +8,13 @@
 /// pour que le manuel, l'app et le back-office racontent la même histoire.
 library;
 
-const demoChurch = 'Église Évangélique de la Riviera';
+const demoChurch = 'Église Bonne Nouvelle de la Grâce de Angré';
+const demoInvitation = 'Bonjour Fatou Cissé,\n\n'
+    'Vous avez un compte responsable de cellule dans l\'application Suivi Évangélisation '
+    '($demoChurch).\n'
+    '1. Installez l\'application : https://iyf.ebng.world/apps/suivi-evangelisation\n'
+    '2. Saisissez votre numéro +225 07 00 05 05 05\n'
+    '3. Recopiez le code reçu par WhatsApp ou SMS.';
 
 Map<String, dynamic> _week(int n, {bool culte = false, bool pointe = false, bool appel = false,
         bool visite = false, String etat = 'good', int score = 0, String notes = ''}) =>
@@ -71,7 +77,7 @@ Map<String, dynamic> _person(int id, String name, String first, String type,
     {
       'id': id, 'name': name, 'first_name': first, 'phone': '+225 07 00 ${id}0 ${id}0 $id',
       'gender': toComplete ? '' : gender, 'to_complete': toComplete, 'member_type': type,
-      'district_id': 1, 'district_name': 'Riviera 2',
+      'district_id': 1, 'district_name': 'Angré 8e tranche',
       'prayer_cell_id': cell.isEmpty ? false : 1, 'prayer_cell_name': cell,
       'age_group_id': group.isEmpty ? false : 1, 'age_group_name': group, 'age': age,
       'marital_status': 'single', 'invited_by_id': false, 'invited_by_name': '',
@@ -87,8 +93,8 @@ final List<Map<String, dynamic>> demoMembers = [
       label: '8 semaines — Événement d\'origine (Camp de Toussaint 2026)'),
   _person(13, 'Kouassi', 'Esther', 'new', age: 27),
   _person(14, 'Diallo', 'Moussa', 'interrupted', gender: 'male', age: 35),
-  _person(15, 'Ouattara', 'Fanta', 'integrated', cell: 'Cellule Riviera 2', group: 'Jeunes', age: 22),
-  _person(16, 'Yapi', 'Serge', 'established', gender: 'male', cell: 'Cellule Riviera 2', group: 'Mariés 25-35', age: 33),
+  _person(15, 'Ouattara', 'Fanta', 'integrated', cell: 'Cellule Angré 8e tranche', group: 'Jeunes', age: 22),
+  _person(16, 'Yapi', 'Serge', 'established', gender: 'male', cell: 'Cellule Angré 8e tranche', group: 'Mariés 25-35', age: 33),
   _person(17, 'Koffi', 'Jean', 'in_followup', gender: 'male', age: 28),
   _person(18, 'Aké', 'Nadège', 'new', toComplete: true),
 ];
@@ -106,8 +112,8 @@ final Map<String, dynamic> todoEvangelist = {
 };
 
 final Map<String, dynamic> todoManager = {
-  'status': 'success', 'count': 6,
-  'summary': '1\u00a0décision(s) à prendre, 2\u00a0personne(s) à attribuer, 1\u00a0évangéliste(s) en retard, 1\u00a0fiche(s) à compléter',
+  'status': 'success', 'count': 7,
+  'summary': '1\u00a0décision(s) à prendre, 3\u00a0personne(s) à attribuer, 1\u00a0évangéliste(s) en retard, 1\u00a0fiche(s) à compléter',
   'items': [
     {'kind': 'decision_due', 'followup_id': 101, 'member_id': 10,
      'title': 'Décision à prendre : Konan Aya',
@@ -115,6 +121,8 @@ final Map<String, dynamic> todoManager = {
     {'kind': 'to_assign', 'member_id': 12, 'title': 'À attribuer : Bamba Ibrahim',
      'detail': '8 semaines — Événement d\'origine (Camp de Toussaint 2026)'},
     {'kind': 'to_assign', 'member_id': 13, 'title': 'À attribuer : Kouassi Esther',
+     'detail': '6 semaines — Réglage de l\'église'},
+    {'kind': 'to_assign', 'member_id': 18, 'title': 'À attribuer : Aké Nadège',
      'detail': '6 semaines — Réglage de l\'église'},
     {'kind': 'to_complete', 'count': 1, 'title': '1\u00a0fiche(s) à compléter',
      'detail': 'Le sexe manque : il oriente le choix du groupe d\'âge.'},
@@ -133,15 +141,15 @@ final Map<String, dynamic> todoCellLeader = {
 
 final Map<String, dynamic> checkpointFanta = {
   'id': 7, 'member_id': 15, 'member_name': 'Ouattara Fanta', 'member_phone': '+225 07 00 15 15 15',
-  'prayer_cell_name': 'Cellule Riviera 2', 'milestone': '3m', 'is_catchup': false,
+  'prayer_cell_name': 'Cellule Angré 8e tranche', 'milestone': '3m', 'is_catchup': false,
   'due_date': '2026-10-15', 'state': 'planned', 'result': '', 'done_date': '',
   'service_count': 11, 'cell_count': 9, 'notes': '', 'baptized': false, 'has_mentor': true,
 };
 
 final Map<String, dynamic> memberYapi = {
-  ..._person(16, 'Yapi', 'Serge', 'established', gender: 'male', cell: 'Cellule Riviera 2',
+  ..._person(16, 'Yapi', 'Serge', 'established', gender: 'male', cell: 'Cellule Angré 8e tranche',
       group: 'Mariés 25-35', age: 33),
-  'date_of_birth': '1993-04-12', 'address': 'Riviera 2, près du marché', 'profession': 'Comptable',
+  'date_of_birth': '1993-04-12', 'address': 'Angré 8e tranche, près du marché', 'profession': 'Comptable',
   'salvation_date': '2026-01-18', 'can_edit': true, 'planned_followup_weeks': 0,
   'baptism_date': '2026-04-05', 'integration_date': '2026-03-15', 'established_date': '2026-09-16',
   'reopen_suggested': false,
@@ -180,7 +188,8 @@ Map<String, dynamic> demoResponse(String path, Map<String, dynamic> params, Stri
   if (ends('/followups/to_assign')) {
     return {
       'status': 'success',
-      'members': demoMembers.where((m) => m['member_type'] == 'new' && m['to_complete'] != true).toList(),
+      // Comme le serveur : toute nouvelle personne, fiche complète ou non.
+      'members': demoMembers.where((m) => m['member_type'] == 'new').toList(),
       'interrupted': [
         {...demoMembers.firstWhere((m) => m['id'] == 14), 'interrupted_on': '2026-09-28',
          'abandon_reason': 'moved', 'abandon_reason_label': 'A déménagé', 'abandon_note': 'Parti à Bouaké'},
@@ -211,12 +220,12 @@ Map<String, dynamic> demoResponse(String path, Map<String, dynamic> params, Stri
   }
   if (ends('/cells')) {
     return {'status': 'success', 'cells': [
-      {'id': 1, 'name': 'Cellule Riviera 2', 'leader_name': 'Fatou Cissé', 'leader_phone': '+225 07 00 05 05 05',
+      {'id': 1, 'name': 'Cellule Angré 8e tranche', 'leader_name': 'Fatou Cissé', 'leader_phone': '+225 07 00 05 05 05',
        'meeting_day': 'friday', 'meeting_time': '19:00', 'meeting_location': 'Chez la famille Cissé',
        'member_count': 2, 'members': [
          {'id': 15, 'name': 'Ouattara Fanta', 'phone': '+225 07 00 15 15 15'},
          {'id': 16, 'name': 'Yapi Serge', 'phone': '+225 07 00 16 16 16'}]},
-      {'id': 2, 'name': 'Cellule Palmeraie', 'leader_name': 'Eric Gnamien', 'leader_phone': '',
+      {'id': 2, 'name': 'Cellule Angré Château', 'leader_name': 'Eric Gnamien', 'leader_phone': '',
        'meeting_day': 'thursday', 'meeting_time': '18:30', 'meeting_location': '', 'member_count': 0,
        'members': []},
     ]};
@@ -230,7 +239,7 @@ Map<String, dynamic> demoResponse(String path, Map<String, dynamic> params, Stri
     ]};
   }
   if (ends('/districts')) {
-    return {'status': 'success', 'districts': [{'id': 1, 'name': 'Riviera 2', 'city': 'Abidjan'}]};
+    return {'status': 'success', 'districts': [{'id': 1, 'name': 'Angré 8e tranche', 'city': 'Cocody'}]};
   }
   if (ends('/dashboard')) {
     return {'status': 'success', 'dashboard': {
@@ -247,16 +256,23 @@ Map<String, dynamic> demoResponse(String path, Map<String, dynamic> params, Stri
   if (ends('/mobile_users')) {
     return {'status': 'success', 'users': [
       {'id': 1, 'name': 'Pasteur Marc Kouadio', 'phone': '+225 07 00 09 09 09', 'role': 'manager', 'active': true,
-       'church_id': 1, 'church_name': demoChurch, 'pin_set': true, 'last_login': '2026-10-15 08:12:00'},
+       'church_id': 1, 'church_name': demoChurch, 'email': '', 'last_login': '2026-10-15 08:12:00'},
       {'id': 2, 'name': 'Awa Koné', 'phone': '+225 07 00 01 01 01', 'role': 'evangelist', 'active': true,
-       'church_id': 1, 'church_name': demoChurch, 'pin_set': true, 'last_login': '2026-10-15 19:40:00'},
+       'church_id': 1, 'church_name': demoChurch, 'email': '', 'last_login': '2026-10-15 19:40:00'},
       {'id': 3, 'name': 'Paul Yao', 'phone': '+225 07 00 02 02 02', 'role': 'evangelist', 'active': true,
-       'church_id': 1, 'church_name': demoChurch, 'pin_set': true, 'last_login': ''},
+       'church_id': 1, 'church_name': demoChurch, 'email': '', 'last_login': ''},
       {'id': 4, 'name': 'Fatou Cissé', 'phone': '+225 07 00 05 05 05', 'role': 'cell_leader', 'active': true,
-       'church_id': 1, 'church_name': demoChurch, 'pin_set': false, 'last_login': ''},
+       'church_id': 1, 'church_name': demoChurch, 'email': '', 'last_login': ''},
     ]};
   }
   if (ends('/cooking_rotation')) return {'status': 'success', 'rotations': []};
+  if (ends('/auth/request_otp')) {
+    return {'status': 'success', 'identifier_masked': '+225 07 •• •• •• 01', 'channel': 'phone',
+            'message': 'Si ce numéro ou cette adresse a un compte, un code vient d\'y être envoyé.'};
+  }
+  if (ends('/user/share_message')) {
+    return {'status': 'success', 'message': demoInvitation, 'phone': '+225 07 00 05 05 05'};
+  }
   return {'status': 'success'};
 }
 
@@ -270,5 +286,15 @@ Map<String, dynamic> demoUser(String role) => {
         _ => 'Pasteur Marc Kouadio',
       },
       if (role == 'evangelist') 'evangelist_id': 1,
-      if (role == 'cell_leader') ...{'prayer_cell_id': 1, 'prayer_cell_name': 'Cellule Riviera 2'},
+      if (role == 'cell_leader') ...{'prayer_cell_id': 1, 'prayer_cell_name': 'Cellule Angré 8e tranche'},
     };
+
+/// Les comptes de la personne connectée : le pasteur Kouadio est aussi
+/// évangéliste dans une autre église (même numéro) — d'où « Changer d'église ».
+List<Map<String, dynamic>> demoAccounts(String role) => role == 'manager'
+    ? [
+        {'id': 1, 'church_name': demoChurch, 'role': 'manager', 'role_label': 'Responsable des évangélistes'},
+        {'id': 5, 'church_name': 'Église Bonne Nouvelle de la Grâce de Yopougon', 'role': 'evangelist',
+         'role_label': 'Évangéliste'},
+      ]
+    : [];

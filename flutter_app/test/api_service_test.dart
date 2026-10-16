@@ -92,7 +92,7 @@ void main() {
         sent.add(Map<String, dynamic>.from(jsonDecode(request.body)['params']));
         headers.add(request.headers);
         return http.Response(
-            jsonEncode({'result': {'status': 'success', 'identifier_masked': '+225070 •• •• •• 01'}}), 200,
+            jsonEncode({'result': {'status': 'success', 'identifier_masked': '+225 07 •• •• •• 01'}}), 200,
             headers: {'content-type': 'application/json; charset=utf-8'});
       });
       final api = ApiService(client: client)..configure(baseUrl: 'https://test');

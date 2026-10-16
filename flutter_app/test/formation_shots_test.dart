@@ -12,6 +12,7 @@ import 'package:church_followup_mobile/screens/followups/followup_list_screen.da
 import 'package:church_followup_mobile/screens/followups/to_assign_screen.dart';
 import 'package:church_followup_mobile/screens/home/home_screen.dart';
 import 'package:church_followup_mobile/screens/members/member_form_screen.dart';
+import 'package:church_followup_mobile/screens/settings/settings_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -42,6 +43,11 @@ void main() {
 
   // ─── Tout le monde ────────────────────────────────────────────────
   testWidgets('connexion', (t) => shoot(t, name: 'connexion', screen: const LoginScreen(), role: ''));
+  testWidgets('connexion_code', (t) => shoot(t, name: 'connexion_code', screen: const LoginScreen(), role: '',
+      avantLaPhoto: (t) async {
+        await t.enterText(find.byType(TextFormField).first, '07 00 01 01 01');
+        await tapText(t, 'Recevoir un code');
+      }));
 
   // ─── Évangéliste ──────────────────────────────────────────────────
   testWidgets('evangeliste_a_faire', (t) => shoot(t, name: 'evangeliste_a_faire', screen: const HomeScreen()));
@@ -80,6 +86,13 @@ void main() {
   testWidgets('responsable_suivis', (t) => shoot(t, name: 'responsable_suivis',
       screen: const FollowupListScreen(), role: 'manager'));
   testWidgets('comptes', (t) => shoot(t, name: 'comptes', screen: const MobileUsersScreen(), role: 'manager'));
+  testWidgets('invitation', (t) => shoot(t, name: 'invitation', screen: const MobileUsersScreen(), role: 'manager',
+      avantLaPhoto: (t) async {
+        await t.tap(find.byTooltip('Envoyer l\'invitation').last);
+        await t.pumpAndSettle();
+      }));
+  testWidgets('changer_eglise', (t) => shoot(t, name: 'changer_eglise', screen: const SettingsScreen(), role: 'manager',
+      avantLaPhoto: (t) => tapText(t, 'Changer d\'église')));
   testWidgets('fiche_parcours', (t) => shoot(t, name: 'fiche_parcours', role: 'manager',
       screen: const MemberFormScreen(memberId: 16), avantLaPhoto: (t) async {
         await t.scrollUntilVisible(find.text('Parcours'), 300, scrollable: find.byType(Scrollable).first);

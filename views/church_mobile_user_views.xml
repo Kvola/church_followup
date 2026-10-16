@@ -70,9 +70,10 @@
                     du compte, au moment de se connecter.
                 </div>
                 <group>
-                    <field name="mobile_user_id"/>
+                    <field name="mobile_user_id" readonly="1"/>
                     <field name="phone" widget="phone"/>
-                    <field name="message" widget="CopyClipboardText"/>
+                    <!-- Sans widget de copie : il écrase les retours à la ligne. -->
+                    <field name="message"/>
                     <field name="whatsapp_url" widget="url" string="WhatsApp" text="Envoyer par WhatsApp"/>
                 </group>
                 <footer>

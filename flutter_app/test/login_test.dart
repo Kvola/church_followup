@@ -30,7 +30,7 @@ void main() {
       calls.add({'path': request.url.path, 'auth': request.headers['Authorization'], ...params});
       final Map<String, dynamic> result;
       if (request.url.path.endsWith('/auth/request_otp')) {
-        result = {'status': 'success', 'identifier_masked': '+225070 •• •• •• 01', 'debug_otp': '123456'};
+        result = {'status': 'success', 'identifier_masked': '+225 07 •• •• •• 01', 'debug_otp': '123456'};
       } else if (request.url.path.endsWith('/auth/verify_otp')) {
         result = params['code'] == '123456'
             ? {
@@ -62,7 +62,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(calls.last['path'], '/api/church/auth/request_otp');
     expect(calls.last['auth'], isNull, reason: 'Pas de session avant le code');
-    expect(find.textContaining('+225070 •• •• •• 01'), findsOneWidget);
+    expect(find.textContaining('+225 07 •• •• •• 01'), findsOneWidget);
 
     // Un mauvais code laisse sur l'écran, message à l'appui.
     await tester.enterText(find.byType(TextFormField).first, '000000');

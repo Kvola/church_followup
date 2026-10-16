@@ -62,7 +62,7 @@ Future<void> _shoot(
   final api = ApiService(client: client)..configure(baseUrl: 'https://demo', token: 'demo');
   final auth = AuthProvider(api: api);
   await tester.pump();
-  if (role.isNotEmpty) auth.debugSignIn(demoUser(role));
+  if (role.isNotEmpty) auth.debugSignIn(demoUser(role), accounts: demoAccounts(role));
 
   await tester.pumpWidget(MultiProvider(
     providers: [

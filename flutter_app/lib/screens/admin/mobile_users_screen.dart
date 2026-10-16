@@ -148,17 +148,9 @@ class _MobileUsersScreenState extends State<MobileUsersScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                width: 40,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
+              // La poignée vient du thème (showDragHandle) : pas de seconde.
               Text(
-                'Partager les identifiants de $userName',
+                'Inviter $userName',
                 style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 textAlign: TextAlign.center,
               ),

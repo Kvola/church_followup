@@ -101,6 +101,18 @@ class SettingsScreen extends StatelessWidget {
                       style: TextStyle(color: Colors.grey)),
                 ),
                 const Divider(height: 1),
+                // Le guide vit sur le serveur (une seule source pour la page et
+                // le PDF) : il est à jour sans nouvelle version de l'app.
+                ListTile(
+                  leading: const Icon(Icons.menu_book_outlined),
+                  title: const Text('Guide d\'utilisation'),
+                  trailing: const Icon(Icons.open_in_new, size: 18),
+                  onTap: () => launchUrl(
+                    Uri.parse('${auth.serverUrl}/apps/${AppConstants.appSlug}/guide'),
+                    mode: LaunchMode.externalApplication,
+                  ),
+                ),
+                const Divider(height: 1),
                 ListTile(
                   leading: const Icon(Icons.storage_outlined),
                   title: const Text('Vider le cache'),

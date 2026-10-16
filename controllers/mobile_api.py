@@ -88,7 +88,9 @@ def _mask(identifier, kind):
     if kind == 'email':
         local, _sep, domain = identifier.partition('@')
         return '%s•••@%s' % (local[:1], domain)
-    return '%s •• •• •• %s' % (identifier[:7], identifier[-2:])
+    # « +225 07 •• •• •• 01 » : l'indicatif, l'opérateur, les deux derniers chiffres.
+    head = '+225 %s' % identifier[4:6] if identifier.startswith('+225') else identifier[:-8]
+    return '%s •• •• •• %s' % (head, identifier[-2:])
 
 
 # ─── Lecture des paramètres ──────────────────────────────────────────
