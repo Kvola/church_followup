@@ -306,7 +306,7 @@ class _CreateChurchSheetState extends State<_CreateChurchSheet> {
                 ),
                 Row(
                   children: [
-                    Icon(Icons.church, color: AppColors.primary),
+                    const Icon(Icons.church, color: AppColors.primary),
                     const SizedBox(width: 10),
                     Text('Nouvelle Église', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
                   ],
@@ -471,7 +471,7 @@ class _ChurchCard extends StatelessWidget {
               CircleAvatar(
                 radius: 24,
                 backgroundColor: AppColors.primary.withValues(alpha: 0.12),
-                child: Icon(Icons.church, color: AppColors.primary),
+                child: const Icon(Icons.church, color: AppColors.primary),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -486,7 +486,7 @@ class _ChurchCard extends StatelessWidget {
                     if (pastorLabel.isNotEmpty)
                       Row(
                         children: [
-                          Icon(Icons.person, size: 12, color: AppColors.extended),
+                          const Icon(Icons.person, size: 12, color: AppColors.extended),
                           const SizedBox(width: 4),
                           Flexible(
                             child: Text(pastorLabel,
@@ -631,7 +631,7 @@ class _ChurchDetailScreenState extends State<_ChurchDetailScreen> {
                                   CircleAvatar(
                                     radius: 28,
                                     backgroundColor: AppColors.primary.withValues(alpha: 0.12),
-                                    child: Icon(Icons.church, color: AppColors.primary, size: 28),
+                                    child: const Icon(Icons.church, color: AppColors.primary, size: 28),
                                   ),
                                   const SizedBox(width: 14),
                                   Expanded(
@@ -701,7 +701,7 @@ class _ChurchDetailScreenState extends State<_ChurchDetailScreen> {
                               child: ListTile(
                                 leading: CircleAvatar(
                                   backgroundColor: AppColors.secondary.withValues(alpha: 0.12),
-                                  child: Icon(Icons.manage_accounts, color: AppColors.secondary),
+                                  child: const Icon(Icons.manage_accounts, color: AppColors.secondary),
                                 ),
                                 title: Text(m['name'] ?? ''),
                                 subtitle: Text(m['phone'] ?? ''),
@@ -1072,7 +1072,7 @@ class _EditChurchSheetState extends State<_EditChurchSheet> {
               ),
               Row(
                 children: [
-                  Icon(Icons.edit, color: AppColors.primary),
+                  const Icon(Icons.edit, color: AppColors.primary),
                   const SizedBox(width: 10),
                   Text('Modifier l\'église',
                       style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),

@@ -1,6 +1,6 @@
 {
     'name': 'Suivi Évangélisation Église',
-    'version': '19.0.1.8.1',
+    'version': '19.0.1.9.0',
     'category': 'Church Management',
     'summary': 'Suivi des classes d\'évangile et gestion des cellules de prière',
     'description': """
@@ -19,7 +19,7 @@
     """,
     'author': 'ICP',
     'license': 'AGPL-3',
-    'depends': ['base', 'mail', 'otp_auth'],
+    'depends': ['base', 'mail', 'otp_auth', 'mobile_app_release'],
     'data': [
         # Security
         'security/church_followup_security.xml',
@@ -28,6 +28,7 @@
         'data/ir_sequence.xml',
         'data/age_range_data.xml',
         'data/cron_data.xml',
+        'data/mobile_app.xml',
         # Reports
         'reports/report_followup.xml',
         'reports/report_cell_members.xml',

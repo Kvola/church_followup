@@ -7,6 +7,7 @@ import 'package:church_followup_mobile/providers/organization_provider.dart';
 import 'package:church_followup_mobile/providers/todo_provider.dart';
 import 'package:church_followup_mobile/screens/checkpoints/checkpoint_list_screen.dart';
 import 'package:church_followup_mobile/screens/followups/to_assign_screen.dart';
+import 'package:church_followup_mobile/screens/members/member_form_screen.dart';
 import 'package:church_followup_mobile/screens/todo/todo_screen.dart';
 import 'package:church_followup_mobile/services/api_service.dart';
 import 'package:flutter/material.dart';
@@ -128,5 +129,24 @@ void main() {
     expect(sent['checkpoint_id'], 3);
     expect(sent['result'], 'favorable');
     expect(sent['notes'], 'Assidue');
+  });
+
+  testWidgets('la fiche membre s\'ouvre (listes vides comprises) et se verrouille sans charge', (tester) async {
+    await pump(tester, const MemberFormScreen(memberId: 4), {
+      '/member/detail': {
+        'status': 'success',
+        'member': {
+          'id': 4, 'name': 'Bla', 'first_name': 'Aya', 'gender': '', 'to_complete': true,
+          'marital_status': 'single', 'can_edit': false, 'journey': [], 'checkpoints': [],
+        },
+      },
+      '/districts': {'status': 'success', 'districts': []},
+      '/cells': {'status': 'success', 'cells': []},
+      '/age_groups': {'status': 'success', 'age_groups': []},
+      '/members': {'status': 'success', 'members': []},
+    });
+    expect(tester.takeException(), isNull, reason: 'Aucune erreur de rendu (clés en double, valeur hors liste)');
+    expect(find.text('Fiche du membre'), findsOneWidget);
+    expect(find.textContaining('Consultation seulement'), findsOneWidget);
   });
 }

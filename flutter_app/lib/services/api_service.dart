@@ -460,6 +460,22 @@ class ApiService {
     } catch (_) {}
   }
 
+  // ─── Mise à jour de l'application ─────────────────────────────────
+
+  /// Ce que le catalogue sait de la dernière version publiée, comparée à
+  /// celle-ci : `{update_available, mandatory, latest_version, download_url…}`.
+  /// Rend `null` si l'on ne peut pas savoir (build de développement, réseau).
+  Future<Map<String, dynamic>?> checkForUpdate() async {
+    if (AppConstants.appVersion.isEmpty || _baseUrl.isEmpty) return null;
+    try {
+      final result = await call('/api/mobile/v1/apps/${AppConstants.appSlug}/latest',
+          {'current_version': AppConstants.appVersion});
+      return result is Map && result['status'] == 'success' ? Map<String, dynamic>.from(result) : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
   // ─── Reports ──────────────────────────────────────────────────────
 
   Future<Map<String, dynamic>> getFollowupReport(int evangelistId) async {

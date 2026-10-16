@@ -64,7 +64,7 @@ class SettingsScreen extends StatelessWidget {
           const SizedBox(height: 24),
 
           // Info section
-          _SectionTitle('Informations'),
+          const _SectionTitle('Informations'),
           Card(
             child: Column(
               children: [
@@ -81,14 +81,14 @@ class SettingsScreen extends StatelessWidget {
           const SizedBox(height: 24),
 
           // App section
-          _SectionTitle('Application'),
+          const _SectionTitle('Application'),
           Card(
             child: Column(
               children: [
-                ListTile(
-                  leading: const Icon(Icons.info_outline),
-                  title: const Text('Version'),
-                  trailing: const Text('2.1.0', style: TextStyle(color: Colors.grey)),
+                const ListTile(
+                  leading: Icon(Icons.info_outline),
+                  title: Text('Version'),
+                  trailing: Text('2.1.0', style: TextStyle(color: Colors.grey)),
                 ),
                 const Divider(height: 1),
                 ListTile(
@@ -107,14 +107,14 @@ class SettingsScreen extends StatelessWidget {
           const SizedBox(height: 24),
 
           // Developer section
-          _SectionTitle('Développeur'),
+          const _SectionTitle('Développeur'),
           Card(
             child: Column(
               children: [
-                ListTile(
-                  leading: const Icon(Icons.person_outline, color: AppColors.primary),
-                  title: const Text(AppConstants.developerName),
-                  subtitle: const Text('Développeur'),
+                const ListTile(
+                  leading: Icon(Icons.person_outline, color: AppColors.primary),
+                  title: Text(AppConstants.developerName),
+                  subtitle: Text('Développeur'),
                 ),
                 const Divider(height: 1),
                 ListTile(

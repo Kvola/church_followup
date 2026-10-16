@@ -222,7 +222,7 @@ class _MobileUsersScreenState extends State<MobileUsersScreen> {
       title: 'Régénérer le PIN',
       message: 'Régénérer le PIN de ${user['name'] ?? 'cet utilisateur'} ? L\'ancien PIN sera invalidé.',
     );
-    if (!confirmed) return;
+    if (!confirmed || !mounted) return;
 
     final result = await context.read<OrganizationProvider>().adminResetPin(userId);
     if (mounted) {
@@ -246,7 +246,7 @@ class _MobileUsersScreenState extends State<MobileUsersScreen> {
       title: '${isActive ? "Désactiver" : "Activer"} l\'utilisateur',
       message: 'Voulez-vous $action ${user['name'] ?? 'cet utilisateur'} ?',
     );
-    if (!confirmed) return;
+    if (!confirmed || !mounted) return;
 
     final result = await context.read<OrganizationProvider>().adminUpdateUser(userId, {'active': !isActive});
     if (mounted) {

@@ -78,8 +78,9 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
       context.read<MemberProvider>().loadMembers();
 
       if (_isEdit && widget.memberId != null) {
-        context.read<MemberProvider>().loadDetail(widget.memberId!).then((_) {
-          final detail = context.read<MemberProvider>().currentDetail;
+        final members = context.read<MemberProvider>();
+        members.loadDetail(widget.memberId!).then((_) {
+          final detail = members.currentDetail;
           if (detail != null && mounted) {
             setState(() {
               _canEdit = detail['can_edit'] != false;
@@ -217,7 +218,7 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
               const SizedBox(height: 16),
             ],
             // Identity section
-            _SectionTitle('Identité'),
+            const _SectionTitle('Identité'),
             const SizedBox(height: 8),
             TextFormField(
               controller: _nameCtrl,
@@ -257,7 +258,8 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
                 Expanded(
                   child: DropdownButtonFormField<String>(
                     decoration: const InputDecoration(labelText: 'État civil'),
-                    value: _maritalStatus,
+                    key: ValueKey('marital-$_maritalStatus'),
+                    initialValue: _maritalStatus,
                     items: AppConstants.maritalLabels.entries
                         .map((e) => DropdownMenuItem(value: e.key, child: Text(e.value)))
                         .toList(),
@@ -269,7 +271,7 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
             const SizedBox(height: 20),
 
             // Dates
-            _SectionTitle('Dates'),
+            const _SectionTitle('Dates'),
             const SizedBox(height: 8),
             Row(
               children: [
@@ -293,11 +295,12 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
             const SizedBox(height: 20),
 
             // Organization
-            _SectionTitle('Organisation'),
+            const _SectionTitle('Organisation'),
             const SizedBox(height: 8),
             DropdownButtonFormField<int>(
               decoration: const InputDecoration(labelText: 'Quartier/District', prefixIcon: Icon(Icons.location_on_outlined)),
-              value: _validDropdownValue(_districtId, org.districts),
+              key: ValueKey('district-${_validDropdownValue(_districtId, org.districts)}'),
+              initialValue: _validDropdownValue(_districtId, org.districts),
               items: org.districts.where((d) => d['id'] is int).map((d) => DropdownMenuItem(value: d['id'] as int, child: Text(AppConstants.safeStr(d['name'], '—')))).toList(),
               onChanged: (v) => setState(() => _districtId = v),
             ),
@@ -305,14 +308,16 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
             if (isManager) ...[
               DropdownButtonFormField<int>(
                 decoration: const InputDecoration(labelText: 'Cellule de prière', prefixIcon: Icon(Icons.groups_outlined)),
-                value: _validDropdownValue(_cellId, org.cells),
+                key: ValueKey('cell-${_validDropdownValue(_cellId, org.cells)}'),
+                initialValue: _validDropdownValue(_cellId, org.cells),
                 items: org.cells.where((c) => c['id'] is int).map((c) => DropdownMenuItem(value: c['id'] as int, child: Text(AppConstants.safeStr(c['name'], '—')))).toList(),
                 onChanged: (v) => setState(() => _cellId = v),
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<int>(
                 decoration: const InputDecoration(labelText: 'Groupe d\'âge', prefixIcon: Icon(Icons.diversity_3_outlined)),
-                value: _validDropdownValue(_ageGroupId, org.ageGroups),
+                key: ValueKey('group-${_validDropdownValue(_ageGroupId, org.ageGroups)}'),
+                initialValue: _validDropdownValue(_ageGroupId, org.ageGroups),
                 items: org.ageGroups.where((g) => g['id'] is int).map((g) => DropdownMenuItem(value: g['id'] as int, child: Text(AppConstants.safeStr(g['name'], '—')))).toList(),
                 onChanged: (v) => setState(() => _ageGroupId = v),
               ),
@@ -320,7 +325,7 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
             const SizedBox(height: 20),
 
             // Inviter & Mentor
-            _SectionTitle('Parrainage'),
+            const _SectionTitle('Parrainage'),
             const SizedBox(height: 8),
             Consumer<MemberProvider>(
               builder: (_, memberProv, __) {
@@ -332,14 +337,16 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
                   children: [
                     DropdownButtonFormField<int>(
                       decoration: const InputDecoration(labelText: 'Invité(e) par', prefixIcon: Icon(Icons.person_add_outlined)),
-                      value: memberItems.any((m) => m['id'] == _invitedById) ? _invitedById : null,
+                      key: ValueKey('invited-${memberItems.any((m) => m['id'] == _invitedById) ? _invitedById : null}'),
+                      initialValue: memberItems.any((m) => m['id'] == _invitedById) ? _invitedById : null,
                       items: memberItems.map((m) => DropdownMenuItem(value: m['id'] as int, child: Text((m['name'] as String?) ?? '—'))).toList(),
                       onChanged: (v) => setState(() => _invitedById = v),
                     ),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<int>(
                       decoration: const InputDecoration(labelText: 'Mentor', prefixIcon: Icon(Icons.supervisor_account_outlined)),
-                      value: memberItems.any((m) => m['id'] == _mentorId) ? _mentorId : null,
+                      key: ValueKey('mentor-${memberItems.any((m) => m['id'] == _mentorId) ? _mentorId : null}'),
+                      initialValue: memberItems.any((m) => m['id'] == _mentorId) ? _mentorId : null,
                       items: memberItems.map((m) => DropdownMenuItem(value: m['id'] as int, child: Text((m['name'] as String?) ?? '—'))).toList(),
                       onChanged: (v) => setState(() => _mentorId = v),
                     ),
@@ -350,7 +357,7 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
             const SizedBox(height: 20),
 
             // Additional
-            _SectionTitle('Informations supplémentaires'),
+            const _SectionTitle('Informations supplémentaires'),
             const SizedBox(height: 8),
             TextFormField(
               controller: _addressCtrl,

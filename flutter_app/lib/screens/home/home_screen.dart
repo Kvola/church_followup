@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../core/constants.dart';
 import '../../core/theme.dart';
 import '../../providers/auth_provider.dart';
@@ -38,7 +39,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _listenToPush());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _listenToPush();
+      _checkForUpdate();
+    });
   }
 
   @override
@@ -76,6 +80,50 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       }
     }));
     if (await push.initialMessage() != null && mounted) _openTodo();
+  }
+
+  /// Une version plus récente est publiée sur le catalogue : le dire. Le
+  /// serveur décide si elle est obligatoire (ancienne version plus acceptée).
+  Future<void> _checkForUpdate() async {
+    final info = await context.read<AuthProvider>().api.checkForUpdate();
+    if (!mounted || info == null || info['update_available'] != true) return;
+    final version = AppConstants.safeStr(info['latest_version']);
+    final url = AppConstants.safeStr(info['download_url'], AppConstants.safeStr(info['page_url']));
+    Future<void> download() async {
+      if (url.isNotEmpty) await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+    }
+
+    if (info['mandatory'] == true) {
+      await showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => PopScope(
+          canPop: false,
+          child: AlertDialog(
+            title: const Text('Mise à jour nécessaire'),
+            content: Text('Cette version n\'est plus acceptée par le serveur. '
+                'Installez la version $version pour continuer.'),
+            actions: [FilledButton(onPressed: download, child: const Text('Télécharger'))],
+          ),
+        ),
+      );
+      return;
+    }
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.showMaterialBanner(MaterialBanner(
+      leading: const Icon(Icons.system_update),
+      content: Text('La version $version est disponible.'),
+      actions: [
+        TextButton(onPressed: messenger.hideCurrentMaterialBanner, child: const Text('Plus tard')),
+        FilledButton(
+          onPressed: () {
+            messenger.hideCurrentMaterialBanner();
+            download();
+          },
+          child: const Text('Mettre à jour'),
+        ),
+      ],
+    ));
   }
 
   void _openTodo() {
@@ -158,7 +206,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             Container(
               width: double.infinity,
               padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 gradient: LinearGradient(
                   colors: [AppColors.primary, AppColors.secondary],
                   begin: Alignment.topLeft,

@@ -1,7 +1,16 @@
 class AppConstants {
   static const String appName = 'Suivi Évangélisation';
-  static const String defaultUrl = 'https://iyf.kavola.site';
-  static const String defaultDatabase = 'iyf.kavola.site';
+  // Compilés dans l'APK par le script de publication (--dart-define) ;
+  // les valeurs par défaut visent la production IYF.
+  static const String defaultUrl = String.fromEnvironment('BASE_URL', defaultValue: 'https://iyf.ebng.world');
+  static const String defaultDatabase = String.fromEnvironment('DB', defaultValue: 'iyf.ebng.world');
+
+  /// Version installée, donnée à la construction. Vide (build de développement) :
+  /// l'app ne cherche pas de mise à jour, faute de pouvoir se comparer.
+  static const String appVersion = String.fromEnvironment('APP_VERSION');
+
+  /// Identifiant de l'application dans le catalogue /apps du serveur.
+  static const String appSlug = 'suivi-evangelisation';
   static const String developerName = 'DIBI Bi Kavola Augustin';
   static const String developerPhone = '+225 07 49 94 33 27';
   static const Duration requestTimeout = Duration(seconds: 30);

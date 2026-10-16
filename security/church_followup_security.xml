@@ -28,7 +28,8 @@
     <record id="group_church_admin" model="res.groups">
         <field name="name">Super Administrateur Église</field>
         <field name="privilege_id" ref="privilege_church_followup"/>
-        <field name="implied_ids" eval="[(4, ref('group_church_manager'))]"/>
+        <!-- Il publie les nouvelles versions de l'application de suivi. -->
+        <field name="implied_ids" eval="[(4, ref('group_church_manager')), (4, ref('mobile_app_release.group_app_publisher'))]"/>
     </record>
 
     <!-- Access rules: all data visible to all church groups -->

@@ -81,7 +81,8 @@ class _AttendanceCellScreenState extends State<AttendanceCellScreen> {
                     labelText: 'Cellule de prière',
                     prefixIcon: Icon(Icons.groups_outlined),
                   ),
-                  value: _selectedCellId,
+                  key: ValueKey('cell-$_selectedCellId'),
+                  initialValue: _selectedCellId,
                   items: provider.cells
                       .where((c) => c['id'] is int)
                       .map((c) => DropdownMenuItem(value: c['id'] as int, child: Text(c['name'] ?? '')))
@@ -126,7 +127,7 @@ class _AttendanceCellScreenState extends State<AttendanceCellScreen> {
                 children: [
                   Text(
                     '${_presentIds.length}/${members.length} présents',
-                    style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary),
+                    style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary),
                   ),
                   const Spacer(),
                   TextButton(
