@@ -1,9 +1,20 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 class AppConstants {
   static const String appName = 'Suivi Évangélisation';
-  // Compilés dans l'APK par le script de publication (--dart-define) ;
-  // les valeurs par défaut visent la production IYF.
-  static const String defaultUrl = String.fromEnvironment('BASE_URL', defaultValue: 'https://iyf.ebng.world');
-  static const String defaultDatabase = String.fromEnvironment('DB', defaultValue: 'iyf.ebng.world');
+  // Compilés dans l'APK par le script de publication (--dart-define, défaut
+  // https://iyf.ebng.world). Aucune valeur par défaut ici : une adresse écrite
+  // en dur finirait dans le bundle web, que build_pwa.sh refuse alors.
+  static const String defaultUrl = String.fromEnvironment('BASE_URL');
+
+  /// L'adresse du serveur à appeler.
+  ///
+  /// Sur le web, VIDE : la version navigateur est servie par le serveur
+  /// qu'elle appelle, les adresses restent relatives, et un même bundle sert
+  /// le développement comme la production. Compiler une adresse dans le
+  /// bundle a déjà coûté un incident (la PWA des membres appelait
+  /// `localhost:8069` : chaque navigateur visait sa propre machine).
+  static String get serverUrl => kIsWeb ? '' : defaultUrl;
+  static const String defaultDatabase = String.fromEnvironment('DB');
 
   /// Version installée, donnée à la construction. Vide (build de développement) :
   /// l'app ne cherche pas de mise à jour, faute de pouvoir se comparer.

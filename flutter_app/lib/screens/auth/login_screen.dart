@@ -1,11 +1,13 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants.dart';
 import '../../core/theme.dart';
 import '../../providers/auth_provider.dart';
+import '../../widgets/install_banner.dart';
 
 /// Connexion par code à usage unique, comme l'application de l'association :
 /// on saisit son numéro (ou son adresse e-mail), un code arrive par WhatsApp,
@@ -17,17 +19,20 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStateMixin {
+class _LoginScreenState extends State<LoginScreen>
+    with SingleTickerProviderStateMixin {
   static const _resendDelay = 60;
 
   final _identifierKey = GlobalKey<FormState>();
   final _codeKey = GlobalKey<FormState>();
   final _identifierCtrl = TextEditingController();
   final _codeCtrl = TextEditingController();
-  final _urlCtrl = TextEditingController(text: AppConstants.defaultUrl);
+  final _urlCtrl = TextEditingController(text: AppConstants.serverUrl);
   final _dbCtrl = TextEditingController(text: AppConstants.defaultDatabase);
 
-  bool _showAdvanced = false;
+  // APK construit sans adresse (hors script de publication) : on montre
+  // d'emblée où la saisir, plutôt qu'un échec réseau sans explication.
+  bool _showAdvanced = !kIsWeb && AppConstants.serverUrl.isEmpty;
   bool _isLoading = false;
   bool _codeStep = false;
   String _masked = '';
@@ -40,7 +45,8 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   @override
   void initState() {
     super.initState();
-    _animCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 800));
+    _animCtrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 800));
     _fadeAnim = CurvedAnimation(parent: _animCtrl, curve: Curves.easeOut);
     _animCtrl.forward();
     _loadLastConnection();
@@ -71,7 +77,9 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   String? _validateIdentifier(String? value) {
     final v = (value ?? '').trim();
     if (v.isEmpty) return 'Saisissez votre numéro ou votre adresse e-mail';
-    if (v.contains('@') ? !_emailPattern.hasMatch(v) : !_phonePattern.hasMatch(v)) {
+    if (v.contains('@')
+        ? !_emailPattern.hasMatch(v)
+        : !_phonePattern.hasMatch(v)) {
       return 'Numéro ou adresse e-mail invalide';
     }
     return null;
@@ -119,7 +127,8 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   Future<void> _verifyCode() async {
     if (!_codeKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
-    final result = await context.read<AuthProvider>().verifyOtp(_codeCtrl.text.trim());
+    final result =
+        await context.read<AuthProvider>().verifyOtp(_codeCtrl.text.trim());
     if (!mounted) return;
     setState(() => _isLoading = false);
     if (result['success'] != true) {
@@ -144,56 +153,71 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     final sessionMessage = context.watch<AuthProvider>().sessionMessage;
 
     return Scaffold(
-      body: SafeArea(
-        child: FadeTransition(
-          opacity: _fadeAnim,
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 28),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 400),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Hero(
-                      tag: 'app_logo',
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(28),
-                        child: Image.asset('assets/logo.png', width: 100, height: 100, fit: BoxFit.cover),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    Text(
-                      AppConstants.appName,
-                      style: theme.textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.primary,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _codeStep ? 'Saisissez le code reçu' : 'Connectez-vous avec votre numéro',
-                      style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                    ),
-                    SizedBox(height: size.height * 0.05),
+      body: Column(
+        children: [
+          const InstallBanner(),
+          Expanded(
+              child: SafeArea(
+            child: FadeTransition(
+              opacity: _fadeAnim,
+              child: Center(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 28),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 400),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Hero(
+                          tag: 'app_logo',
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(28),
+                            child: Image.asset('assets/logo.png',
+                                width: 100, height: 100, fit: BoxFit.cover),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        Text(
+                          AppConstants.appName,
+                          style: theme.textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _codeStep
+                              ? 'Saisissez le code reçu'
+                              : 'Connectez-vous avec votre numéro',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant),
+                        ),
+                        SizedBox(height: size.height * 0.05),
 
-                    // Session expirée : dire pourquoi on revient ici.
-                    if (sessionMessage != null && !_codeStep) ...[
-                      _Notice(icon: Icons.lock_clock, color: AppColors.extended, text: sessionMessage),
-                      const SizedBox(height: 16),
-                    ],
+                        // Session expirée : dire pourquoi on revient ici.
+                        if (sessionMessage != null && !_codeStep) ...[
+                          _Notice(
+                              icon: Icons.lock_clock,
+                              color: AppColors.extended,
+                              text: sessionMessage),
+                          const SizedBox(height: 16),
+                        ],
 
-                    AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 250),
-                      child: _codeStep ? _buildCodeStep(theme) : _buildIdentifierStep(theme),
+                        AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 250),
+                          child: _codeStep
+                              ? _buildCodeStep(theme)
+                              : _buildIdentifierStep(theme),
+                        ),
+                        SizedBox(height: size.height * 0.05),
+                      ],
                     ),
-                    SizedBox(height: size.height * 0.05),
-                  ],
+                  ),
                 ),
               ),
             ),
-          ),
-        ),
+          )),
+        ],
       ),
     );
   }
@@ -219,52 +243,66 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
             validator: _validateIdentifier,
           ),
           const SizedBox(height: 12),
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton.icon(
-              onPressed: () => setState(() => _showAdvanced = !_showAdvanced),
-              icon: Icon(_showAdvanced ? Icons.expand_less : Icons.expand_more, size: 18),
-              label: const Text('Paramètres serveur'),
-              // Hérite du thème (police comprise) au lieu de le remplacer.
-              style: TextButton.styleFrom(textStyle: theme.textTheme.labelMedium),
+          // Sur le web, pas de serveur à choisir : c'est celui qui sert la page.
+          if (!kIsWeb)
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: () => setState(() => _showAdvanced = !_showAdvanced),
+                icon: Icon(
+                    _showAdvanced ? Icons.expand_less : Icons.expand_more,
+                    size: 18),
+                label: const Text('Paramètres serveur'),
+                // Hérite du thème (police comprise) au lieu de le remplacer.
+                style: TextButton.styleFrom(
+                    textStyle: theme.textTheme.labelMedium),
+              ),
             ),
-          ),
-          AnimatedCrossFade(
-            firstChild: const SizedBox.shrink(),
-            secondChild: Column(
-              children: [
-                const SizedBox(height: 8),
-                TextFormField(
-                  controller: _urlCtrl,
-                  keyboardType: TextInputType.url,
-                  decoration: const InputDecoration(
-                    labelText: 'URL du serveur',
-                    prefixIcon: Icon(Icons.dns_outlined),
-                    hintText: 'https://...',
+          // Sur le web, ni bouton ni champs : un champ masqué mais présent
+          // resterait dans le formulaire, et sa validation (« Requis », l'adresse
+          // étant volontairement vide) bloquerait l'envoi SANS RIEN AFFICHER.
+          if (!kIsWeb)
+            AnimatedCrossFade(
+              firstChild: const SizedBox.shrink(),
+              secondChild: Column(
+                children: [
+                  const SizedBox(height: 8),
+                  TextFormField(
+                    controller: _urlCtrl,
+                    keyboardType: TextInputType.url,
+                    decoration: const InputDecoration(
+                      labelText: 'URL du serveur',
+                      prefixIcon: Icon(Icons.dns_outlined),
+                      hintText: 'https://...',
+                    ),
+                    validator: (v) {
+                      if (v == null || v.trim().isEmpty) return 'Requis';
+                      final uri = Uri.tryParse(v.trim());
+                      if (uri == null || !uri.hasScheme) return 'URL invalide';
+                      return null;
+                    },
                   ),
-                  validator: (v) {
-                    if (v == null || v.trim().isEmpty) return 'Requis';
-                    final uri = Uri.tryParse(v.trim());
-                    if (uri == null || !uri.hasScheme) return 'URL invalide';
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _dbCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Base de données',
-                    prefixIcon: Icon(Icons.storage_outlined),
-                    hintText: 'nom_base',
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _dbCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'Base de données',
+                      prefixIcon: Icon(Icons.storage_outlined),
+                      hintText: 'nom_base',
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
+              crossFadeState: _showAdvanced
+                  ? CrossFadeState.showSecond
+                  : CrossFadeState.showFirst,
+              duration: const Duration(milliseconds: 300),
             ),
-            crossFadeState: _showAdvanced ? CrossFadeState.showSecond : CrossFadeState.showFirst,
-            duration: const Duration(milliseconds: 300),
-          ),
           const SizedBox(height: 28),
-          _PrimaryButton(label: 'Recevoir un code', loading: _isLoading, onPressed: _requestCode),
+          _PrimaryButton(
+              label: 'Recevoir un code',
+              loading: _isLoading,
+              onPressed: _requestCode),
         ],
       ),
     );
@@ -279,7 +317,8 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
           _Notice(
             icon: Icons.mark_chat_read_outlined,
             color: AppColors.primary,
-            text: 'Si ce compte existe, un code de 6 chiffres vient d\'être envoyé à $_masked '
+            text:
+                'Si ce compte existe, un code de 6 chiffres vient d\'être envoyé à $_masked '
                 '(WhatsApp, SMS ou e-mail). Il est valable 10 minutes.',
           ),
           if (_debugOtp != null) ...[
@@ -295,25 +334,35 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
             autofocus: true,
             autofillHints: const [AutofillHints.oneTimeCode],
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            style: theme.textTheme.headlineSmall?.copyWith(letterSpacing: 10, fontWeight: FontWeight.bold),
+            style: theme.textTheme.headlineSmall
+                ?.copyWith(letterSpacing: 10, fontWeight: FontWeight.bold),
             onChanged: (v) {
               if (v.length == 6 && !_isLoading) _verifyCode();
             },
-            decoration: const InputDecoration(counterText: '', hintText: '••••••'),
-            validator: (v) => (v ?? '').length == 6 ? null : 'Le code a 6 chiffres',
+            decoration:
+                const InputDecoration(counterText: '', hintText: '••••••'),
+            validator: (v) =>
+                (v ?? '').length == 6 ? null : 'Le code a 6 chiffres',
           ),
           const SizedBox(height: 24),
-          _PrimaryButton(label: 'Se connecter', loading: _isLoading, onPressed: _verifyCode),
+          _PrimaryButton(
+              label: 'Se connecter',
+              loading: _isLoading,
+              onPressed: _verifyCode),
           const SizedBox(height: 12),
           // Wrap, pas Row : sur un écran étroit ou en grands caractères, le
           // second bouton passe à la ligne au lieu de déborder.
           Wrap(
             alignment: WrapAlignment.spaceBetween,
             children: [
-              TextButton(onPressed: _isLoading ? null : _changeIdentifier, child: const Text('Changer de numéro')),
+              TextButton(
+                  onPressed: _isLoading ? null : _changeIdentifier,
+                  child: const Text('Changer de numéro')),
               TextButton(
                 onPressed: _resendIn > 0 || _isLoading ? null : _requestCode,
-                child: Text(_resendIn > 0 ? 'Renvoyer (${_resendIn}s)' : 'Renvoyer le code'),
+                child: Text(_resendIn > 0
+                    ? 'Renvoyer (${_resendIn}s)'
+                    : 'Renvoyer le code'),
               ),
             ],
           ),
@@ -325,7 +374,8 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
               'Pas de code ? Vérifiez que c\'est bien le numéro (ou l\'adresse e-mail) '
               'enregistré pour votre compte. Sinon, demandez à votre responsable : '
               'il peut vous envoyer un code depuis Odoo, ou vous le dicter.',
-              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+              style: theme.textTheme.bodySmall
+                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
               textAlign: TextAlign.center,
             ),
           ],
@@ -365,7 +415,8 @@ class _PrimaryButton extends StatelessWidget {
   final String label;
   final bool loading;
   final VoidCallback onPressed;
-  const _PrimaryButton({required this.label, required this.loading, required this.onPressed});
+  const _PrimaryButton(
+      {required this.label, required this.loading, required this.onPressed});
 
   @override
   Widget build(BuildContext context) {
@@ -378,7 +429,8 @@ class _PrimaryButton extends StatelessWidget {
             ? const SizedBox(
                 width: 22,
                 height: 22,
-                child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
+                child: CircularProgressIndicator(
+                    strokeWidth: 2.5, color: Colors.white),
               )
             : Text(label, style: const TextStyle(fontSize: 16)),
       ),

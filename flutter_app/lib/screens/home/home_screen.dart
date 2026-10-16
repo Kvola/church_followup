@@ -23,6 +23,8 @@ import '../admin/mobile_users_screen.dart';
 import '../admin/report_screen.dart';
 import '../admin/church_management_screen.dart';
 import '../settings/settings_screen.dart';
+import '../../widgets/install_banner.dart';
+import '../../widgets/web_notifications_banner.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -88,9 +90,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final info = await context.read<AuthProvider>().api.checkForUpdate();
     if (!mounted || info == null || info['update_available'] != true) return;
     final version = AppConstants.safeStr(info['latest_version']);
-    final url = AppConstants.safeStr(info['download_url'], AppConstants.safeStr(info['page_url']));
+    final url = AppConstants.safeStr(
+        info['download_url'], AppConstants.safeStr(info['page_url']));
     Future<void> download() async {
-      if (url.isNotEmpty) await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+      if (url.isNotEmpty) {
+        await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+      }
     }
 
     if (info['mandatory'] == true) {
@@ -103,7 +108,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             title: const Text('Mise à jour nécessaire'),
             content: Text('Cette version n\'est plus acceptée par le serveur. '
                 'Installez la version $version pour continuer.'),
-            actions: [FilledButton(onPressed: download, child: const Text('Télécharger'))],
+            actions: [
+              FilledButton(
+                  onPressed: download, child: const Text('Télécharger'))
+            ],
           ),
         ),
       );
@@ -114,7 +122,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       leading: const Icon(Icons.system_update),
       content: Text('La version $version est disponible.'),
       actions: [
-        TextButton(onPressed: messenger.hideCurrentMaterialBanner, child: const Text('Plus tard')),
+        TextButton(
+            onPressed: messenger.hideCurrentMaterialBanner,
+            child: const Text('Plus tard')),
         FilledButton(
           onPressed: () {
             messenger.hideCurrentMaterialBanner();
@@ -128,7 +138,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   void _openTodo() {
     if (!mounted) return;
-    Navigator.of(context).push(MaterialPageRoute(builder: (_) => const TodoScreen()));
+    Navigator.of(context)
+        .push(MaterialPageRoute(builder: (_) => const TodoScreen()));
   }
 
   @override
@@ -137,19 +148,34 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final tabs = _buildTabs(auth);
 
     return Scaffold(
-      body: IndexedStack(
-        index: _currentIndex,
-        children: tabs.map((t) => t.screen).toList(),
+      body: Column(
+        children: [
+          // Version navigateur seulement ; ailleurs, elle ne prend aucune place.
+          const InstallBanner(),
+          const WebNotificationsBanner(),
+          Expanded(
+            child: IndexedStack(
+              index: _currentIndex,
+              children: tabs.map((t) => t.screen).toList(),
+            ),
+          ),
+        ],
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentIndex,
         onDestinationSelected: (i) => setState(() => _currentIndex = i),
         destinations: tabs.map((t) {
           // Le badge du nombre de tâches, sur l'onglet « À faire ».
-          final count = t.screen is TodoScreen ? context.watch<TodoProvider>().count : 0;
-          Widget badged(IconData icon) =>
-              count > 0 ? Badge(label: Text(count > 99 ? '99+' : '$count'), child: Icon(icon)) : Icon(icon);
-          return NavigationDestination(icon: badged(t.icon), selectedIcon: badged(t.selectedIcon), label: t.label);
+          final count =
+              t.screen is TodoScreen ? context.watch<TodoProvider>().count : 0;
+          Widget badged(IconData icon) => count > 0
+              ? Badge(
+                  label: Text(count > 99 ? '99+' : '$count'), child: Icon(icon))
+              : Icon(icon);
+          return NavigationDestination(
+              icon: badged(t.icon),
+              selectedIcon: badged(t.selectedIcon),
+              label: t.label);
         }).toList(),
       ),
       drawer: _buildDrawer(auth),
@@ -161,38 +187,58 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       case 'super_admin':
       case 'manager':
         return [
-          _TabItem('À faire', Icons.task_alt_outlined, Icons.task_alt, const TodoScreen()),
-          _TabItem('Accueil', Icons.dashboard_outlined, Icons.dashboard, const DashboardScreen()),
-          _TabItem('Suivis', Icons.assignment_outlined, Icons.assignment, const FollowupListScreen()),
-          _TabItem('Membres', Icons.people_outlined, Icons.people, const MemberListScreen()),
-          _TabItem('Plus', Icons.more_horiz_outlined, Icons.more_horiz, const _MoreScreen()),
+          _TabItem('À faire', Icons.task_alt_outlined, Icons.task_alt,
+              const TodoScreen()),
+          _TabItem('Accueil', Icons.dashboard_outlined, Icons.dashboard,
+              const DashboardScreen()),
+          _TabItem('Suivis', Icons.assignment_outlined, Icons.assignment,
+              const FollowupListScreen()),
+          _TabItem('Membres', Icons.people_outlined, Icons.people,
+              const MemberListScreen()),
+          _TabItem('Plus', Icons.more_horiz_outlined, Icons.more_horiz,
+              const _MoreScreen()),
         ];
       case 'evangelist':
         return [
-          _TabItem('À faire', Icons.task_alt_outlined, Icons.task_alt, const TodoScreen()),
-          _TabItem('Mes suivis', Icons.assignment_outlined, Icons.assignment, const FollowupListScreen()),
-          _TabItem('Membres', Icons.people_outlined, Icons.people, const MemberListScreen()),
-          _TabItem('Présence', Icons.checklist_outlined, Icons.checklist, const AttendanceSundayScreen()),
-          _TabItem('Plus', Icons.more_horiz_outlined, Icons.more_horiz, const _MoreScreen()),
+          _TabItem('À faire', Icons.task_alt_outlined, Icons.task_alt,
+              const TodoScreen()),
+          _TabItem('Mes suivis', Icons.assignment_outlined, Icons.assignment,
+              const FollowupListScreen()),
+          _TabItem('Membres', Icons.people_outlined, Icons.people,
+              const MemberListScreen()),
+          _TabItem('Présence', Icons.checklist_outlined, Icons.checklist,
+              const AttendanceSundayScreen()),
+          _TabItem('Plus', Icons.more_horiz_outlined, Icons.more_horiz,
+              const _MoreScreen()),
         ];
       case 'cell_leader':
         return [
-          _TabItem('À faire', Icons.task_alt_outlined, Icons.task_alt, const TodoScreen()),
-          _TabItem('Ma cellule', Icons.groups_outlined, Icons.groups, const PrayerCellListScreen()),
-          _TabItem('Membres', Icons.people_outlined, Icons.people, const MemberListScreen()),
-          _TabItem('Présence', Icons.checklist_outlined, Icons.checklist, const AttendanceCellScreen()),
-          _TabItem('Plus', Icons.more_horiz_outlined, Icons.more_horiz, const _MoreScreen()),
+          _TabItem('À faire', Icons.task_alt_outlined, Icons.task_alt,
+              const TodoScreen()),
+          _TabItem('Ma cellule', Icons.groups_outlined, Icons.groups,
+              const PrayerCellListScreen()),
+          _TabItem('Membres', Icons.people_outlined, Icons.people,
+              const MemberListScreen()),
+          _TabItem('Présence', Icons.checklist_outlined, Icons.checklist,
+              const AttendanceCellScreen()),
+          _TabItem('Plus', Icons.more_horiz_outlined, Icons.more_horiz,
+              const _MoreScreen()),
         ];
       case 'group_leader':
         return [
-          _TabItem('À faire', Icons.task_alt_outlined, Icons.task_alt, const TodoScreen()),
-          _TabItem('Mon groupe', Icons.diversity_3_outlined, Icons.diversity_3, const AgeGroupListScreen()),
-          _TabItem('Membres', Icons.people_outlined, Icons.people, const MemberListScreen()),
-          _TabItem('Plus', Icons.more_horiz_outlined, Icons.more_horiz, const _MoreScreen()),
+          _TabItem('À faire', Icons.task_alt_outlined, Icons.task_alt,
+              const TodoScreen()),
+          _TabItem('Mon groupe', Icons.diversity_3_outlined, Icons.diversity_3,
+              const AgeGroupListScreen()),
+          _TabItem('Membres', Icons.people_outlined, Icons.people,
+              const MemberListScreen()),
+          _TabItem('Plus', Icons.more_horiz_outlined, Icons.more_horiz,
+              const _MoreScreen()),
         ];
       default:
         return [
-          _TabItem('Accueil', Icons.home_outlined, Icons.home, const _MoreScreen()),
+          _TabItem(
+              'Accueil', Icons.home_outlined, Icons.home, const _MoreScreen()),
         ];
     }
   }
@@ -220,31 +266,45 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     radius: 30,
                     backgroundColor: Colors.white.withValues(alpha: 0.2),
                     child: Text(
-                      auth.userName.isNotEmpty ? auth.userName[0].toUpperCase() : '?',
-                      style: const TextStyle(fontSize: 24, color: Colors.white, fontWeight: FontWeight.bold),
+                      auth.userName.isNotEmpty
+                          ? auth.userName[0].toUpperCase()
+                          : '?',
+                      style: const TextStyle(
+                          fontSize: 24,
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold),
                     ),
                   ),
                   const SizedBox(height: 12),
                   Text(
                     auth.userName,
-                    style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     AppConstants.roleLabels[auth.userRole] ?? auth.userRole,
-                    style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 13),
+                    style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.8),
+                        fontSize: 13),
                   ),
                   if (auth.churchName.isNotEmpty) ...[
                     const SizedBox(height: 2),
                     Text(
                       auth.churchName,
-                      style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 12),
+                      style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.7),
+                          fontSize: 12),
                     ),
                   ] else if (auth.isSuperAdmin) ...[
                     const SizedBox(height: 2),
                     Text(
                       'Multi-église',
-                      style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 12),
+                      style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.7),
+                          fontSize: 12),
                     ),
                   ],
                 ],
@@ -258,32 +318,49 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 padding: EdgeInsets.zero,
                 children: [
                   if (auth.isManager) ...[
-                    _drawerItem(Icons.dashboard_outlined, 'Tableau de bord', () => _navigateTo(const DashboardScreen())),
+                    _drawerItem(Icons.dashboard_outlined, 'Tableau de bord',
+                        () => _navigateTo(const DashboardScreen())),
                     if (auth.isSuperAdmin)
-                      _drawerItem(Icons.church_outlined, 'Églises', () => _navigateTo(const ChurchManagementScreen())),
-                    _drawerItem(Icons.person_add_alt_1_outlined, 'À attribuer', () => _navigateTo(const ToAssignScreen())),
-                    _drawerItem(Icons.people_alt_outlined, 'Évangélistes', () => _navigateTo(const EvangelistListScreen())),
-                    _drawerItem(Icons.supervisor_account_outlined, 'Utilisateurs', () => _navigateTo(const MobileUsersScreen())),
-                    _drawerItem(Icons.assessment_outlined, 'Rapports', () => _navigateTo(const ReportScreen())),
+                      _drawerItem(Icons.church_outlined, 'Églises',
+                          () => _navigateTo(const ChurchManagementScreen())),
+                    _drawerItem(Icons.person_add_alt_1_outlined, 'À attribuer',
+                        () => _navigateTo(const ToAssignScreen())),
+                    _drawerItem(Icons.people_alt_outlined, 'Évangélistes',
+                        () => _navigateTo(const EvangelistListScreen())),
+                    _drawerItem(
+                        Icons.supervisor_account_outlined,
+                        'Utilisateurs',
+                        () => _navigateTo(const MobileUsersScreen())),
+                    _drawerItem(Icons.assessment_outlined, 'Rapports',
+                        () => _navigateTo(const ReportScreen())),
                     const Divider(indent: 16, endIndent: 16),
                   ],
                   if (auth.canSeeFollowups)
-                    _drawerItem(Icons.assignment_outlined, 'Suivis', () => _navigateTo(const FollowupListScreen())),
-                  _drawerItem(Icons.people_outlined, 'Membres', () => _navigateTo(const MemberListScreen())),
-                  _drawerItem(Icons.groups_outlined, 'Cellules de prière', () => _navigateTo(const PrayerCellListScreen())),
-                  _drawerItem(Icons.diversity_3_outlined, 'Groupes d\'âge', () => _navigateTo(const AgeGroupListScreen())),
+                    _drawerItem(Icons.assignment_outlined, 'Suivis',
+                        () => _navigateTo(const FollowupListScreen())),
+                  _drawerItem(Icons.people_outlined, 'Membres',
+                      () => _navigateTo(const MemberListScreen())),
+                  _drawerItem(Icons.groups_outlined, 'Cellules de prière',
+                      () => _navigateTo(const PrayerCellListScreen())),
+                  _drawerItem(Icons.diversity_3_outlined, 'Groupes d\'âge',
+                      () => _navigateTo(const AgeGroupListScreen())),
                   if (auth.isManager) ...[
-                    _drawerItem(Icons.restaurant_outlined, 'Rotation cuisine', () => _navigateTo(const CookingRotationScreen())),
+                    _drawerItem(Icons.restaurant_outlined, 'Rotation cuisine',
+                        () => _navigateTo(const CookingRotationScreen())),
                   ],
                   const Divider(indent: 16, endIndent: 16),
                   if (auth.canDoCheckpoints)
-                    _drawerItem(Icons.fact_check_outlined, 'Points de contrôle', () => _navigateTo(const CheckpointListScreen())),
+                    _drawerItem(Icons.fact_check_outlined, 'Points de contrôle',
+                        () => _navigateTo(const CheckpointListScreen())),
                   if (auth.canPointSunday)
-                    _drawerItem(Icons.checklist_outlined, 'Présence dimanche', () => _navigateTo(const AttendanceSundayScreen())),
+                    _drawerItem(Icons.checklist_outlined, 'Présence dimanche',
+                        () => _navigateTo(const AttendanceSundayScreen())),
                   if (auth.canPointCell)
-                    _drawerItem(Icons.group_work_outlined, 'Présence cellule', () => _navigateTo(const AttendanceCellScreen())),
+                    _drawerItem(Icons.group_work_outlined, 'Présence cellule',
+                        () => _navigateTo(const AttendanceCellScreen())),
                   const Divider(indent: 16, endIndent: 16),
-                  _drawerItem(Icons.settings_outlined, 'Paramètres', () => _navigateTo(const SettingsScreen())),
+                  _drawerItem(Icons.settings_outlined, 'Paramètres',
+                      () => _navigateTo(const SettingsScreen())),
                 ],
               ),
             ),
@@ -334,27 +411,56 @@ class _MoreScreen extends StatelessWidget {
 
     if (auth.isManager) {
       items.addAll([
-        _QuickAction('À attribuer', Icons.person_add_alt_1_outlined, AppColors.inProgress, () => _nav(context, const ToAssignScreen())),
-        _QuickAction('Évangélistes', Icons.people_alt_outlined, AppColors.primary, () => _nav(context, const EvangelistListScreen())),
-        _QuickAction('Utilisateurs', Icons.supervisor_account_outlined, AppColors.secondary, () => _nav(context, const MobileUsersScreen())),
-        _QuickAction('Rapports', Icons.assessment_outlined, AppColors.integrated, () => _nav(context, const ReportScreen())),
-        _QuickAction('Rotation', Icons.restaurant_outlined, AppColors.extended, () => _nav(context, const CookingRotationScreen())),
+        _QuickAction('À attribuer', Icons.person_add_alt_1_outlined,
+            AppColors.inProgress, () => _nav(context, const ToAssignScreen())),
+        _QuickAction(
+            'Évangélistes',
+            Icons.people_alt_outlined,
+            AppColors.primary,
+            () => _nav(context, const EvangelistListScreen())),
+        _QuickAction(
+            'Utilisateurs',
+            Icons.supervisor_account_outlined,
+            AppColors.secondary,
+            () => _nav(context, const MobileUsersScreen())),
+        _QuickAction('Rapports', Icons.assessment_outlined,
+            AppColors.integrated, () => _nav(context, const ReportScreen())),
+        _QuickAction('Rotation', Icons.restaurant_outlined, AppColors.extended,
+            () => _nav(context, const CookingRotationScreen())),
       ]);
       if (auth.isSuperAdmin) {
-        items.insert(0, _QuickAction('Églises', Icons.church_outlined, Colors.deepPurple, () => _nav(context, const ChurchManagementScreen())));
+        items.insert(
+            0,
+            _QuickAction('Églises', Icons.church_outlined, Colors.deepPurple,
+                () => _nav(context, const ChurchManagementScreen())));
       }
     }
 
     items.addAll([
-      _QuickAction('Cellules', Icons.groups_outlined, AppColors.inProgress, () => _nav(context, const PrayerCellListScreen())),
-      _QuickAction('Groupes', Icons.diversity_3_outlined, AppColors.transferred, () => _nav(context, const AgeGroupListScreen())),
+      _QuickAction('Cellules', Icons.groups_outlined, AppColors.inProgress,
+          () => _nav(context, const PrayerCellListScreen())),
+      _QuickAction('Groupes', Icons.diversity_3_outlined, AppColors.transferred,
+          () => _nav(context, const AgeGroupListScreen())),
       if (auth.canDoCheckpoints)
-        _QuickAction('Contrôles', Icons.fact_check_outlined, AppColors.inProgress, () => _nav(context, const CheckpointListScreen())),
+        _QuickAction(
+            'Contrôles',
+            Icons.fact_check_outlined,
+            AppColors.inProgress,
+            () => _nav(context, const CheckpointListScreen())),
       if (auth.canPointSunday)
-        _QuickAction('Présence dim.', Icons.checklist_outlined, AppColors.integrated, () => _nav(context, const AttendanceSundayScreen())),
+        _QuickAction(
+            'Présence dim.',
+            Icons.checklist_outlined,
+            AppColors.integrated,
+            () => _nav(context, const AttendanceSundayScreen())),
       if (auth.canPointCell)
-        _QuickAction('Présence cell.', Icons.group_work_outlined, AppColors.extended, () => _nav(context, const AttendanceCellScreen())),
-      _QuickAction('Paramètres', Icons.settings_outlined, Colors.grey, () => _nav(context, const SettingsScreen())),
+        _QuickAction(
+            'Présence cell.',
+            Icons.group_work_outlined,
+            AppColors.extended,
+            () => _nav(context, const AttendanceCellScreen())),
+      _QuickAction('Paramètres', Icons.settings_outlined, Colors.grey,
+          () => _nav(context, const SettingsScreen())),
     ]);
 
     return Scaffold(
@@ -390,7 +496,8 @@ class _MoreScreen extends StatelessWidget {
                     const SizedBox(height: 10),
                     Text(
                       item.label,
-                      style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w500),
+                      style: theme.textTheme.bodySmall
+                          ?.copyWith(fontWeight: FontWeight.w500),
                       textAlign: TextAlign.center,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,

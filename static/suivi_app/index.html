@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <!--
+    If you are serving your web app in a path other than the root, change the
+    href value below to reflect the base path you are serving from.
+
+    The path provided below has to start and end with a slash "/" in order for
+    it to work correctly.
+
+    For more details:
+    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
+
+    This is a placeholder for base href that will be replaced by the value of
+    the `--base-href` argument provided to `flutter build`.
+  -->
+  <base href="/suivi-evangelisation/">
+
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="Suivi Évangélisation : accompagner les nouvelles personnes jusqu'à ce qu'elles deviennent des fidèles.">
+
+  <!-- iOS meta tags & icons -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="Suivi Évangélisation">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="favicon.png"/>
+
+  <meta name="theme-color" content="#5B4FCF">
+  <title>Suivi Évangélisation</title>
+  <link rel="manifest" href="manifest.json">
+  <script>
+    // Installation de la PWA (Chrome, Edge, Android) : le navigateur annonce
+    // une seule fois qu'elle est installable (`beforeinstallprompt`), souvent
+    // AVANT que Flutter ait démarré. On garde l'événement ici ; la banderole
+    // de l'app le rejoue quand on touche « Installer ».
+    window.suiviInstallEvent = null;
+    window.addEventListener('beforeinstallprompt', function (e) {
+      e.preventDefault();
+      window.suiviInstallEvent = e;
+    });
+    window.addEventListener('appinstalled', function () { window.suiviInstallEvent = null; });
+    window.suiviCanInstall = function () { return window.suiviInstallEvent !== null; };
+    window.suiviIsStandalone = function () {
+      return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+    };
+    window.suiviPromptInstall = function () {
+      var e = window.suiviInstallEvent;
+      if (!e) { return Promise.resolve(false); }
+      e.prompt();
+      return e.userChoice.then(function (choice) {
+        window.suiviInstallEvent = null;
+        return choice.outcome === 'accepted';
+      });
+    };
+
+    // ── Notifications web (Firebase) ────────────────────────────────────
+    // Par le SDK JavaScript et non par le greffon Flutter : celui-ci cherche
+    // son service worker à la RACINE du site (/firebase-messaging-sw.js), qui
+    // appartient à Odoo. Ici, il est enregistré là où il est réellement servi.
+    window.suiviPushPermission = function () {
+      if (!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) {
+        return 'unsupported';
+      }
+      return Notification.permission; // 'default' | 'granted' | 'denied'
+    };
+    function suiviLoad(src) {
+      return new Promise(function (ok, ko) {
+        var s = document.createElement('script');
+        s.src = src; s.onload = ok; s.onerror = ko;
+        document.head.appendChild(s);
+      });
+    }
+    // cfg : JSON {apiKey, appId, vapidKey}. `ask` : demander la permission
+    // (seulement sur un geste de l'utilisateur, ce qu'exige Safari).
+    window.suiviWebPushToken = async function (cfg, ask) {
+      if (window.suiviPushPermission() === 'unsupported') { return null; }
+      var c = JSON.parse(cfg);
+      if (Notification.permission !== 'granted') {
+        if (!ask) { return null; }
+        if (await Notification.requestPermission() !== 'granted') { return null; }
+      }
+      // Un seul chargement, partagé : deux appels simultanés (connexion, puis
+      // réenregistrement) chargeaient la librairie deux fois.
+      if (!window.suiviFirebaseReady) {
+        var base = 'https://www.gstatic.com/firebasejs/10.12.2/';
+        window.suiviFirebaseReady = suiviLoad(base + 'firebase-app-compat.js')
+          .then(function () { return suiviLoad(base + 'firebase-messaging-compat.js'); })
+          .then(function () {
+            firebase.initializeApp({
+              apiKey: c.apiKey, appId: c.appId, messagingSenderId: '541286889689',
+              projectId: 'association-management-fef4d',
+            });
+            var messaging = firebase.messaging();
+            // Application ouverte : FCM livre à la page, pas au service worker.
+            messaging.onMessage(function (p) {
+              var n = p.notification || {};
+              navigator.serviceWorker.getRegistration('./fcm-push/').then(function (r) {
+                if (r) { r.showNotification(n.title || 'Suivi Évangélisation', {body: n.body || '', icon: 'icons/Icon-192.png'}); }
+              });
+            });
+            return messaging;
+          })
+          .catch(function (e) { window.suiviFirebaseReady = null; throw e; });
+      }
+      var messaging = await window.suiviFirebaseReady;
+      var reg = await navigator.serviceWorker.register('firebase-messaging-sw.js', {scope: './fcm-push/'});
+      // S'abonner exige un service worker ACTIF ; tout juste enregistré, il
+      // s'installe encore (« no active Service Worker »). On attend CELUI-CI :
+      // `navigator.serviceWorker.ready` rendrait celui de Flutter.
+      if (!reg.active) {
+        await new Promise(function (ok) {
+          var sw = reg.installing || reg.waiting;
+          if (!sw) { return ok(); }
+          sw.addEventListener('statechange', function () { if (sw.state === 'activated') { ok(); } });
+        });
+      }
+      // Sans clé VAPID propre, le SDK prend celle de FCM par défaut.
+      var options = {serviceWorkerRegistration: reg};
+      if (c.vapidKey) { options.vapidKey = c.vapidKey; }
+      return await messaging.getToken(options);
+    };
+  </script>
+</head>
+<body>
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+</html>
