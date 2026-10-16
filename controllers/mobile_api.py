@@ -1,3 +1,5 @@
+import base64
+import binascii
 import functools
 import logging
 
@@ -9,6 +11,7 @@ from odoo.http import request
 
 from odoo.addons.otp_auth.tools.client_ip import client_ip
 
+from ..models.church_import import XLSX_MIMETYPE
 from ..models.church_mobile_user import phone_key
 from ..models.church_tools import ACTIVE_FOLLOWUP_STATES, OTP_SCOPE
 
@@ -415,6 +418,48 @@ class ChurchMobileApi(http.Controller):
             'message': 'Vous gérez %s' % (church.name or 'toutes les églises'),
             'user': self._user_payload(user),
         }
+
+    # ─── Imports Excel (pasteur ou responsable, administrateur) ───────
+
+    def _import_church(self, user, kwargs):
+        """L'église où l'on importe : la sienne ; l'administrateur peut en désigner une."""
+        return request.env['equipment.church'].sudo().browse(self._resolve_church_id(user, kwargs))
+
+    @http.route('/api/church/import/kinds', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
+    @church_endpoint(roles=MANAGERS)
+    def import_kinds(self, user, **kwargs):
+        return {'status': 'success', 'kinds': request.env['church.import'].sudo()._kinds_payload()}
+
+    @http.route('/api/church/import/template', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
+    @church_endpoint(roles=MANAGERS)
+    def import_template(self, user, **kwargs):
+        """Le modèle Excel de cet import, rempli des listes de l'église (en base64)."""
+        church = self._import_church(user, kwargs)
+        kind = _text(kwargs, 'kind', True, 'import')
+        Import = request.env['church.import'].sudo()
+        content = Import._template(kind, church)
+        return {
+            'status': 'success',
+            'filename': Import._template_filename(kind, church),
+            'mimetype': XLSX_MIMETYPE,
+            'content_base64': base64.b64encode(content).decode(),
+        }
+
+    @http.route('/api/church/import/run', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
+    @church_endpoint(roles=MANAGERS)
+    def import_run(self, user, **kwargs):
+        """Importe un fichier, tout ou rien. Refusé, il rend la liste des erreurs."""
+        church = self._import_church(user, kwargs)
+        kind = _text(kwargs, 'kind', True, 'import')
+        try:
+            content = base64.b64decode(kwargs.get('content_base64') or '', validate=True)
+        except (binascii.Error, ValueError, TypeError):
+            raise ApiInputError('Le fichier envoyé est illisible : choisissez-le à nouveau.')
+        result = request.env['church.import'].sudo()._run(
+            kind, church, content, _text(kwargs, 'filename') or 'import.xlsx', mobile_user=user)
+        if result['ok']:
+            return dict(result, status='success')
+        return dict(result, status='error', code='import_refused')
 
     @http.route('/api/church/auth/logout', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     @church_endpoint()
