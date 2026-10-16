@@ -119,18 +119,75 @@ class TestChurchMobileApi(HttpCase):
         res = self._rpc('/api/church/auth/request_otp', identifier=identifier)
         self.assertEqual(res['code'], 'rate_limited')
 
-    def test_one_number_in_two_churches_can_switch(self):
+    def test_one_enters_one_s_own_church_and_stays_there(self):
+        """Hors administrateur, on entre dans son église et l'on n'en change pas."""
         elsewhere = self.env['church.mobile.user'].create({
             'name': 'Resp', 'phone': '+225 07 00 00 09', 'role': 'evangelist', 'church_id': self.other.id})
         res = self._sign_in(self.manager.phone)
-        self.assertEqual(sorted(a['id'] for a in res['accounts']), sorted((self.manager | elsewhere).ids))
+        self.assertEqual([a['id'] for a in res['accounts']], [res['user']['id']],
+                         "Aucune autre église n'est proposée")
+        self.assertFalse(res['user']['can_change_church'])
         target = elsewhere if res['user']['id'] == self.manager.id else self.manager
-        switched = self._rpc('/api/church/auth/switch', token=res['token'], account_id=target.id)
-        self.assertEqual(switched['user']['id'], target.id)
-        self.assertEqual(self._rpc('/api/church/dashboard', token=res['token'])['code'], 'auth_required',
-                         "L'ancienne session est fermée")
-        stranger = self._rpc('/api/church/auth/switch', token=switched['token'], account_id=self.leader.id)
-        self.assertEqual(stranger['code'], 'invalid', "On ne passe pas sur le compte d'un autre")
+        refused = self._rpc('/api/church/auth/switch', token=res['token'], account_id=target.id)
+        self.assertEqual(refused['code'], 'forbidden')
+        refused = self._rpc('/api/church/auth/set_church', token=res['token'], church_id=self.other.id)
+        self.assertEqual(refused['code'], 'forbidden')
+
+    def test_only_the_administrator_changes_church(self):
+        admin = self.env['church.mobile.user'].create({
+            'name': 'Admin', 'phone': '+225 07 00 00 77', 'role': 'super_admin'})
+        res = self._sign_in(admin.phone)
+        self.assertTrue(res['user']['can_change_church'])
+        token = res['token']
+        chosen = self._rpc('/api/church/auth/set_church', token=token, church_id=self.other.id)
+        self.assertEqual(chosen['status'], 'success', chosen)
+        self.assertEqual(chosen['user']['church_id'], self.other.id)
+        members = self._rpc('/api/church/members', token=token)['members']
+        self.assertEqual({m['id'] for m in members}, {self.stranger.id},
+                         "L'administrateur voit l'église qu'il a choisie")
+        back = self._rpc('/api/church/auth/set_church', token=token, church_id=0)
+        self.assertTrue(back['user']['is_multi_church'])
+        unknown = self._rpc('/api/church/auth/set_church', token=token, church_id=999999)
+        self.assertEqual(unknown['code'], 'invalid')
+
+    def _pastor(self, phone, church):
+        return self.env['equipment.pastor'].create({
+            'name': 'Pasteur Yao', 'phone': phone, 'church_id': church.id,
+            'country_id': self.env.ref('base.ci').id})
+
+    def test_pastor_enters_the_church_he_is_assigned_to(self):
+        pastor = self._pastor('0700000055', self.church)
+        res = self._sign_in('+225 0700000055')
+        self.assertEqual(res['status'], 'success', res)
+        self.assertEqual(res['user']['church_id'], self.church.id)
+        self.assertEqual(res['user']['role'], 'manager')
+        self.assertTrue(res['user']['is_pastor'])
+        account = self.env['church.mobile.user'].browse(res['user']['id'])
+        self.assertEqual(account.pastor_id, pastor)
+        # Muté : à la connexion suivante, il entre dans la nouvelle église.
+        pastor.church_id = self.other
+        # Second code tout de suite : on lève le délai anti-renvoi de 60 s.
+        self.env['otp.code'].sudo().search([]).write({'sent_at': False})
+        again = self._sign_in('+225 0700000055')
+        self.assertEqual(again['user']['id'], account.id)
+        self.assertEqual(again['user']['church_id'], self.other.id)
+
+    def test_pastor_lands_in_his_church_even_with_another_account(self):
+        """Évangéliste ailleurs, pasteur ici : c'est l'église du pasteur qui s'ouvre."""
+        self.env['church.mobile.user'].create({
+            'name': 'Pasteur Yao', 'phone': '+225 07 00 00 66', 'role': 'evangelist',
+            'church_id': self.other.id})
+        self._pastor('0700000066', self.church)
+        res = self._sign_in('+225 0700000066')
+        self.assertEqual(res['user']['church_id'], self.church.id)
+        self.assertEqual(res['user']['role'], 'manager')
+
+    def test_inactive_pastor_no_longer_enters(self):
+        pastor = self._pastor('0700000044', self.church)
+        self.assertEqual(self._sign_in('+225 0700000044')['status'], 'success')
+        pastor.active = False
+        res = self._otp('+225 0700000044')
+        self.assertNotIn('debug_otp', res, "Plus pasteur, plus de code")
 
     def test_expired_session_is_refused(self):
         session = self._login(self.ev1.mobile_user_id)

@@ -6,6 +6,7 @@ import '../core/constants.dart';
 import 'dart:async';
 
 import '../services/api_service.dart';
+import '../services/cache_service.dart';
 import '../services/push_service.dart';
 
 class AuthProvider extends ChangeNotifier {
@@ -28,11 +29,20 @@ class AuthProvider extends ChangeNotifier {
   String get database => _database;
 
   String get userRole => _currentUser?['role'] ?? '';
-  int get userId => _currentUser?['id'] ?? 0;
-  int get churchId => _currentUser?['church_id'] ?? 0;
+  int get userId => _int(_currentUser?['id']);
+  // Odoo rend `false` pour « aucune église » (administrateur multi-église).
+  int get churchId => _int(_currentUser?['church_id']);
+  static int _int(dynamic value) => value is int ? value : 0;
   String get churchName => _currentUser?['church_name'] ?? '';
   String get userName => _currentUser?['name'] ?? '';
   bool get isMultiChurch => _currentUser?['is_multi_church'] == true;
+
+  /// On gère son église ; seul l'administrateur en change.
+  bool get canChangeChurch => isSuperAdmin;
+
+  /// Qui, dans quelle église : les données affichées en dépendent. Quand il
+  /// change (déconnexion, autre église), tout ce qui est chargé est périmé.
+  String get sessionScope => _isAuthenticated ? '$userId-$churchId' : '';
 
   /// Les comptes de la personne, un par église (au moins le sien).
   List<Map<String, dynamic>> _accounts = [];
@@ -195,12 +205,35 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// L'administrateur passe sur une autre église (0 : toutes les églises).
+  Future<Map<String, dynamic>> changeChurch(int churchId) async {
+    if (!canChangeChurch) {
+      return {'success': false, 'message': 'Seul l\'administrateur change d\'église.'};
+    }
+    try {
+      final result = await _api.setChurch(churchId);
+      if (result['user'] is! Map) throw ApiException('Réponse incomplète du serveur');
+      _currentUser = Map<String, dynamic>.from(result['user']);
+      await _secure.write(key: AppConstants.keyUserData, value: jsonEncode(_currentUser));
+      await CacheService().clearAll();
+      notifyListeners();
+      return {'success': true, 'message': result['message'] ?? ''};
+    } catch (e) {
+      return {'success': false, 'message': '$e'};
+    }
+  }
+
   /// Déconnexion voulue : le téléphone cesse de recevoir les relances de ce
   /// compte, et la session est fermée côté serveur.
+  ///
+  /// Le serveur est prévenu avec le jeton encore en main, mais la session
+  /// locale se ferme quoi qu'il réponde — et sans attendre plus de quelques
+  /// secondes : hors réseau, l'ancien enchaînement (deux appels, trois essais
+  /// de 30 s chacun) laissait l'utilisateur plusieurs minutes devant un bouton
+  /// qui « ne faisait rien ».
   Future<void> logout() async {
-    final token = push.token;
-    if (token != null) await _api.unregisterDevice(token);
-    await _api.logout();
+    final closing = _api.closeSession(deviceToken: push.token);
+    await closing.timeout(const Duration(seconds: 6), onTimeout: () {});
     await _endSession();
   }
 
@@ -243,6 +276,10 @@ class AuthProvider extends ChangeNotifier {
     await _secure.delete(key: AppConstants.keyUserData);
     await _secure.delete(key: _keyAccounts);
     await _secure.delete(key: 'auth_token');
+    // Le tableau de bord en cache est celui de cette personne, dans cette église.
+    try {
+      await CacheService().clearAll();
+    } catch (_) {}
     notifyListeners();
   }
 

@@ -1,6 +1,6 @@
 {
     'name': 'Suivi Évangélisation Église',
-    'version': '19.0.2.5.0',
+    'version': '19.0.2.6.0',
     'category': 'Church Management',
     'summary': 'Suivi des classes d\'évangile et gestion des cellules de prière',
     'description': """
@@ -21,6 +21,10 @@
     'license': 'AGPL-3',
     'depends': [
         'base', 'mail', 'otp_auth', 'mobile_app_release',
+        # Le code part par WhatsApp/SMS, et, sans Twilio, par la file des
+        # notificateurs : sans ce pont, le crochet téléphone d'otp_auth ne
+        # fait rien et le code ne part que par e-mail.
+        'otp_twilio',
         # L'annuaire des églises et des régions du réseau : le suivi n'en tient
         # plus de copie.
         'church_core',

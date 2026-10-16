@@ -21,10 +21,15 @@ class FollowupProvider extends ChangeNotifier {
 
   ApiService get _api => _auth!.api;
 
+  String? _scope;
+
+  /// Déconnexion ou autre église : ce qui est chargé appartient à l'ancien périmètre.
   void updateAuth(AuthProvider auth) {
-    final wasAuthenticated = _auth?.isAuthenticated ?? false;
+    final scope = auth.sessionScope;
+    final changed = _scope != null && _scope != scope;
+    _scope = scope;
     _auth = auth;
-    if (wasAuthenticated && !auth.isAuthenticated) {
+    if (changed) {
       clear();
     }
   }

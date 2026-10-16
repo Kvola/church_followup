@@ -33,6 +33,7 @@
                         <group string="Affectation">
                             <field name="church_id" required="role != 'super_admin'"
                                    domain="[('followup_enabled', '=', True)]" options="{'no_create': True}"/>
+                            <field name="pastor_id" invisible="not pastor_id"/>
                             <field name="evangelist_id" invisible="role != 'evangelist'"/>
                             <field name="prayer_cell_id" invisible="role != 'cell_leader'"/>
                             <field name="age_group_id" invisible="role != 'group_leader'"/>

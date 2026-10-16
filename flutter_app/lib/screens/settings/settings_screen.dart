@@ -71,13 +71,13 @@ class SettingsScreen extends StatelessWidget {
               children: [
                 if (userData?['church_name'] != null)
                   _InfoTile(icon: Icons.church_outlined, label: 'Église', value: userData!['church_name']),
-                if (auth.hasSeveralAccounts)
+                if (auth.canChangeChurch)
                   ListTile(
                     leading: const Icon(Icons.swap_horiz, color: AppColors.primary),
                     title: const Text('Changer d\'église'),
-                    subtitle: Text('Vous avez un compte dans ${auth.accounts.length} églises'),
+                    subtitle: Text(auth.churchName.isEmpty ? 'Toutes les églises' : auth.churchName),
                     trailing: const Icon(Icons.chevron_right),
-                    onTap: () => showAccountSwitcher(context),
+                    onTap: () => showChurchPicker(context),
                   ),
                 if (userData?['prayer_cell_name'] != null)
                   _InfoTile(icon: Icons.group_outlined, label: 'Cellule', value: userData!['prayer_cell_name']),
