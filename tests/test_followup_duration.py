@@ -12,7 +12,7 @@ class TestFollowupDuration(TransactionCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.env = cls.env(context=dict(cls.env.context, tracking_disable=True))
-        cls.church = cls.env['church.church'].create({'name': 'Église', 'default_followup_weeks': 6})
+        cls.church = cls.env['equipment.church'].create({'name': 'Église', 'default_followup_weeks': 6})
         cls.ev = cls.env['church.evangelist'].create({'name': 'Ev', 'church_id': cls.church.id})
         cls.ev2 = cls.env['church.evangelist'].create({'name': 'Ev2', 'church_id': cls.church.id})
 

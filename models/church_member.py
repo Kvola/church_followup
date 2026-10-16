@@ -53,7 +53,7 @@ class ChurchMember(models.Model):
     )
 
     # Église
-    church_id = fields.Many2one('church.church', string='Église', required=True, ondelete='cascade', tracking=True)
+    church_id = fields.Many2one('equipment.church', string='Église', required=True, ondelete='restrict', tracking=True)
 
     # Statut
     marital_status = fields.Selection([
@@ -176,6 +176,7 @@ class ChurchMember(models.Model):
                 vals['planned_followup_origin'] = 'manual'
         records = super().create(vals_list)
         records._ensure_partner()
+        records.church_id._enable_followup()
         return records
 
     def _ensure_partner(self):

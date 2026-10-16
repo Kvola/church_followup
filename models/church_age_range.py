@@ -12,7 +12,7 @@ class ChurchAgeRange(models.Model):
     age_min = fields.Integer(string='Âge minimum')
     age_max = fields.Integer(string='Âge maximum')
     for_married = fields.Boolean(string='Pour les mariés', default=True)
-    church_id = fields.Many2one('church.church', string='Église', ondelete='cascade',
+    church_id = fields.Many2one('equipment.church', string='Église', ondelete='restrict',
                                  help='Laisser vide pour une tranche globale')
     active = fields.Boolean(default=True)
 

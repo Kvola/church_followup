@@ -15,7 +15,7 @@ class TestChurchMobileApi(HttpCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.env = cls.env(context=dict(cls.env.context, tracking_disable=True))
-        Church = cls.env['church.church']
+        Church = cls.env['equipment.church']
         cls.church = Church.create({'name': 'Église A'})
         cls.other = Church.create({'name': 'Église B'})
         cls.ev1 = cls.env['church.evangelist'].create({
@@ -295,16 +295,25 @@ class TestChurchMobileApi(HttpCase):
                          "L'ancien responsable n'a plus accès")
         self.assertEqual(self.cell.mobile_user_id.phone_key, '22507000031')
 
-    def test_pastor_principal_through_api(self):
+    def test_adding_a_church_reuses_the_directory(self):
         admin = self.env['church.mobile.user'].create({
             'name': 'Admin', 'phone': '+225 07 00 00 99', 'role': 'super_admin'})
         self.pins[admin.id] = admin._issue_pin()
-        first = self._as(admin, '/api/church/pastors/create', church_id=self.church.id,
-                         name='P1', pastor_type='principal')['pastor']
-        second = self._as(admin, '/api/church/pastors/create', church_id=self.church.id,
-                          name='P2', pastor_type='principal')['pastor']
-        pastors = self.env['church.pastor'].browse([first['id'], second['id']])
-        self.assertEqual(pastors.mapped('pastor_type'), ['assistant', 'principal'])
+        known = self.env['equipment.church'].create({'name': 'Église BNG Angré'})
+        self.assertFalse(known.followup_enabled)
+        res = self._as(admin, '/api/church/churches/create', name='EGLISE  b.n.g   ANGRE')
+        self.assertEqual(res['church']['id'], known.id, "Même église écrite autrement : reprise, pas doublée")
+        self.assertTrue(known.followup_enabled)
+        listed = [c['id'] for c in self._as(admin, '/api/church/churches')['churches']]
+        self.assertIn(known.id, listed)
+        found = self._as(admin, '/api/church/churches/directory', query='Angré')['churches']
+        self.assertNotIn(known.id, [c['id'] for c in found], "Déjà dans le suivi : plus proposée")
+
+    def test_pastors_are_read_from_the_directory(self):
+        self.env['equipment.pastor'].create({
+            'name': 'Kouadio Emmanuel', 'phone': '+225 07 00 00 61', 'church_id': self.church.id})
+        res = self._as(self.manager, '/api/church/pastors')
+        self.assertEqual([(p['name'], p['is_titular']) for p in res['pastors']], [('Kouadio Emmanuel', True)])
 
     # ─── Comptes créés depuis l'app : toujours rattachés (phase H) ────
 

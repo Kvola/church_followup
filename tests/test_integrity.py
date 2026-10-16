@@ -18,8 +18,8 @@ class TestChurchIntegrity(TransactionCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.env = cls.env(context=dict(cls.env.context, tracking_disable=True))
-        cls.church = cls.env['church.church'].create({'name': 'Église A', 'code': 'A'})
-        cls.other = cls.env['church.church'].create({'name': 'Église B', 'code': 'B'})
+        cls.church = cls.env['equipment.church'].create({'name': 'Église A', 'code': 'A'})
+        cls.other = cls.env['equipment.church'].create({'name': 'Église B', 'code': 'B'})
         cls.member = cls._member(cls.church, 'Kouassi')
         cls.stranger = cls._member(cls.other, 'Yao')
         cls.evangelist = cls.env['church.evangelist'].create({
@@ -50,8 +50,6 @@ class TestChurchIntegrity(TransactionCase):
 
     def test_unique_constraints_exist_in_database(self):
         expected = {
-            ('church_church', 'church_church_code_uniq'),
-            ('church_pastor', 'church_pastor_name_church_uniq'),
             ('church_mobile_user', 'church_mobile_user_phone_church_uniq'),
             ('church_followup_week', 'church_followup_week_followup_week_uniq'),
             ('church_attendance_sunday', 'church_attendance_sunday_member_date_uniq'),
@@ -64,9 +62,33 @@ class TestChurchIntegrity(TransactionCase):
         """, [tuple(expected)])
         self.assertEqual(set(self.env.cr.fetchall()), expected)
 
-    def test_church_code_unique(self):
+    # ── Église de l'annuaire partagé ───────────────────────────────────
+
+    def test_deleting_a_church_never_erases_its_followup(self):
         with mute_logger('odoo.sql_db'), self.assertRaises(IntegrityError), self.cr.savepoint():
-            self.env['church.church'].create({'name': 'Doublon', 'code': 'A'})
+            self.church.unlink()
+            self.env.flush_all()
+
+    def test_church_enters_followup_with_its_first_member(self):
+        fresh = self.env['equipment.church'].create({'name': 'Église Neuve'})
+        self.assertFalse(fresh.followup_enabled)
+        self._member(fresh, 'Premier')
+        self.assertTrue(fresh.followup_enabled)
+
+    def test_merging_duplicate_churches_keeps_one_account_per_number(self):
+        Account = self.env['church.mobile.user']
+        kept = Account.create({'name': 'Resp', 'phone': '+225 07 00 00 41', 'role': 'manager',
+                               'church_id': self.church.id})
+        twin = Account.create({'name': 'Resp bis', 'phone': '+22507000041', 'role': 'manager',
+                               'church_id': self.other.id})
+        alone = Account.create({'name': 'Autre', 'phone': '+225 07 00 00 42', 'role': 'evangelist',
+                                'church_id': self.other.id})
+        journal = self.other._merge_absorb_into(self.church)
+        self.assertFalse(twin.exists(), "Le compte en double de l'église absorbée est retiré")
+        self.assertEqual(kept.church_id, self.church)
+        self.assertEqual(alone.church_id, self.church, "Les autres comptes suivent l'église conservée")
+        self.assertEqual(self.stranger.church_id, self.church, "Les membres aussi")
+        self.assertTrue(any('compte' in line for line in journal))
 
     def test_sunday_attendance_unique(self):
         self._assert_unique('church.attendance.sunday', {

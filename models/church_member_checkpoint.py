@@ -25,7 +25,7 @@ class ChurchMemberCheckpoint(models.Model):
 
     member_id = fields.Many2one('church.member', string='Personne', required=True,
                                 ondelete='cascade', index=True)
-    church_id = fields.Many2one('church.church', string='Église', required=True, ondelete='cascade')
+    church_id = fields.Many2one('equipment.church', string='Église', required=True, ondelete='restrict')
     prayer_cell_id = fields.Many2one(related='member_id.prayer_cell_id', string='Cellule', store=True)
     milestone = fields.Selection(MILESTONES, string='Jalon', required=True)
     is_catchup = fields.Boolean(string='Rattrapage', readonly=True)

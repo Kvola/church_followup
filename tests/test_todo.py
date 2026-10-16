@@ -13,7 +13,7 @@ class TestTodo(TransactionCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.env = cls.env(context=dict(cls.env.context, tracking_disable=True))
-        cls.church = cls.env['church.church'].create({'name': 'Église'})
+        cls.church = cls.env['equipment.church'].create({'name': 'Église'})
         cls.ev = cls.env['church.evangelist'].create({
             'name': 'Ev', 'phone': '+225 07 00 00 01', 'church_id': cls.church.id})
         cls.ev_account = cls.ev.mobile_user_id

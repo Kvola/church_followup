@@ -9,7 +9,7 @@ class ChurchAttendanceCell(models.Model):
     _description = 'Présence à la cellule de prière'
     _order = 'date desc'
 
-    church_id = fields.Many2one('church.church', string='Église', required=True, ondelete='cascade')
+    church_id = fields.Many2one('equipment.church', string='Église', required=True, ondelete='restrict')
     prayer_cell_id = fields.Many2one('church.prayer.cell', string='Cellule de prière', required=True, ondelete='cascade')
     member_id = fields.Many2one('church.member', string='Membre', required=True, ondelete='cascade')
     date = fields.Date(string='Date de la cellule', required=True, default=fields.Date.today)

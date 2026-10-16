@@ -34,12 +34,6 @@
 
     <!-- Access rules: all data visible to all church groups -->
     <!-- Fine-grained access is enforced at the mobile API level (cross-church validation) -->
-    <record id="rule_church_church_global" model="ir.rule">
-        <field name="name">Église : accès global</field>
-        <field name="model_id" ref="model_church_church"/>
-        <field name="domain_force">[(1, '=', 1)]</field>
-        <field name="groups" eval="[(4, ref('group_church_user'))]"/>
-    </record>
 
     <record id="rule_church_member_global" model="ir.rule">
         <field name="name">Membre : accès global</field>
@@ -125,12 +119,6 @@
         <field name="groups" eval="[(4, ref('group_church_user'))]"/>
     </record>
 
-    <record id="rule_church_pastor_global" model="ir.rule">
-        <field name="name">Pasteur : accès global</field>
-        <field name="model_id" ref="model_church_pastor"/>
-        <field name="domain_force">[(1, '=', 1)]</field>
-        <field name="groups" eval="[(4, ref('group_church_user'))]"/>
-    </record>
 
     <record id="rule_church_member_checkpoint_global" model="ir.rule">
         <field name="name">Point de contrôle : accès global</field>

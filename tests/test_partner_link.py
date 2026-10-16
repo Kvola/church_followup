@@ -9,7 +9,7 @@ class TestChurchPartnerLink(TransactionCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.env = cls.env(context=dict(cls.env.context, tracking_disable=True))
-        cls.church = cls.env['church.church'].create({'name': 'Église Test'})
+        cls.church = cls.env['equipment.church'].create({'name': 'Église Test'})
 
     def test_church_member_links_partner(self):
         m = self.env['church.member'].create({

@@ -44,6 +44,11 @@ class ChurchMobileUser(models.Model):
     )
     # Ni le PIN ni le jeton ne sont conservés en clair ; leurs empreintes ne sont
     # lisibles que par l'administrateur technique.
+    phone_e164 = fields.Char(
+        string='Numéro international', compute='_compute_phone_e164', store=True, index=True,
+        help="Le numéro au format international (+225…), celui où partent les codes et les "
+             "messages. Le zéro initial ivoirien est conservé.",
+    )
     pin_hash = fields.Char(readonly=True, copy=False, groups='base.group_system')
     pin_set_date = fields.Datetime(
         string='PIN communiqué le', readonly=True, copy=False,
@@ -59,7 +64,7 @@ class ChurchMobileUser(models.Model):
         ('cell_leader', 'Responsable de cellule'),
         ('group_leader', 'Responsable de groupe d\'âge'),
     ], string='Rôle', required=True, tracking=True)
-    church_id = fields.Many2one('church.church', string='Église', ondelete='cascade',
+    church_id = fields.Many2one('equipment.church', string='Église', ondelete='restrict',
                                 help='Optionnel pour le Super Administrateur (accès multi-église)')
     active = fields.Boolean(default=True)
 
@@ -77,6 +82,17 @@ class ChurchMobileUser(models.Model):
     def _compute_phone_key(self):
         for rec in self:
             rec.phone_key = phone_key(rec.phone)
+
+    @api.depends('phone')
+    def _compute_phone_e164(self):
+        # Le normaliseur partagé d'otp_auth : celui-là même qui reconnaîtra le
+        # numéro saisi à la connexion. Deux normaliseurs finiraient par diverger.
+        Otp = self.env['otp.code']
+        for rec in self:
+            try:
+                rec.phone_e164 = Otp._norm_phone(rec.phone) if rec.phone else False
+            except ValidationError:
+                rec.phone_e164 = False
 
     @api.constrains('phone')
     def _check_phone(self):
@@ -98,6 +114,12 @@ class ChurchMobileUser(models.Model):
     def get_role_label(self):
         """Return the human-readable role label."""
         return dict(self._fields['role'].selection).get(self.role, self.role)
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        records = super().create(vals_list)
+        records.church_id._enable_followup()
+        return records
 
     def write(self, vals):
         # Un compte désactivé, ou dont le rôle change, perd sa session en cours.

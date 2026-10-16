@@ -7,7 +7,7 @@ class ChurchDistrict(models.Model):
     _order = 'name'
 
     name = fields.Char(string='Nom du quartier', required=True)
-    church_id = fields.Many2one('church.church', string='Église', required=True, ondelete='cascade')
+    church_id = fields.Many2one('equipment.church', string='Église', required=True, ondelete='restrict')
     city = fields.Char(string='Ville')
     description = fields.Text(string='Description')
     active = fields.Boolean(default=True)

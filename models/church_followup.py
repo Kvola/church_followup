@@ -14,7 +14,7 @@ class ChurchFollowup(models.Model):
     _order = 'create_date desc'
 
     name = fields.Char(string='Référence', readonly=True, copy=False, default='Nouveau')
-    church_id = fields.Many2one('church.church', string='Église', required=True, ondelete='cascade')
+    church_id = fields.Many2one('equipment.church', string='Église', required=True, ondelete='restrict')
     evangelist_id = fields.Many2one('church.evangelist', string='Évangéliste', required=True, tracking=True)
     member_id = fields.Many2one('church.member', string='Personne suivie', required=True, tracking=True)
 

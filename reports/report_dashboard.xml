@@ -2,11 +2,11 @@
 <odoo>
     <record id="action_report_dashboard" model="ir.actions.report">
         <field name="name">Tableau de bord global</field>
-        <field name="model">church.church</field>
+        <field name="model">equipment.church</field>
         <field name="report_type">qweb-pdf</field>
         <field name="report_name">church_followup.report_dashboard_template</field>
         <field name="report_file">church_followup.report_dashboard_template</field>
-        <field name="binding_model_id" ref="model_church_church"/>
+        <field name="binding_model_id" ref="church_core.model_equipment_church"/>
         <field name="binding_type">report</field>
     </record>
 

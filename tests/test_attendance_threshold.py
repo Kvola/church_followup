@@ -16,7 +16,7 @@ class TestAttendanceThreshold(TransactionCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.env = cls.env(context=dict(cls.env.context, tracking_disable=True))
-        cls.church = cls.env['church.church'].create({'name': 'Église', 'integration_min_attendance': 75})
+        cls.church = cls.env['equipment.church'].create({'name': 'Église', 'integration_min_attendance': 75})
         cls.ev = cls.env['church.evangelist'].create({'name': 'Ev', 'church_id': cls.church.id})
         cls.cell = cls.env['church.prayer.cell'].create({'name': 'C', 'church_id': cls.church.id})
         cls.group = cls.env['church.age.group'].create({

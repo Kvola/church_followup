@@ -13,7 +13,7 @@ class ChurchEvangelist(models.Model):
     phone = fields.Char(string='Téléphone', tracking=True)
     email = fields.Char(string='Email')
     photo = fields.Binary(string='Photo')
-    church_id = fields.Many2one('church.church', string='Église', required=True, ondelete='cascade')
+    church_id = fields.Many2one('equipment.church', string='Église', required=True, ondelete='restrict')
     mobile_user_id = fields.Many2one('church.mobile.user', string='Compte mobile', readonly=True)
     active = fields.Boolean(default=True)
 

@@ -13,7 +13,7 @@ class ChurchAgeGroup(models.Model):
     _order = 'name'
 
     name = fields.Char(string='Nom du groupe', required=True, tracking=True)
-    church_id = fields.Many2one('church.church', string='Église', required=True, ondelete='cascade')
+    church_id = fields.Many2one('equipment.church', string='Église', required=True, ondelete='restrict')
     group_type = fields.Selection([
         ('married', 'Mariés'),
         ('youth', 'Jeunes'),

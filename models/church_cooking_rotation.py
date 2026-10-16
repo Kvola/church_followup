@@ -9,7 +9,7 @@ class ChurchCookingRotation(models.Model):
     _description = 'Rotation cuisine des cellules'
     _order = 'date'
 
-    church_id = fields.Many2one('church.church', string='Église', required=True, ondelete='cascade')
+    church_id = fields.Many2one('equipment.church', string='Église', required=True, ondelete='restrict')
     prayer_cell_id = fields.Many2one('church.prayer.cell', string='Cellule responsable', required=True, ondelete='restrict')
     date = fields.Date(string='Date', required=True)
     description = fields.Char(string='Description', default='Cuisine pour l\'église')
