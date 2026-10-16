@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants.dart';
+import '../../core/theme.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/member_provider.dart';
 import '../../providers/organization_provider.dart';
 import '../../widgets/common.dart';
@@ -19,6 +21,9 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
   final _formKey = GlobalKey<FormState>();
   bool _isSaving = false;
   bool _isEdit = false;
+
+  /// Le serveur dit si l'on a la charge de cette personne ; sinon, lecture seule.
+  bool _canEdit = true;
 
   // Controllers
   late final TextEditingController _nameCtrl;
@@ -48,7 +53,7 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
     _phoneCtrl = TextEditingController(text: d['phone'] ?? '');
     _addressCtrl = TextEditingController(text: d['address'] ?? '');
     _professionCtrl = TextEditingController(text: d['profession'] ?? '');
-    _gender = d['gender'] is String ? d['gender'] : null;
+    _gender = AppConstants.genderLabels.containsKey(d['gender']) ? d['gender'] : null;
     _maritalStatus = d['marital_status'] is String ? d['marital_status'] : null;
     _districtId = AppConstants.safeId(d['district_id']);
     _cellId = AppConstants.safeId(d['prayer_cell_id']);
@@ -73,16 +78,18 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
       context.read<MemberProvider>().loadMembers();
 
       if (_isEdit && widget.memberId != null) {
-        context.read<MemberProvider>().loadDetail(widget.memberId!).then((_) {
-          final detail = context.read<MemberProvider>().currentDetail;
+        final members = context.read<MemberProvider>();
+        members.loadDetail(widget.memberId!).then((_) {
+          final detail = members.currentDetail;
           if (detail != null && mounted) {
             setState(() {
+              _canEdit = detail['can_edit'] != false;
               _nameCtrl.text = detail['name'] ?? _nameCtrl.text;
               _firstNameCtrl.text = detail['first_name'] ?? _firstNameCtrl.text;
               _phoneCtrl.text = detail['phone'] ?? _phoneCtrl.text;
               _addressCtrl.text = detail['address'] ?? _addressCtrl.text;
               _professionCtrl.text = detail['profession'] ?? _professionCtrl.text;
-              _gender = detail['gender'] is String ? detail['gender'] : _gender;
+              _gender = AppConstants.genderLabels.containsKey(detail['gender']) ? detail['gender'] : _gender;
               _maritalStatus = detail['marital_status'] is String ? detail['marital_status'] : _maritalStatus;
 
               _districtId = AppConstants.safeId(detail['district_id']) ?? _districtId;
@@ -137,8 +144,11 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
     };
 
     if (_districtId != null) data['district_id'] = _districtId;
-    if (_cellId != null) data['prayer_cell_id'] = _cellId;
-    if (_ageGroupId != null) data['age_group_id'] = _ageGroupId;
+    // Cellule et groupe : décisions de responsable (le serveur les ignore sinon).
+    if (context.read<AuthProvider>().isManager) {
+      if (_cellId != null) data['prayer_cell_id'] = _cellId;
+      if (_ageGroupId != null) data['age_group_id'] = _ageGroupId;
+    }
     if (_invitedById != null) data['invited_by_id'] = _invitedById;
     if (_mentorId != null) data['mentor_id'] = _mentorId;
     if (_birthday != null) data['date_of_birth'] = _birthday!.toIso8601String().split('T')[0];
@@ -181,16 +191,34 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
   @override
   Widget build(BuildContext context) {
     final org = context.watch<OrganizationProvider>();
+    final isManager = context.watch<AuthProvider>().isManager;
 
     return Scaffold(
-      appBar: AppBar(title: Text(_isEdit ? 'Modifier le membre' : 'Nouveau membre')),
+      appBar: AppBar(title: Text(!_canEdit ? 'Fiche du membre' : _isEdit ? 'Modifier le membre' : 'Nouveau membre')),
       body: Form(
         key: _formKey,
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            if (!_canEdit) ...[
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.extended.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.visibility_outlined, color: AppColors.extended),
+                    SizedBox(width: 10),
+                    Expanded(child: Text('Consultation seulement : vous ne modifiez que les personnes dont vous avez la charge.')),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
             // Identity section
-            _SectionTitle('Identité'),
+            const _SectionTitle('Identité'),
             const SizedBox(height: 8),
             TextFormField(
               controller: _nameCtrl,
@@ -201,7 +229,8 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
             const SizedBox(height: 12),
             TextFormField(
               controller: _firstNameCtrl,
-              decoration: const InputDecoration(labelText: 'Prénom', prefixIcon: Icon(Icons.person_outline)),
+              decoration: const InputDecoration(labelText: 'Prénom *', prefixIcon: Icon(Icons.person_outline)),
+              validator: (v) => (v == null || v.trim().isEmpty) ? 'Requis' : null,
               textCapitalization: TextCapitalization.words,
             ),
             const SizedBox(height: 12),
@@ -216,8 +245,9 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
               children: [
                 Expanded(
                   child: DropdownButtonFormField<String>(
-                    decoration: const InputDecoration(labelText: 'Genre'),
-                    value: _gender,
+                    decoration: const InputDecoration(labelText: 'Sexe *'),
+                    initialValue: _gender,
+                    validator: (v) => v == null ? 'Requis' : null,
                     items: AppConstants.genderLabels.entries
                         .map((e) => DropdownMenuItem(value: e.key, child: Text(e.value)))
                         .toList(),
@@ -228,7 +258,8 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
                 Expanded(
                   child: DropdownButtonFormField<String>(
                     decoration: const InputDecoration(labelText: 'État civil'),
-                    value: _maritalStatus,
+                    key: ValueKey('marital-$_maritalStatus'),
+                    initialValue: _maritalStatus,
                     items: AppConstants.maritalLabels.entries
                         .map((e) => DropdownMenuItem(value: e.key, child: Text(e.value)))
                         .toList(),
@@ -240,7 +271,7 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
             const SizedBox(height: 20),
 
             // Dates
-            _SectionTitle('Dates'),
+            const _SectionTitle('Dates'),
             const SizedBox(height: 8),
             Row(
               children: [
@@ -264,32 +295,37 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
             const SizedBox(height: 20),
 
             // Organization
-            _SectionTitle('Organisation'),
+            const _SectionTitle('Organisation'),
             const SizedBox(height: 8),
             DropdownButtonFormField<int>(
               decoration: const InputDecoration(labelText: 'Quartier/District', prefixIcon: Icon(Icons.location_on_outlined)),
-              value: _validDropdownValue(_districtId, org.districts),
+              key: ValueKey('district-${_validDropdownValue(_districtId, org.districts)}'),
+              initialValue: _validDropdownValue(_districtId, org.districts),
               items: org.districts.where((d) => d['id'] is int).map((d) => DropdownMenuItem(value: d['id'] as int, child: Text(AppConstants.safeStr(d['name'], '—')))).toList(),
               onChanged: (v) => setState(() => _districtId = v),
             ),
             const SizedBox(height: 12),
-            DropdownButtonFormField<int>(
-              decoration: const InputDecoration(labelText: 'Cellule de prière', prefixIcon: Icon(Icons.groups_outlined)),
-              value: _validDropdownValue(_cellId, org.cells),
-              items: org.cells.where((c) => c['id'] is int).map((c) => DropdownMenuItem(value: c['id'] as int, child: Text(AppConstants.safeStr(c['name'], '—')))).toList(),
-              onChanged: (v) => setState(() => _cellId = v),
-            ),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<int>(
-              decoration: const InputDecoration(labelText: 'Groupe d\'âge', prefixIcon: Icon(Icons.diversity_3_outlined)),
-              value: _validDropdownValue(_ageGroupId, org.ageGroups),
-              items: org.ageGroups.where((g) => g['id'] is int).map((g) => DropdownMenuItem(value: g['id'] as int, child: Text(AppConstants.safeStr(g['name'], '—')))).toList(),
-              onChanged: (v) => setState(() => _ageGroupId = v),
-            ),
+            if (isManager) ...[
+              DropdownButtonFormField<int>(
+                decoration: const InputDecoration(labelText: 'Cellule de prière', prefixIcon: Icon(Icons.groups_outlined)),
+                key: ValueKey('cell-${_validDropdownValue(_cellId, org.cells)}'),
+                initialValue: _validDropdownValue(_cellId, org.cells),
+                items: org.cells.where((c) => c['id'] is int).map((c) => DropdownMenuItem(value: c['id'] as int, child: Text(AppConstants.safeStr(c['name'], '—')))).toList(),
+                onChanged: (v) => setState(() => _cellId = v),
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<int>(
+                decoration: const InputDecoration(labelText: 'Groupe d\'âge', prefixIcon: Icon(Icons.diversity_3_outlined)),
+                key: ValueKey('group-${_validDropdownValue(_ageGroupId, org.ageGroups)}'),
+                initialValue: _validDropdownValue(_ageGroupId, org.ageGroups),
+                items: org.ageGroups.where((g) => g['id'] is int).map((g) => DropdownMenuItem(value: g['id'] as int, child: Text(AppConstants.safeStr(g['name'], '—')))).toList(),
+                onChanged: (v) => setState(() => _ageGroupId = v),
+              ),
+            ],
             const SizedBox(height: 20),
 
             // Inviter & Mentor
-            _SectionTitle('Parrainage'),
+            const _SectionTitle('Parrainage'),
             const SizedBox(height: 8),
             Consumer<MemberProvider>(
               builder: (_, memberProv, __) {
@@ -301,14 +337,16 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
                   children: [
                     DropdownButtonFormField<int>(
                       decoration: const InputDecoration(labelText: 'Invité(e) par', prefixIcon: Icon(Icons.person_add_outlined)),
-                      value: memberItems.any((m) => m['id'] == _invitedById) ? _invitedById : null,
+                      key: ValueKey('invited-${memberItems.any((m) => m['id'] == _invitedById) ? _invitedById : null}'),
+                      initialValue: memberItems.any((m) => m['id'] == _invitedById) ? _invitedById : null,
                       items: memberItems.map((m) => DropdownMenuItem(value: m['id'] as int, child: Text((m['name'] as String?) ?? '—'))).toList(),
                       onChanged: (v) => setState(() => _invitedById = v),
                     ),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<int>(
                       decoration: const InputDecoration(labelText: 'Mentor', prefixIcon: Icon(Icons.supervisor_account_outlined)),
-                      value: memberItems.any((m) => m['id'] == _mentorId) ? _mentorId : null,
+                      key: ValueKey('mentor-${memberItems.any((m) => m['id'] == _mentorId) ? _mentorId : null}'),
+                      initialValue: memberItems.any((m) => m['id'] == _mentorId) ? _mentorId : null,
                       items: memberItems.map((m) => DropdownMenuItem(value: m['id'] as int, child: Text((m['name'] as String?) ?? '—'))).toList(),
                       onChanged: (v) => setState(() => _mentorId = v),
                     ),
@@ -319,7 +357,7 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
             const SizedBox(height: 20),
 
             // Additional
-            _SectionTitle('Informations supplémentaires'),
+            const _SectionTitle('Informations supplémentaires'),
             const SizedBox(height: 8),
             TextFormField(
               controller: _addressCtrl,
@@ -332,12 +370,16 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
               decoration: const InputDecoration(labelText: 'Profession', prefixIcon: Icon(Icons.work_outlined)),
               textCapitalization: TextCapitalization.sentences,
             ),
+            if (_isEdit && context.watch<MemberProvider>().currentDetail != null) ...[
+              const SizedBox(height: 24),
+              _JourneySection(detail: context.watch<MemberProvider>().currentDetail!),
+            ],
             const SizedBox(height: 32),
 
             SizedBox(
               height: 52,
               child: FilledButton(
-                onPressed: _isSaving ? null : _save,
+                onPressed: _isSaving || !_canEdit ? null : _save,
                 child: _isSaving
                     ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
                     : Text(_isEdit ? 'Mettre à jour' : 'Créer le membre', style: const TextStyle(fontSize: 16)),
@@ -389,6 +431,86 @@ class _DateField extends StatelessWidget {
           style: TextStyle(color: value != null ? null : Theme.of(context).colorScheme.onSurfaceVariant),
         ),
       ),
+    );
+  }
+}
+
+/// Le parcours de la personne : chaque suivi (motif d'interruption, reprise),
+/// puis l'affermissement après l'intégration.
+class _JourneySection extends StatelessWidget {
+  final Map<String, dynamic> detail;
+  const _JourneySection({required this.detail});
+
+  static const _milestones = {'3m': 'à 3 mois', '6m': 'à 6 mois'};
+  static const _results = {'favorable': 'favorable', 'unfavorable': 'défavorable'};
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final journey = (detail['journey'] as List? ?? []).whereType<Map>().toList();
+    final checkpoints = (detail['checkpoints'] as List? ?? []).whereType<Map>().toList();
+    final dates = <String, String>{
+      'Intégré(e) le': AppConstants.safeStr(detail['integration_date']),
+      'Baptisé(e) le': AppConstants.safeStr(detail['baptism_date']),
+      'Affermi(e) le': AppConstants.safeStr(detail['established_date']),
+    }..removeWhere((_, v) => v.isEmpty);
+    if (journey.isEmpty && checkpoints.isEmpty && dates.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Parcours', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+        if (detail['reopen_suggested'] == true)
+          const Padding(
+            padding: EdgeInsets.only(top: 8),
+            child: Text('Deux contrôles défavorables de suite : rouvrir un suivi est proposé.',
+                style: TextStyle(color: AppColors.abandoned)),
+          ),
+        const SizedBox(height: 8),
+        ...journey.map((j) {
+          final state = AppConstants.safeStr(j['state']);
+          final reason = [AppConstants.safeStr(j['abandon_reason_label']), AppConstants.safeStr(j['abandon_note'])]
+              .where((t) => t.isNotEmpty)
+              .join(' — ');
+          return Card(
+            margin: const EdgeInsets.only(bottom: 6),
+            child: ListTile(
+              dense: true,
+              leading: Icon(Icons.assignment_outlined, color: AppColors.stateColor(state)),
+              title: Text('${AppConstants.safeStr(j['start_date'])} · ${j['duration_weeks'] ?? 0} sem. · '
+                  '${AppConstants.safeStr(j['evangelist_name'])}'),
+              subtitle: Text([
+                AppConstants.safeStr(j['state_label']),
+                if (reason.isNotEmpty) reason,
+                if (j['resumes_followup_id'] is int) 'reprise d\'un suivi interrompu',
+              ].join(' · ')),
+            ),
+          );
+        }),
+        if (dates.isNotEmpty || checkpoints.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            children: [
+              ...dates.entries.map((e) => Chip(label: Text('${e.key} ${e.value}'))),
+              ...checkpoints.map((c) {
+                final done = c['state'] == 'done';
+                final favorable = c['result'] == 'favorable';
+                return Chip(
+                  avatar: Icon(
+                    done ? (favorable ? Icons.check_circle : Icons.cancel) : Icons.schedule,
+                    size: 16,
+                    color: done ? (favorable ? AppColors.integrated : AppColors.abandoned) : Colors.grey,
+                  ),
+                  label: Text('Contrôle ${_milestones[c['milestone']] ?? ''}'
+                      '${done ? ' ${_results[c['result']] ?? ''}' : ' le ${AppConstants.safeStr(c['due_date'])}'}'),
+                );
+              }),
+            ],
+          ),
+        ],
+      ],
     );
   }
 }

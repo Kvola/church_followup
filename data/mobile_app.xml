@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- SANS `noupdate` : la description appartient au code ; les versions
+         publiées vivent dans `mobile.app.release`, jamais touchées par une
+         mise à jour du module. Page : /apps/suivi-evangelisation -->
+    <data>
+        <record id="mobile_app_suivi_evangelisation" model="mobile.app">
+            <field name="name">Suivi Évangélisation</field>
+            <field name="slug">suivi-evangelisation</field>
+            <field name="sequence">40</field>
+            <field name="summary">Accompagner les nouvelles personnes jusqu'à ce qu'elles deviennent des fidèles</field>
+            <field name="icon" type="base64" file="church_followup/static/description/icon.png"/>
+            <field name="min_android">8.0</field>
+            <field name="description" type="html">
+                <div>
+                    <p>
+                        L'application des évangélistes et des responsables d'église :
+                        chaque nouvelle personne est confiée à un évangéliste, suivie
+                        semaine après semaine, puis intégrée dans une cellule et un
+                        groupe d'âge — et revue à 3 et 6 mois.
+                    </p>
+                    <p>
+                        La liste « À faire » dit à chacun ce qui l'attend : rapport en
+                        retard, décision à prendre, personne à attribuer, contrôle à
+                        faire. Les relances arrivent par notification.
+                    </p>
+                </div>
+            </field>
+            <field name="first_run_note">Connectez-vous avec votre numéro de téléphone et le PIN reçu de votre responsable.</field>
+        </record>
+    </data>
+</odoo>

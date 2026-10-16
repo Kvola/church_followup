@@ -67,6 +67,25 @@ class MemberProvider extends ChangeNotifier {
     }
   }
 
+  /// Personnes à qui l'on peut ouvrir un suivi : nouvelles, ou dont le suivi
+  /// a été interrompu (reprise).
+  Future<void> loadAssignable() async {
+    if (_auth == null || !_auth!.isAuthenticated) return;
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+    try {
+      final fresh = await _api.getMembers(memberType: 'new');
+      final interrupted = await _api.getMembers(memberType: 'interrupted');
+      _members = [...fresh, ...interrupted];
+    } catch (e) {
+      _error = e.toString();
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   Future<void> loadDetail(int memberId) async {
     _isLoading = true;
     _error = null;

@@ -130,6 +130,26 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                       ),
                       SizedBox(height: size.height * 0.05),
 
+                      // Session expirée : dire pourquoi on revient ici.
+                      if (context.watch<AuthProvider>().sessionMessage != null) ...[
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: AppColors.extended.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.lock_clock, color: AppColors.extended),
+                              const SizedBox(width: 10),
+                              Expanded(child: Text(context.watch<AuthProvider>().sessionMessage!)),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+
                       // Phone
                       TextFormField(
                         controller: _phoneCtrl,
@@ -138,7 +158,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                         decoration: const InputDecoration(
                           labelText: 'Téléphone',
                           prefixIcon: Icon(Icons.phone_outlined),
-                          hintText: '+243 ...',
+                          hintText: '+225 07 ...',
                         ),
                         validator: (v) => (v == null || v.trim().isEmpty) ? 'Requis' : null,
                       ),

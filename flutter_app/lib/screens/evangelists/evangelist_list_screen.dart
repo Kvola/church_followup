@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../core/constants.dart';
 import '../../core/theme.dart';
 import '../../providers/followup_provider.dart';
 import '../../widgets/common.dart';
+import '../../widgets/pin_share_dialog.dart';
 
 class EvangelistListScreen extends StatefulWidget {
   const EvangelistListScreen({super.key});
@@ -87,7 +89,13 @@ class _EvangelistListScreenState extends State<EvangelistListScreen> {
                   );
               if (mounted) {
                 if (result['status'] == 'success') {
-                  showSuccessSnackbar(context, 'Évangéliste créé');
+                  // Le PIN n'est lisible qu'ici : le montrer pour le transmettre.
+                  final pin = AppConstants.safeStr(result['evangelist']?['pin']);
+                  if (pin.isNotEmpty) {
+                    showPinShareDialog(context, pin, nameCtrl.text.trim(), phoneCtrl.text.trim());
+                  } else {
+                    showSuccessSnackbar(context, 'Évangéliste créé');
+                  }
                 } else {
                   showErrorSnackbar(context, result['message'] ?? 'Erreur');
                 }

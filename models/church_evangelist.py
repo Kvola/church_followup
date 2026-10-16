@@ -1,5 +1,7 @@
 from odoo import api, fields, models, _
 
+from .church_tools import ACTIVE_FOLLOWUP_STATES
+
 
 class ChurchEvangelist(models.Model):
     _name = 'church.evangelist'
@@ -26,7 +28,7 @@ class ChurchEvangelist(models.Model):
     def _compute_followup_stats(self):
         for rec in self:
             followups = rec.followup_ids
-            rec.active_followup_count = len(followups.filtered(lambda f: f.state == 'in_progress'))
+            rec.active_followup_count = len(followups.filtered(lambda f: f.state in ACTIVE_FOLLOWUP_STATES))
             rec.total_followup_count = len(followups)
             rec.integrated_count = len(followups.filtered(lambda f: f.state == 'integrated'))
             completed = len(followups.filtered(lambda f: f.state in ('integrated', 'abandoned')))
@@ -35,6 +37,8 @@ class ChurchEvangelist(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         records = super().create(vals_list)
+        if self.env.context.get('church_skip_mobile_account'):
+            return records  # le compte existe déjà : il sera relié par l'appelant
         for rec in records:
             if not rec.phone:
                 continue

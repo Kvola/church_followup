@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../core/constants.dart';
 import '../../core/theme.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/organization_provider.dart';
 import '../../widgets/common.dart';
+import '../../widgets/pin_share_dialog.dart';
 
 class MobileUsersScreen extends StatefulWidget {
   const MobileUsersScreen({super.key});
@@ -102,6 +102,16 @@ class _MobileUsersScreenState extends State<MobileUsersScreen> {
     final userId = user['id'];
     if (userId == null) return;
 
+    // Le PIN n'est plus conservé en clair : partager, c'est en générer un nouveau.
+    final confirmed = await showConfirmDialog(
+      context,
+      title: 'Partager les identifiants',
+      message: 'Un nouveau PIN va être généré pour ${user['name'] ?? 'cet utilisateur'}. '
+          'L\'ancien cessera de fonctionner et sa session en cours sera fermée.',
+      confirmLabel: 'Générer et partager',
+    );
+    if (!confirmed || !mounted) return;
+
     final result = await context.read<OrganizationProvider>().shareCredentials(userId);
     if (!mounted) return;
 
@@ -160,7 +170,7 @@ class _MobileUsersScreenState extends State<MobileUsersScreen> {
                     label: 'WhatsApp',
                     onTap: () {
                       Navigator.pop(ctx);
-                      _launchWhatsApp(phone, message);
+                      launchWhatsApp(context, phone, message);
                     },
                   ),
                   const SizedBox(width: 12),
@@ -170,7 +180,7 @@ class _MobileUsersScreenState extends State<MobileUsersScreen> {
                     label: 'SMS',
                     onTap: () {
                       Navigator.pop(ctx);
-                      _launchSms(phone, message);
+                      launchSms(context, phone, message);
                     },
                   ),
                   const SizedBox(width: 12),
@@ -203,94 +213,6 @@ class _MobileUsersScreenState extends State<MobileUsersScreen> {
     );
   }
 
-  Future<void> _launchWhatsApp(String phone, String message) async {
-    final cleanPhone = phone.replaceAll(RegExp(r'[^0-9+]'), '').replaceFirst('+', '');
-    final encoded = Uri.encodeComponent(message);
-    final uri = Uri.parse('https://wa.me/$cleanPhone?text=$encoded');
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } else {
-      if (mounted) showErrorSnackbar(context, 'Impossible d\'ouvrir WhatsApp');
-    }
-  }
-
-  Future<void> _launchSms(String phone, String message) async {
-    final uri = Uri(scheme: 'sms', path: phone, queryParameters: {'body': message});
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri);
-    } else {
-      if (mounted) showErrorSnackbar(context, 'Impossible d\'ouvrir les SMS');
-    }
-  }
-
-  void _showPinWithShareOptions(String pin, String userName, String phone) {
-    final message = '🔐 ${AppConstants.appName}\n'
-        'Bonjour $userName,\n'
-        'Votre nouveau PIN : $pin\n'
-        'Serveur : ${AppConstants.defaultUrl}\n'
-        'Base de données : ${AppConstants.defaultDatabase}';
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Nouveau PIN'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('Le nouveau PIN de $userName est :'),
-            const SizedBox(height: 12),
-            SelectableText(pin, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, letterSpacing: 4)),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _MiniShareButton(
-                  icon: Icons.message,
-                  color: Colors.blue,
-                  label: 'WhatsApp',
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    _launchWhatsApp(phone, message);
-                  },
-                ),
-                _MiniShareButton(
-                  icon: Icons.sms_outlined,
-                  color: Colors.orange,
-                  label: 'SMS',
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    _launchSms(phone, message);
-                  },
-                ),
-                _MiniShareButton(
-                  icon: Icons.copy,
-                  color: Colors.teal,
-                  label: 'Copier',
-                  onTap: () {
-                    Clipboard.setData(ClipboardData(text: message));
-                    showSuccessSnackbar(ctx, 'Copié');
-                  },
-                ),
-                _MiniShareButton(
-                  icon: Icons.share,
-                  color: AppColors.primary,
-                  label: 'Partager',
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    Share.share(message, subject: 'PIN ${AppConstants.appName}');
-                  },
-                ),
-              ],
-            ),
-          ],
-        ),
-        actions: [
-          FilledButton(onPressed: () => Navigator.pop(ctx), child: const Text('Fermer')),
-        ],
-      ),
-    );
-  }
-
   Future<void> _resetPin(Map<String, dynamic> user) async {
     final userId = user['id'];
     if (userId == null) return;
@@ -300,13 +222,13 @@ class _MobileUsersScreenState extends State<MobileUsersScreen> {
       title: 'Régénérer le PIN',
       message: 'Régénérer le PIN de ${user['name'] ?? 'cet utilisateur'} ? L\'ancien PIN sera invalidé.',
     );
-    if (!confirmed) return;
+    if (!confirmed || !mounted) return;
 
     final result = await context.read<OrganizationProvider>().adminResetPin(userId);
     if (mounted) {
       if (result['status'] == 'success') {
         final pin = result['pin'] ?? '';
-        _showPinWithShareOptions(pin, user['name'] ?? 'Utilisateur', AppConstants.safeStr(user['phone']));
+        showPinShareDialog(context, pin, user['name'] ?? 'Utilisateur', AppConstants.safeStr(user['phone']));
       } else {
         showErrorSnackbar(context, result['message'] ?? 'Erreur');
       }
@@ -324,7 +246,7 @@ class _MobileUsersScreenState extends State<MobileUsersScreen> {
       title: '${isActive ? "Désactiver" : "Activer"} l\'utilisateur',
       message: 'Voulez-vous $action ${user['name'] ?? 'cet utilisateur'} ?',
     );
-    if (!confirmed) return;
+    if (!confirmed || !mounted) return;
 
     final result = await context.read<OrganizationProvider>().adminUpdateUser(userId, {'active': !isActive});
     if (mounted) {
@@ -340,28 +262,51 @@ class _MobileUsersScreenState extends State<MobileUsersScreen> {
     final userId = user['id'];
     if (userId == null) return;
     String? selectedRole = user['role'];
+    int? selectedUnitId;
     final roles = AppConstants.roleLabels.entries
         .where((e) => e.key != 'super_admin')
         .toList();
+    _RoleUnitPicker.ensureLoaded(context, selectedRole);
 
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
           title: Text('Modifier le rôle de ${user['name'] ?? ''}'),
-          content: DropdownButtonFormField<String>(
-            decoration: const InputDecoration(labelText: 'Nouveau rôle'),
-            value: roles.any((e) => e.key == selectedRole) ? selectedRole : null,
-            items: roles.map((e) => DropdownMenuItem(value: e.key, child: Text(e.value))).toList(),
-            onChanged: (v) => setDialogState(() => selectedRole = v),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DropdownButtonFormField<String>(
+                decoration: const InputDecoration(labelText: 'Nouveau rôle'),
+                initialValue: roles.any((e) => e.key == selectedRole) ? selectedRole : null,
+                items: roles.map((e) => DropdownMenuItem(value: e.key, child: Text(e.value))).toList(),
+                onChanged: (v) {
+                  _RoleUnitPicker.ensureLoaded(context, v);
+                  setDialogState(() {
+                    selectedRole = v;
+                    selectedUnitId = null;
+                  });
+                },
+              ),
+              _RoleUnitPicker(
+                role: selectedRole,
+                value: selectedUnitId,
+                onChanged: (v) => setDialogState(() => selectedUnitId = v),
+              ),
+            ],
           ),
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler')),
             FilledButton(
               onPressed: () async {
                 if (selectedRole == null) return;
+                if (_RoleUnitPicker.needsUnit(selectedRole) && selectedUnitId == null && selectedRole != user['role']) {
+                  showErrorSnackbar(context, 'Choisissez la cellule ou le groupe de ce responsable');
+                  return;
+                }
                 Navigator.pop(ctx);
-                final result = await context.read<OrganizationProvider>().adminUpdateUser(userId, {'role': selectedRole});
+                final result = await context.read<OrganizationProvider>().adminUpdateUser(
+                    userId, {'role': selectedRole, ..._RoleUnitPicker.params(selectedRole, selectedUnitId)});
                 if (mounted) {
                   if (result['status'] == 'success') {
                     showSuccessSnackbar(context, 'Rôle mis à jour');
@@ -383,6 +328,7 @@ class _MobileUsersScreenState extends State<MobileUsersScreen> {
     final phoneCtrl = TextEditingController();
     String? selectedRole;
     int? selectedChurchId;
+    int? selectedUnitId;
     final roles = AppConstants.roleLabels.entries
         .where((e) => e.key != 'super_admin')
         .toList();
@@ -420,7 +366,18 @@ class _MobileUsersScreenState extends State<MobileUsersScreen> {
                   DropdownButtonFormField<String>(
                     decoration: const InputDecoration(labelText: 'Rôle', prefixIcon: Icon(Icons.admin_panel_settings_outlined)),
                     items: roles.map((e) => DropdownMenuItem(value: e.key, child: Text(e.value))).toList(),
-                    onChanged: (v) => setDialogState(() => selectedRole = v),
+                    onChanged: (v) {
+                      _RoleUnitPicker.ensureLoaded(context, v);
+                      setDialogState(() {
+                        selectedRole = v;
+                        selectedUnitId = null;
+                      });
+                    },
+                  ),
+                  _RoleUnitPicker(
+                    role: selectedRole,
+                    value: selectedUnitId,
+                    onChanged: (v) => setDialogState(() => selectedUnitId = v),
                   ),
                   if (auth.isSuperAdmin) ...[
                     const SizedBox(height: 12),
@@ -442,12 +399,17 @@ class _MobileUsersScreenState extends State<MobileUsersScreen> {
                 onPressed: () async {
                   if (nameCtrl.text.trim().isEmpty || phoneCtrl.text.trim().isEmpty || selectedRole == null) return;
                   if (auth.isSuperAdmin && selectedChurchId == null) return;
+                  if (_RoleUnitPicker.needsUnit(selectedRole) && selectedUnitId == null) {
+                    showErrorSnackbar(context, 'Choisissez la cellule ou le groupe de ce responsable');
+                    return;
+                  }
                   Navigator.pop(ctx);
 
                   final userData = <String, dynamic>{
                     'name': nameCtrl.text.trim(),
                     'phone': phoneCtrl.text.trim(),
                     'role': selectedRole,
+                    ..._RoleUnitPicker.params(selectedRole, selectedUnitId),
                   };
                   if (auth.isSuperAdmin && selectedChurchId != null) {
                     userData['church_id'] = selectedChurchId;
@@ -458,7 +420,7 @@ class _MobileUsersScreenState extends State<MobileUsersScreen> {
                   if (mounted) {
                     if (result['status'] == 'success') {
                       final pin = result['user']?['pin'] ?? '';
-                      _showPinWithShareOptions(pin, nameCtrl.text.trim(), phoneCtrl.text.trim());
+                      showPinShareDialog(context, pin, nameCtrl.text.trim(), phoneCtrl.text.trim());
                     } else {
                       showErrorSnackbar(context, result['message'] ?? 'Erreur');
                     }
@@ -549,8 +511,13 @@ class _MobileUsersScreenState extends State<MobileUsersScreen> {
 
                 if (mounted) {
                   if (result['status'] == 'success') {
-                    showSuccessSnackbar(context, '$title créé');
                     provider.loadMobileUsers();
+                    final pin = AppConstants.safeStr(result['pin']);
+                    if (pin.isNotEmpty) {
+                      showPinShareDialog(context, pin, nameCtrl.text.trim(), phoneCtrl.text.trim());
+                    } else {
+                      showSuccessSnackbar(context, '$title créé');
+                    }
                   } else {
                     showErrorSnackbar(context, result['message'] ?? 'Erreur');
                   }
@@ -729,37 +696,48 @@ class _ShareOption extends StatelessWidget {
   }
 }
 
-class _MiniShareButton extends StatelessWidget {
-  final IconData icon;
-  final Color color;
-  final String label;
-  final VoidCallback onTap;
-  const _MiniShareButton({required this.icon, required this.color, required this.label, required this.onTap});
+/// Un responsable de cellule ou de groupe n'existe que rattaché à son unité.
+class _RoleUnitPicker extends StatelessWidget {
+  final String? role;
+  final int? value;
+  final ValueChanged<int?> onChanged;
+  const _RoleUnitPicker({required this.role, required this.value, required this.onChanged});
+
+  static bool needsUnit(String? role) => role == 'cell_leader' || role == 'group_leader';
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(8),
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.all(6),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(icon, color: color, size: 20),
-            ),
-            const SizedBox(height: 4),
-            Text(label, style: const TextStyle(fontSize: 10)),
-          ],
+    if (!needsUnit(role)) return const SizedBox.shrink();
+    final org = context.watch<OrganizationProvider>();
+    final isCell = role == 'cell_leader';
+    final items = isCell ? org.cells : org.ageGroups;
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: DropdownButtonFormField<int>(
+        key: ValueKey('$role-${items.length}'),
+        decoration: InputDecoration(
+          labelText: isCell ? 'Cellule *' : "Groupe d'âge *",
+          prefixIcon: Icon(isCell ? Icons.group_outlined : Icons.diversity_3_outlined),
         ),
+        initialValue: items.any((i) => i['id'] == value) ? value : null,
+        items: items
+            .where((i) => i['id'] is int)
+            .map((i) => DropdownMenuItem<int>(value: i['id'] as int, child: Text(AppConstants.safeStr(i['name']))))
+            .toList(),
+        onChanged: onChanged,
       ),
     );
   }
+
+  /// Charge les unités dont le rôle a besoin.
+  static void ensureLoaded(BuildContext context, String? role) {
+    final org = context.read<OrganizationProvider>();
+    if (role == 'cell_leader' && org.cells.isEmpty) org.loadCells();
+    if (role == 'group_leader' && org.ageGroups.isEmpty) org.loadAgeGroups();
+  }
+
+  static Map<String, dynamic> params(String? role, int? unitId) => {
+        if (role == 'cell_leader' && unitId != null) 'prayer_cell_id': unitId,
+        if (role == 'group_leader' && unitId != null) 'age_group_id': unitId,
+      };
 }

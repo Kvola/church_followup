@@ -1,4 +1,9 @@
 from odoo import api, fields, models, _
+from odoo.exceptions import ValidationError
+
+from .church_tools import (
+    ACTIVE_FOLLOWUP_STATES, DEFAULT_FOLLOWUP_WEEKS, MAX_PROPOSED_WEEKS, check_weeks,
+)
 
 
 class ChurchChurch(models.Model):
@@ -19,6 +24,11 @@ class ChurchChurch(models.Model):
         store=True, readonly=True,
     )
     active = fields.Boolean(default=True)
+    default_followup_weeks = fields.Integer(
+        string='Durée de suivi par défaut (semaines)', default=DEFAULT_FOLLOWUP_WEEKS,
+        help="Durée proposée pour suivre une nouvelle personne, quand ni un événement "
+             "ni l'évangéliste n'en fixent une autre.",
+    )
 
     # Relations
     pastor_ids = fields.One2many('church.pastor', 'church_id', string='Pasteurs')
@@ -37,12 +47,27 @@ class ChurchChurch(models.Model):
     pastor_count = fields.Integer(compute='_compute_counts', store=True, string='Nombre de pasteurs')
     followup_active_count = fields.Integer(compute='_compute_followup_active_count', string='Suivis actifs')
 
-    _constraints = [
-        models.Constraint(
-            'UNIQUE(code)',
-            'Le code de l\'\u00e9glise doit \u00eatre unique.',
-        ),
-    ]
+    _code_uniq = models.Constraint(
+        'UNIQUE(code)',
+        'Le code de l\'église doit être unique.',
+    )
+
+    integration_min_attendance = fields.Integer(
+        string="Présence minimale au culte pour intégrer (%)", default=75,
+        help="Part des semaines écoulées du suivi où la personne est venue au culte. "
+             "En dessous, l'intégration reste possible mais demande une justification "
+             "écrite. 0 : aucun seuil.",
+    )
+
+    @api.constrains('integration_min_attendance')
+    def _check_integration_min_attendance(self):
+        for rec in self:
+            if not 0 <= rec.integration_min_attendance <= 100:
+                raise ValidationError(_('Le seuil de présence est un pourcentage entre 0 et 100.'))
+
+    @api.constrains('default_followup_weeks')
+    def _check_default_followup_weeks(self):
+        check_weeks(self, 'default_followup_weeks', MAX_PROPOSED_WEEKS)
 
     @api.depends('pastor_ids', 'pastor_ids.pastor_type', 'pastor_ids.name', 'pastor_ids.active')
     def _compute_pastor_name(self):
@@ -66,7 +91,7 @@ class ChurchChurch(models.Model):
         for rec in self:
             rec.followup_active_count = followup_model.search_count([
                 ('church_id', '=', rec.id),
-                ('state', 'in', ('in_progress', 'extended')),
+                ('state', 'in', ACTIVE_FOLLOWUP_STATES),
             ])
 
     def action_view_members(self):
@@ -111,7 +136,7 @@ class ChurchChurch(models.Model):
             'name': _('Suivis actifs'),
             'res_model': 'church.followup',
             'view_mode': 'list,form',
-            'domain': [('church_id', '=', self.id), ('state', 'in', ('in_progress', 'extended'))],
+            'domain': [('church_id', '=', self.id), ('state', 'in', ACTIVE_FOLLOWUP_STATES)],
         }
 
     def action_view_pastors(self):

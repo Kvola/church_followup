@@ -1,7 +1,16 @@
 class AppConstants {
   static const String appName = 'Suivi Évangélisation';
-  static const String defaultUrl = 'https://iyf.kavola.site';
-  static const String defaultDatabase = 'iyf.kavola.site';
+  // Compilés dans l'APK par le script de publication (--dart-define) ;
+  // les valeurs par défaut visent la production IYF.
+  static const String defaultUrl = String.fromEnvironment('BASE_URL', defaultValue: 'https://iyf.ebng.world');
+  static const String defaultDatabase = String.fromEnvironment('DB', defaultValue: 'iyf.ebng.world');
+
+  /// Version installée, donnée à la construction. Vide (build de développement) :
+  /// l'app ne cherche pas de mise à jour, faute de pouvoir se comparer.
+  static const String appVersion = String.fromEnvironment('APP_VERSION');
+
+  /// Identifiant de l'application dans le catalogue /apps du serveur.
+  static const String appSlug = 'suivi-evangelisation';
   static const String developerName = 'DIBI Bi Kavola Augustin';
   static const String developerPhone = '+225 07 49 94 33 27';
   static const Duration requestTimeout = Duration(seconds: 30);
@@ -20,7 +29,7 @@ class AppConstants {
   static const Map<String, String> stateLabels = {
     'in_progress': 'En cours',
     'integrated': 'Intégré',
-    'abandoned': 'Abandonné',
+    'abandoned': 'Interrompu',
     'extended': 'Prolongé',
     'transferred': 'Transféré',
   };
@@ -44,13 +53,41 @@ class AppConstants {
   static const Map<String, String> memberTypeLabels = {
     'new': 'Nouveau',
     'in_followup': 'En suivi',
+    'interrupted': 'Suivi interrompu',
     'integrated': 'Intégré',
+    'established': 'Fidèle affermi',
     'old_member': 'Ancien membre',
   };
+
+  /// Motifs d'interruption d'un suivi (le serveur en exige un).
+  static const Map<String, String> abandonReasons = {
+    'unreachable': 'Injoignable',
+    'moved': 'A déménagé',
+    'other_church': 'Fréquente une autre église',
+    'not_interested': 'Ne souhaite pas poursuivre',
+    'other': 'Autre raison',
+  };
+
+  /// D'où vient la durée d'un suivi.
+  static const Map<String, String> durationOriginLabels = {
+    'church': "Réglage de l'église",
+    'event': "Événement d'origine",
+    'manual': 'Choix',
+  };
+
+  static const int minFollowupWeeks = 1;
+  static const int maxFollowupWeeks = 26;
 
   static const Map<String, String> genderLabels = {
     'male': 'Homme',
     'female': 'Femme',
+  };
+
+  /// Sexe d'un groupe d'âge (qui peut être mixte, contrairement à une personne).
+  static const Map<String, String> groupGenderLabels = {
+    'male': 'Hommes',
+    'female': 'Femmes',
+    'mixed': 'Mixte',
   };
 
   static const Map<String, String> maritalLabels = {

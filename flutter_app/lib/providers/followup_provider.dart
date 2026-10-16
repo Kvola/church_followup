@@ -108,6 +108,10 @@ class FollowupProvider extends ChangeNotifier {
     int? evangelistId,
     int? cellId,
     int? groupId,
+    int? weeks,
+    String? reason,
+    String? note,
+    String? justification,
   }) async {
     try {
       final result = await _api.followupAction(
@@ -116,6 +120,10 @@ class FollowupProvider extends ChangeNotifier {
         evangelistId: evangelistId,
         cellId: cellId,
         groupId: groupId,
+        weeks: weeks,
+        reason: reason,
+        note: note,
+        justification: justification,
       );
       if (result['status'] == 'success') {
         await loadFollowups();

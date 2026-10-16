@@ -1,11 +1,15 @@
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError
 
+from .church_tools import check_same_church
+
 
 class ChurchAgeGroup(models.Model):
     _name = 'church.age.group'
     _description = 'Groupe d\'âge'
-    _inherit = ['mail.thread']
+    _inherit = ['mail.thread', 'church.leader.mixin']
+    _leader_role = 'group_leader'
+    _leader_link_field = 'age_group_id'
     _order = 'name'
 
     name = fields.Char(string='Nom du groupe', required=True, tracking=True)
@@ -26,9 +30,6 @@ class ChurchAgeGroup(models.Model):
                                     help='Applicable pour les groupes de mariés')
 
     # Responsable
-    leader_name = fields.Char(string='Responsable')
-    leader_phone = fields.Char(string='Téléphone du responsable')
-    mobile_user_id = fields.Many2one('church.mobile.user', string='Compte mobile responsable', readonly=True)
 
     # Membres
     member_ids = fields.One2many('church.member', 'age_group_id', string='Membres')
@@ -36,6 +37,10 @@ class ChurchAgeGroup(models.Model):
 
     active = fields.Boolean(default=True)
     notes = fields.Text(string='Notes')
+
+    @api.constrains('church_id', 'age_range_id')
+    def _check_same_church(self):
+        check_same_church(self, ['age_range_id'])
 
     @api.depends('member_ids')
     def _compute_member_count(self):
@@ -50,19 +55,3 @@ class ChurchAgeGroup(models.Model):
             'view_mode': 'list,form',
             'domain': [('age_group_id', '=', self.id)],
         }
-
-    def action_create_leader_account(self):
-        """Créer un compte mobile pour le responsable de groupe d'âge."""
-        self.ensure_one()
-        if self.mobile_user_id:
-            return
-        if not self.leader_phone:
-            raise UserError(_('Veuillez renseigner le téléphone du responsable avant de créer le compte.'))
-        mobile_user = self.env['church.mobile.user'].create({
-            'name': self.leader_name or self.name,
-            'phone': self.leader_phone,
-            'role': 'group_leader',
-            'church_id': self.church_id.id,
-            'age_group_id': self.id,
-        })
-        self.mobile_user_id = mobile_user.id

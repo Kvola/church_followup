@@ -1,8 +1,15 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../core/constants.dart';
 import '../../core/theme.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/todo_provider.dart';
+import '../checkpoints/checkpoint_list_screen.dart';
+import '../followups/to_assign_screen.dart';
+import '../todo/todo_screen.dart';
 import '../dashboard/dashboard_screen.dart';
 import '../followups/followup_list_screen.dart';
 import '../members/member_list_screen.dart';
@@ -24,8 +31,105 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   int _currentIndex = 0;
+  final List<StreamSubscription> _pushSubs = [];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _listenToPush();
+      _checkForUpdate();
+    });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    for (final sub in _pushSubs) {
+      sub.cancel();
+    }
+    super.dispose();
+  }
+
+  /// Revenu dans l'application : la liste « À faire » a pu changer.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) context.read<TodoProvider>().load();
+  }
+
+  /// Une notification touchée ouvre « À faire » ; reçue application ouverte,
+  /// elle rafraîchit le badge et s'affiche brièvement.
+  Future<void> _listenToPush() async {
+    final push = context.read<AuthProvider>().push;
+    final todo = context.read<TodoProvider>();
+    todo.load();
+    await push.initialize();
+    if (!mounted) return;
+    _pushSubs.add(push.onOpenedFromNotification.listen((_) => _openTodo()));
+    _pushSubs.add(push.onForegroundMessage.listen((message) {
+      todo.load();
+      final title = message.notification?.title;
+      if (title != null && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('$title — ${message.notification?.body ?? ''}'),
+          action: SnackBarAction(label: 'Voir', onPressed: _openTodo),
+        ));
+      }
+    }));
+    if (await push.initialMessage() != null && mounted) _openTodo();
+  }
+
+  /// Une version plus récente est publiée sur le catalogue : le dire. Le
+  /// serveur décide si elle est obligatoire (ancienne version plus acceptée).
+  Future<void> _checkForUpdate() async {
+    final info = await context.read<AuthProvider>().api.checkForUpdate();
+    if (!mounted || info == null || info['update_available'] != true) return;
+    final version = AppConstants.safeStr(info['latest_version']);
+    final url = AppConstants.safeStr(info['download_url'], AppConstants.safeStr(info['page_url']));
+    Future<void> download() async {
+      if (url.isNotEmpty) await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+    }
+
+    if (info['mandatory'] == true) {
+      await showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => PopScope(
+          canPop: false,
+          child: AlertDialog(
+            title: const Text('Mise à jour nécessaire'),
+            content: Text('Cette version n\'est plus acceptée par le serveur. '
+                'Installez la version $version pour continuer.'),
+            actions: [FilledButton(onPressed: download, child: const Text('Télécharger'))],
+          ),
+        ),
+      );
+      return;
+    }
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.showMaterialBanner(MaterialBanner(
+      leading: const Icon(Icons.system_update),
+      content: Text('La version $version est disponible.'),
+      actions: [
+        TextButton(onPressed: messenger.hideCurrentMaterialBanner, child: const Text('Plus tard')),
+        FilledButton(
+          onPressed: () {
+            messenger.hideCurrentMaterialBanner();
+            download();
+          },
+          child: const Text('Mettre à jour'),
+        ),
+      ],
+    ));
+  }
+
+  void _openTodo() {
+    if (!mounted) return;
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => const TodoScreen()));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -40,9 +144,13 @@ class _HomeScreenState extends State<HomeScreen> {
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentIndex,
         onDestinationSelected: (i) => setState(() => _currentIndex = i),
-        destinations: tabs
-            .map((t) => NavigationDestination(icon: Icon(t.icon), selectedIcon: Icon(t.selectedIcon), label: t.label))
-            .toList(),
+        destinations: tabs.map((t) {
+          // Le badge du nombre de tâches, sur l'onglet « À faire ».
+          final count = t.screen is TodoScreen ? context.watch<TodoProvider>().count : 0;
+          Widget badged(IconData icon) =>
+              count > 0 ? Badge(label: Text(count > 99 ? '99+' : '$count'), child: Icon(icon)) : Icon(icon);
+          return NavigationDestination(icon: badged(t.icon), selectedIcon: badged(t.selectedIcon), label: t.label);
+        }).toList(),
       ),
       drawer: _buildDrawer(auth),
     );
@@ -53,6 +161,7 @@ class _HomeScreenState extends State<HomeScreen> {
       case 'super_admin':
       case 'manager':
         return [
+          _TabItem('À faire', Icons.task_alt_outlined, Icons.task_alt, const TodoScreen()),
           _TabItem('Accueil', Icons.dashboard_outlined, Icons.dashboard, const DashboardScreen()),
           _TabItem('Suivis', Icons.assignment_outlined, Icons.assignment, const FollowupListScreen()),
           _TabItem('Membres', Icons.people_outlined, Icons.people, const MemberListScreen()),
@@ -60,6 +169,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ];
       case 'evangelist':
         return [
+          _TabItem('À faire', Icons.task_alt_outlined, Icons.task_alt, const TodoScreen()),
           _TabItem('Mes suivis', Icons.assignment_outlined, Icons.assignment, const FollowupListScreen()),
           _TabItem('Membres', Icons.people_outlined, Icons.people, const MemberListScreen()),
           _TabItem('Présence', Icons.checklist_outlined, Icons.checklist, const AttendanceSundayScreen()),
@@ -67,6 +177,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ];
       case 'cell_leader':
         return [
+          _TabItem('À faire', Icons.task_alt_outlined, Icons.task_alt, const TodoScreen()),
           _TabItem('Ma cellule', Icons.groups_outlined, Icons.groups, const PrayerCellListScreen()),
           _TabItem('Membres', Icons.people_outlined, Icons.people, const MemberListScreen()),
           _TabItem('Présence', Icons.checklist_outlined, Icons.checklist, const AttendanceCellScreen()),
@@ -74,6 +185,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ];
       case 'group_leader':
         return [
+          _TabItem('À faire', Icons.task_alt_outlined, Icons.task_alt, const TodoScreen()),
           _TabItem('Mon groupe', Icons.diversity_3_outlined, Icons.diversity_3, const AgeGroupListScreen()),
           _TabItem('Membres', Icons.people_outlined, Icons.people, const MemberListScreen()),
           _TabItem('Plus', Icons.more_horiz_outlined, Icons.more_horiz, const _MoreScreen()),
@@ -94,7 +206,7 @@ class _HomeScreenState extends State<HomeScreen> {
             Container(
               width: double.infinity,
               padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 gradient: LinearGradient(
                   colors: [AppColors.primary, AppColors.secondary],
                   begin: Alignment.topLeft,
@@ -149,12 +261,14 @@ class _HomeScreenState extends State<HomeScreen> {
                     _drawerItem(Icons.dashboard_outlined, 'Tableau de bord', () => _navigateTo(const DashboardScreen())),
                     if (auth.isSuperAdmin)
                       _drawerItem(Icons.church_outlined, 'Églises', () => _navigateTo(const ChurchManagementScreen())),
+                    _drawerItem(Icons.person_add_alt_1_outlined, 'À attribuer', () => _navigateTo(const ToAssignScreen())),
                     _drawerItem(Icons.people_alt_outlined, 'Évangélistes', () => _navigateTo(const EvangelistListScreen())),
                     _drawerItem(Icons.supervisor_account_outlined, 'Utilisateurs', () => _navigateTo(const MobileUsersScreen())),
                     _drawerItem(Icons.assessment_outlined, 'Rapports', () => _navigateTo(const ReportScreen())),
                     const Divider(indent: 16, endIndent: 16),
                   ],
-                  _drawerItem(Icons.assignment_outlined, 'Suivis', () => _navigateTo(const FollowupListScreen())),
+                  if (auth.canSeeFollowups)
+                    _drawerItem(Icons.assignment_outlined, 'Suivis', () => _navigateTo(const FollowupListScreen())),
                   _drawerItem(Icons.people_outlined, 'Membres', () => _navigateTo(const MemberListScreen())),
                   _drawerItem(Icons.groups_outlined, 'Cellules de prière', () => _navigateTo(const PrayerCellListScreen())),
                   _drawerItem(Icons.diversity_3_outlined, 'Groupes d\'âge', () => _navigateTo(const AgeGroupListScreen())),
@@ -162,8 +276,12 @@ class _HomeScreenState extends State<HomeScreen> {
                     _drawerItem(Icons.restaurant_outlined, 'Rotation cuisine', () => _navigateTo(const CookingRotationScreen())),
                   ],
                   const Divider(indent: 16, endIndent: 16),
-                  _drawerItem(Icons.checklist_outlined, 'Présence dimanche', () => _navigateTo(const AttendanceSundayScreen())),
-                  _drawerItem(Icons.group_work_outlined, 'Présence cellule', () => _navigateTo(const AttendanceCellScreen())),
+                  if (auth.canDoCheckpoints)
+                    _drawerItem(Icons.fact_check_outlined, 'Points de contrôle', () => _navigateTo(const CheckpointListScreen())),
+                  if (auth.canPointSunday)
+                    _drawerItem(Icons.checklist_outlined, 'Présence dimanche', () => _navigateTo(const AttendanceSundayScreen())),
+                  if (auth.canPointCell)
+                    _drawerItem(Icons.group_work_outlined, 'Présence cellule', () => _navigateTo(const AttendanceCellScreen())),
                   const Divider(indent: 16, endIndent: 16),
                   _drawerItem(Icons.settings_outlined, 'Paramètres', () => _navigateTo(const SettingsScreen())),
                 ],
@@ -216,6 +334,7 @@ class _MoreScreen extends StatelessWidget {
 
     if (auth.isManager) {
       items.addAll([
+        _QuickAction('À attribuer', Icons.person_add_alt_1_outlined, AppColors.inProgress, () => _nav(context, const ToAssignScreen())),
         _QuickAction('Évangélistes', Icons.people_alt_outlined, AppColors.primary, () => _nav(context, const EvangelistListScreen())),
         _QuickAction('Utilisateurs', Icons.supervisor_account_outlined, AppColors.secondary, () => _nav(context, const MobileUsersScreen())),
         _QuickAction('Rapports', Icons.assessment_outlined, AppColors.integrated, () => _nav(context, const ReportScreen())),
@@ -229,8 +348,12 @@ class _MoreScreen extends StatelessWidget {
     items.addAll([
       _QuickAction('Cellules', Icons.groups_outlined, AppColors.inProgress, () => _nav(context, const PrayerCellListScreen())),
       _QuickAction('Groupes', Icons.diversity_3_outlined, AppColors.transferred, () => _nav(context, const AgeGroupListScreen())),
-      _QuickAction('Présence dim.', Icons.checklist_outlined, AppColors.integrated, () => _nav(context, const AttendanceSundayScreen())),
-      _QuickAction('Présence cell.', Icons.group_work_outlined, AppColors.extended, () => _nav(context, const AttendanceCellScreen())),
+      if (auth.canDoCheckpoints)
+        _QuickAction('Contrôles', Icons.fact_check_outlined, AppColors.inProgress, () => _nav(context, const CheckpointListScreen())),
+      if (auth.canPointSunday)
+        _QuickAction('Présence dim.', Icons.checklist_outlined, AppColors.integrated, () => _nav(context, const AttendanceSundayScreen())),
+      if (auth.canPointCell)
+        _QuickAction('Présence cell.', Icons.group_work_outlined, AppColors.extended, () => _nav(context, const AttendanceCellScreen())),
       _QuickAction('Paramètres', Icons.settings_outlined, Colors.grey, () => _nav(context, const SettingsScreen())),
     ]);
 

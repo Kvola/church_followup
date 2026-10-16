@@ -28,7 +28,8 @@
     <record id="group_church_admin" model="res.groups">
         <field name="name">Super Administrateur Église</field>
         <field name="privilege_id" ref="privilege_church_followup"/>
-        <field name="implied_ids" eval="[(4, ref('group_church_manager'))]"/>
+        <!-- Il publie les nouvelles versions de l'application de suivi. -->
+        <field name="implied_ids" eval="[(4, ref('group_church_manager')), (4, ref('mobile_app_release.group_app_publisher'))]"/>
     </record>
 
     <!-- Access rules: all data visible to all church groups -->
@@ -127,6 +128,13 @@
     <record id="rule_church_pastor_global" model="ir.rule">
         <field name="name">Pasteur : accès global</field>
         <field name="model_id" ref="model_church_pastor"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="groups" eval="[(4, ref('group_church_user'))]"/>
+    </record>
+
+    <record id="rule_church_member_checkpoint_global" model="ir.rule">
+        <field name="name">Point de contrôle : accès global</field>
+        <field name="model_id" ref="model_church_member_checkpoint"/>
         <field name="domain_force">[(1, '=', 1)]</field>
         <field name="groups" eval="[(4, ref('group_church_user'))]"/>
     </record>

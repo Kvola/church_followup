@@ -107,7 +107,7 @@ class _AttendanceSundayScreenState extends State<AttendanceSundayScreen> {
                   ),
                   child: Text(
                     '${_presentIds.length}/${memberProvider.allMembers.length}',
-                    style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary, fontSize: 16),
+                    style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary, fontSize: 16),
                   ),
                 ),
               ],

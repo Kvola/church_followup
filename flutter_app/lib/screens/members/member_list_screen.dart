@@ -126,13 +126,14 @@ class _MemberCard extends StatelessWidget {
     final memberType = data['member_type'] ?? '';
     final gender = data['gender'] ?? '';
 
-    final typeColor = memberType == 'integrated'
-        ? AppColors.integrated
-        : memberType == 'in_followup'
-            ? AppColors.inProgress
-            : memberType == 'new'
-                ? AppColors.extended
-                : Colors.grey;
+    final typeColor = switch (memberType) {
+      'integrated' => AppColors.integrated,
+      'established' => AppColors.stateColor('established'),
+      'in_followup' => AppColors.inProgress,
+      'new' => AppColors.extended,
+      'interrupted' => AppColors.abandoned,
+      _ => Colors.grey,
+    };
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
@@ -155,21 +156,30 @@ class _MemberCard extends StatelessWidget {
               Text(phone, style: theme.textTheme.bodySmall),
             ],
             const SizedBox(height: 4),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(
-                color: typeColor.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(
-                AppConstants.memberTypeLabels[memberType] ?? memberType,
-                style: TextStyle(fontSize: 11, color: typeColor, fontWeight: FontWeight.w500),
-              ),
+            Wrap(
+              spacing: 6,
+              runSpacing: 4,
+              children: [
+                _tag(AppConstants.memberTypeLabels[memberType] ?? memberType, typeColor),
+                // Le sexe manque : la fiche est à compléter, plutôt qu'un sexe inventé.
+                if (data['to_complete'] == true) _tag('À compléter', AppColors.abandoned),
+              ],
             ),
           ],
         ),
         trailing: const Icon(Icons.chevron_right),
       ),
+    );
+  }
+
+  Widget _tag(String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Text(label, style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w500)),
     );
   }
 }

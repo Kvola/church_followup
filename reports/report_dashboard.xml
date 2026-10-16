@@ -69,7 +69,7 @@
                                         <td><t t-esc="ev.active_followup_count"/></td>
                                         <td><t t-esc="ev.integrated_count"/></td>
                                         <td><t t-esc="ev.total_followup_count"/></td>
-                                        <td><t t-esc="'%.1f%%' % ev.integration_rate"/></td>
+                                        <td><t t-esc="'{:.1f}%'.format(ev.integration_rate)"/></td>
                                     </tr>
                                 </t>
                             </tbody>

@@ -9,6 +9,7 @@ import 'providers/dashboard_provider.dart';
 import 'providers/followup_provider.dart';
 import 'providers/member_provider.dart';
 import 'providers/organization_provider.dart';
+import 'providers/todo_provider.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/home/home_screen.dart';
 
@@ -58,6 +59,10 @@ class ChurchFollowupApp extends StatelessWidget {
         ),
         ChangeNotifierProxyProvider<AuthProvider, OrganizationProvider>(
           create: (_) => OrganizationProvider(),
+          update: (_, auth, prov) => prov!..updateAuth(auth),
+        ),
+        ChangeNotifierProxyProvider<AuthProvider, TodoProvider>(
+          create: (_) => TodoProvider(),
           update: (_, auth, prov) => prov!..updateAuth(auth),
         ),
       ],

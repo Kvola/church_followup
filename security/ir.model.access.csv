@@ -41,3 +41,9 @@ access_church_cooking_rotation_user,church.cooking.rotation user,model_church_co
 access_church_pastor_admin,church.pastor admin,model_church_pastor,group_church_admin,1,1,1,1
 access_church_pastor_manager,church.pastor manager,model_church_pastor,group_church_manager,1,1,1,0
 access_church_pastor_user,church.pastor user,model_church_pastor,group_church_user,1,0,0,0
+access_church_mobile_user_credentials_manager,church.mobile.user.credentials manager,model_church_mobile_user_credentials,group_church_manager,1,1,1,0
+access_church_followup_assign_user,church.followup.assign user,model_church_followup_assign,group_church_user,1,1,1,0
+access_church_followup_extend_user,church.followup.extend user,model_church_followup_extend,group_church_user,1,1,1,0
+access_church_followup_abandon_user,church.followup.abandon user,model_church_followup_abandon,group_church_user,1,1,1,0
+access_church_member_checkpoint_user,church.member.checkpoint user,model_church_member_checkpoint,group_church_user,1,1,1,0
+access_church_member_checkpoint_manager,church.member.checkpoint manager,model_church_member_checkpoint,group_church_manager,1,1,1,1

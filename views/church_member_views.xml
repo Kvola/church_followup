@@ -5,6 +5,14 @@
         <field name="model">church.member</field>
         <field name="arch" type="xml">
             <form string="Membre">
+                <header>
+                    <button name="action_open_followup_wizard" string="Ouvrir un suivi" type="object"
+                            class="btn-primary" icon="fa-user-plus" invisible="member_type != 'new'"/>
+                    <button name="action_resume_followup" string="Reprendre le suivi" type="object"
+                            class="btn-primary" icon="fa-repeat" invisible="member_type != 'interrupted'"/>
+                    <button name="action_open_followup_wizard" string="Rouvrir un suivi" type="object"
+                            class="btn-warning" icon="fa-repeat" invisible="not reopen_suggested"/>
+                </header>
                 <sheet>
                     <field name="photo" widget="image" class="oe_avatar"/>
                     <div class="oe_button_box" name="button_box">
@@ -24,7 +32,7 @@
                         <group string="Identité">
                             <field name="phone" widget="phone"/>
                             <field name="email" widget="email"/>
-                            <field name="gender"/>
+                            <field name="gender" required="1"/>
                             <field name="date_of_birth"/>
                             <field name="age"/>
                             <field name="profession"/>
@@ -42,8 +50,9 @@
                             <field name="church_id"/>
                             <field name="member_type" widget="badge"
                                    decoration-info="member_type == 'new'"
+                                   decoration-danger="member_type == 'interrupted'"
                                    decoration-warning="member_type == 'in_followup'"
-                                   decoration-success="member_type == 'integrated'"/>
+                                   decoration-success="member_type in ('integrated', 'established')"/>
                             <field name="salvation_date"/>
                             <field name="baptism_date"/>
                             <field name="integration_date"/>
@@ -56,7 +65,61 @@
                             <field name="mentor_id" domain="[('church_id', '=', church_id)]"/>
                         </group>
                     </group>
+                    <group invisible="member_type != 'new'">
+                        <group string="Suivi à venir">
+                            <field name="proposed_followup_label"/>
+                            <field name="planned_followup_weeks"
+                                   help="Laisser à 0 pour appliquer la durée de l'église."/>
+                            <field name="planned_followup_origin" readonly="1"
+                                   invisible="not planned_followup_weeks"/>
+                        </group>
+                    </group>
                     <notebook>
+                        <page string="Parcours" name="page_journey">
+                            <field name="followup_ids" readonly="1">
+                                <list default_order="start_date, id"
+                                      decoration-success="state == 'integrated'"
+                                      decoration-danger="state == 'abandoned'"
+                                      decoration-muted="state == 'transferred'">
+                                    <field name="name"/>
+                                    <field name="start_date"/>
+                                    <field name="end_date"/>
+                                    <field name="duration_weeks"/>
+                                    <field name="evangelist_id"/>
+                                    <field name="state" widget="badge"/>
+                                    <field name="abandon_reason" optional="show"/>
+                                    <field name="abandon_note" optional="hide"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Affermissement" name="page_establishment"
+                              invisible="member_type not in ('integrated', 'established') and not checkpoint_ids">
+                            <div class="alert alert-warning" role="alert" invisible="not reopen_suggested">
+                                Deux contrôles défavorables de suite : rouvrir un suivi est proposé.
+                            </div>
+                            <group>
+                                <group>
+                                    <field name="integration_date"/>
+                                    <field name="established_date" invisible="not established_date"/>
+                                    <field name="reopen_suggested" invisible="1"/>
+                                </group>
+                                <group>
+                                    <field name="baptism_date"/>
+                                    <field name="mentor_id" domain="[('church_id', '=', church_id)]"/>
+                                </group>
+                            </group>
+                            <field name="checkpoint_ids">
+                                <list create="0" decoration-success="result == 'favorable'"
+                                      decoration-warning="result == 'unfavorable'" decoration-muted="state == 'cancelled'">
+                                    <field name="due_date"/>
+                                    <field name="milestone"/>
+                                    <field name="is_catchup"/>
+                                    <field name="state" widget="badge"/>
+                                    <field name="result"/>
+                                    <field name="done_by" optional="show"/>
+                                </list>
+                            </field>
+                        </page>
                         <page string="Notes" name="page_notes">
                             <field name="notes" placeholder="Notes sur le membre..."/>
                         </page>
@@ -80,8 +143,9 @@
                 <field name="district_id" optional="show"/>
                 <field name="member_type" widget="badge"
                        decoration-info="member_type == 'new'"
+                       decoration-danger="member_type == 'interrupted'"
                        decoration-warning="member_type == 'in_followup'"
-                       decoration-success="member_type == 'integrated'"/>
+                       decoration-success="member_type in ('integrated', 'established')"/>
                 <field name="prayer_cell_id" optional="show"/>
                 <field name="age_group_id" optional="show"/>
                 <field name="evangelist_id" optional="hide"/>
@@ -120,8 +184,9 @@
                             <div class="mt-1">
                                 <field name="member_type" widget="badge"
                                        decoration-info="member_type == 'new'"
+                                       decoration-danger="member_type == 'interrupted'"
                                        decoration-warning="member_type == 'in_followup'"
-                                       decoration-success="member_type == 'integrated'"/>
+                                       decoration-success="member_type in ('integrated', 'established')"/>
                             </div>
                             <div class="text-muted small mt-1" t-if="record.prayer_cell_id.value">
                                 <i class="fa fa-home me-1"/><field name="prayer_cell_id"/>
@@ -149,12 +214,15 @@
                 <separator/>
                 <filter name="filter_new" string="Nouvelles personnes" domain="[('member_type', '=', 'new')]"/>
                 <filter name="filter_in_followup" string="En suivi" domain="[('member_type', '=', 'in_followup')]"/>
+                <filter name="filter_interrupted" string="Suivis interrompus" domain="[('member_type', '=', 'interrupted')]"/>
                 <filter name="filter_integrated" string="Intégrés" domain="[('member_type', '=', 'integrated')]"/>
+                <filter name="filter_established" string="Fidèles affermis" domain="[('member_type', '=', 'established')]"/>
                 <filter name="filter_old_member" string="Anciens membres" domain="[('member_type', '=', 'old_member')]"/>
                 <separator/>
                 <filter name="filter_male" string="Hommes" domain="[('gender', '=', 'male')]"/>
                 <filter name="filter_female" string="Femmes" domain="[('gender', '=', 'female')]"/>
                 <separator/>
+                <filter name="filter_to_complete" string="À compléter" domain="[('to_complete', '=', True)]"/>
                 <filter name="filter_no_cell" string="Sans cellule" domain="[('prayer_cell_id', '=', False)]"/>
                 <filter name="filter_no_group" string="Sans groupe" domain="[('age_group_id', '=', False)]"/>
                 <group>
@@ -187,18 +255,33 @@
 
     <!-- Action for new persons only (quick access from menu) -->
     <record id="action_church_member_new" model="ir.actions.act_window">
-        <field name="name">Nouvelles personnes</field>
+        <field name="name">À attribuer</field>
         <field name="res_model">church.member</field>
         <field name="view_mode">list,kanban,form</field>
         <field name="search_view_id" ref="view_church_member_search"/>
         <field name="context">{'search_default_filter_new': 1}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
-                Aucune nouvelle personne
+                Personne n'attend de suivi
             </p>
             <p>
-                Les nouvelles personnes apparaîtront ici en attente de suivi.
+                Les nouvelles personnes, saisies ou venues d'un événement, attendent ici
+                qu'un évangéliste leur soit confié. Sélectionnez-les puis
+                « Actions › Ouvrir un suivi ».
             </p>
+        </field>
+    </record>
+
+    <record id="action_church_member_interrupted" model="ir.actions.act_window">
+        <field name="name">Suivis interrompus</field>
+        <field name="res_model">church.member</field>
+        <field name="view_mode">list,kanban,form</field>
+        <field name="search_view_id" ref="view_church_member_search"/>
+        <field name="context">{'search_default_filter_interrupted': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Aucun suivi interrompu</p>
+            <p>Les personnes dont le suivi a été interrompu attendent ici qu'on le reprenne,
+               avec le motif de l'interruption dans leur parcours.</p>
         </field>
     </record>
 </odoo>
