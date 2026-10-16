@@ -156,7 +156,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           Expanded(
             child: IndexedStack(
               index: _currentIndex,
-              children: tabs.map((t) => t.screen).toList(),
+              // Les onglets cachés restent montés : leurs boutons flottants
+              // (même étiquette de héros) faisaient échouer toute transition.
+              children: [
+                for (var i = 0; i < tabs.length; i++)
+                  HeroMode(enabled: i == _currentIndex, child: tabs[i].screen),
+              ],
             ),
           ),
         ],
@@ -481,7 +486,7 @@ class _MoreScreen extends StatelessWidget {
               onTap: item.onTap,
               borderRadius: BorderRadius.circular(16),
               child: Padding(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(10),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -493,14 +498,18 @@ class _MoreScreen extends StatelessWidget {
                       ),
                       child: Icon(item.icon, color: item.color, size: 26),
                     ),
-                    const SizedBox(height: 10),
-                    Text(
-                      item.label,
-                      style: theme.textTheme.bodySmall
-                          ?.copyWith(fontWeight: FontWeight.w500),
-                      textAlign: TextAlign.center,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+                    const SizedBox(height: 8),
+                    // Sur un petit écran, le libellé cède la place plutôt
+                    // que de déborder de la tuile.
+                    Flexible(
+                      child: Text(
+                        item.label,
+                        style: theme.textTheme.bodySmall
+                            ?.copyWith(fontWeight: FontWeight.w500),
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                   ],
                 ),

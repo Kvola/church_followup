@@ -19,10 +19,15 @@ class TodoProvider extends ChangeNotifier {
   /// Nombre affiché sur le badge (une ligne « fiches à compléter » en compte plusieurs).
   int get count => _items.fold(0, (sum, item) => sum + (item['count'] is int ? item['count'] as int : 1));
 
+  String? _scope;
+
+  /// Déconnexion ou autre église : ce qui est chargé appartient à l'ancien périmètre.
   void updateAuth(AuthProvider auth) {
-    final wasAuthenticated = _auth?.isAuthenticated ?? false;
+    final scope = auth.sessionScope;
+    final changed = _scope != null && _scope != scope;
+    _scope = scope;
     _auth = auth;
-    if (wasAuthenticated && !auth.isAuthenticated) {
+    if (changed) {
       _items = [];
       _summary = '';
       _error = null;

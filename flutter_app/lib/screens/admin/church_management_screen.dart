@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/organization_provider.dart';
 import '../../core/constants.dart';
 import '../../widgets/common.dart';
@@ -498,6 +499,16 @@ class _ChurchDetailScreenState extends State<_ChurchDetailScreen> {
                           ),
                         ),
                       ),
+                      // L'administrateur seul change d'église : il entre ici dans celle-ci.
+                      if (context.watch<AuthProvider>().canChangeChurch &&
+                          context.watch<AuthProvider>().churchId != widget.churchId) ...[
+                        const SizedBox(height: 12),
+                        FilledButton.icon(
+                          onPressed: _manageThisChurch,
+                          icon: const Icon(Icons.login),
+                          label: const Text('Gérer cette église'),
+                        ),
+                      ],
                       const SizedBox(height: 12),
 
                       // Stats grid
@@ -555,6 +566,16 @@ class _ChurchDetailScreenState extends State<_ChurchDetailScreen> {
                   ),
                 ),
     );
+  }
+
+  Future<void> _manageThisChurch() async {
+    final result = await context.read<AuthProvider>().changeChurch(widget.churchId);
+    if (!mounted) return;
+    if (result['success'] == true) {
+      showSuccessSnackbar(context, result['message'] ?? 'Église changée');
+    } else {
+      showErrorSnackbar(context, result['message'] ?? 'Changement impossible');
+    }
   }
 
   void _showEditSheet() {

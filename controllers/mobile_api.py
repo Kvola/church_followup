@@ -253,6 +253,9 @@ class ChurchMobileApi(http.Controller):
             'church_id': user.church_id.id or False,
             'church_name': user.church_id.name or '',
             'is_multi_church': user.role == 'super_admin' and not user.church_id,
+            # On gère SON église ; seul l'administrateur en change.
+            'can_change_church': user.role == 'super_admin',
+            'is_pastor': bool(user.pastor_id),
             'default_followup_weeks': user.church_id.default_followup_weeks or 4,
         }
         if user.role == 'evangelist' and user.evangelist_id:
@@ -283,7 +286,10 @@ class ChurchMobileApi(http.Controller):
             'token': token,
             'session_expiry': fields.Datetime.to_string(session.expires_at),
             'user': self._user_payload(user),
-            'accounts': self._accounts_payload(user._sibling_accounts()),
+            # Les autres comptes ne sont proposés qu'à l'administrateur : les
+            # autres entrent dans leur église et y restent.
+            'accounts': self._accounts_payload(
+                user._sibling_accounts() if user.role == 'super_admin' else user),
         }
 
     @staticmethod
@@ -345,8 +351,8 @@ class ChurchMobileApi(http.Controller):
     def verify_otp(self, **kwargs):
         """Vérifie le code et ouvre une session sur le compte utilisé en dernier.
 
-        Si la personne a des comptes dans plusieurs églises, ils sont tous
-        rendus dans ``accounts`` : l'application propose d'en changer.
+        On entre dans son église (pour un pasteur, celle où il est affecté) ;
+        seul l'administrateur reçoit ses autres comptes dans ``accounts``.
         """
         try:
             identifier, kind = self._identifier(kwargs)
@@ -368,7 +374,7 @@ class ChurchMobileApi(http.Controller):
             return _error('Erreur interne du serveur.', 'server')
 
     @http.route('/api/church/auth/switch', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
-    @church_endpoint()
+    @church_endpoint(roles=('super_admin',))
     def switch_account(self, user, **kwargs):
         """Passe au compte de la même personne dans une autre église.
 
@@ -381,6 +387,33 @@ class ChurchMobileApi(http.Controller):
         request.env['church.mobile.session'].sudo()._revoke(_bearer())
         return self._session_payload(target, 'Vous êtes sur %s' % (target.church_id.name or 'toutes les églises'),
                                      _text(kwargs, 'device_label'))
+
+    @http.route('/api/church/auth/set_church', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
+    @church_endpoint(roles=('super_admin',))
+    def set_church(self, user, **kwargs):
+        """L'administrateur choisit l'église qu'il gère (0 : toutes les églises).
+
+        Le choix est porté par son compte : toutes les routes lisent déjà
+        l'église du compte, rien d'autre n'a à changer.
+        """
+        church_id = _int(kwargs, 'church_id', label='église')
+        church = request.env['equipment.church'].sudo().browse(church_id).exists() if church_id \
+            else request.env['equipment.church']
+        if church_id and not church:
+            raise ApiInputError('Église introuvable.')
+        if church and user.phone_key and request.env['church.mobile.user'].sudo().with_context(
+                active_test=False).search_count([('phone_key', '=', user.phone_key),
+                                                 ('church_id', '=', church.id), ('id', '!=', user.id)]):
+            # Unicité (numéro, église) : même désactivé, cet autre compte occupe la place.
+            raise ApiInputError("Votre numéro a déjà un autre compte dans %s : retirez-le "
+                                "dans Odoo pour gérer cette église en administrateur." % church.name)
+        user.sudo().write({'church_id': church.id or False})
+        church._enable_followup()
+        return {
+            'status': 'success',
+            'message': 'Vous gérez %s' % (church.name or 'toutes les églises'),
+            'user': self._user_payload(user),
+        }
 
     @http.route('/api/church/auth/logout', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     @church_endpoint()

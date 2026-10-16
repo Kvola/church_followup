@@ -102,7 +102,7 @@
                 <ul>
                     <li>Se connecter avec son numéro et le code reçu.</li>
                     <li>Savoir quoi faire quand le code n'arrive pas.</li>
-                    <li>Changer d'église quand on sert dans deux églises.</li>
+                    <li>Savoir dans quelle église on entre, et qui peut en changer.</li>
                 </ul>
                 <div class="bloc">
                 <h3>Démonstration</h3>
@@ -122,8 +122,8 @@
                         <p class="voir"><strong>Vous devez voir</strong> : le message « Si ce compte existe, un code de 6 chiffres vient d'être envoyé », puis l'onglet « À faire ».</p></li>
                     <li>Déconnectez-vous (« Paramètres », « Déconnexion »), puis saisissez un numéro qui n'a pas de compte.
                         <p class="voir"><strong>Vous devez voir</strong> : exactement le même message. L'application ne dit jamais si un numéro est connu.</p></li>
-                    <li>Connecté en Pasteur Marc Kouadio, ouvrez « Paramètres », puis « Changer d'église ».
-                        <p class="voir"><strong>Vous devez voir</strong> : l'Église Bonne Nouvelle de la Grâce de Angré et celle de Yopougon ; passer de l'une à l'autre ne redemande aucun code.</p></li>
+                    <li>Connecté avec un compte administrateur, ouvrez « Paramètres », puis « Changer d'église », et choisissez l'église de Yopougon.
+                        <p class="voir"><strong>Vous devez voir</strong> : la liste des églises du suivi et « Toutes les églises » ; le choix ramène à l'accueil de Yopougon, sans nouveau code. Connecté en évangéliste ou en pasteur, la ligne « Changer d'église » n'existe pas : on entre dans son église et l'on y reste.</p></li>
                     <li>Sur l'ordinateur du formateur (ou un iPhone), ouvrez <code>/suivi-evangelisation</code> et connectez-vous avec le même numéro.
                         <p class="voir"><strong>Vous devez voir</strong> : la même application, les mêmes données ; une banderole qui propose de l'installer (sur iPhone : « Sur l'écran d'accueil »).</p></li>
                 </ol>

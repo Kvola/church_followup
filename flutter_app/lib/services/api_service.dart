@@ -172,12 +172,28 @@ class ApiService {
     return Map<String, dynamic>.from(result);
   }
 
-  /// Ferme la session côté serveur (sans échouer si le réseau manque).
-  Future<void> logout() async {
+  /// L'administrateur choisit l'église qu'il gère (0 : toutes les églises).
+  Future<Map<String, dynamic>> setChurch(int churchId) async {
+    final result = await call('/api/church/auth/set_church', {'church_id': churchId});
+    _ensureSuccess(result);
+    return Map<String, dynamic>.from(result);
+  }
+
+  /// Ferme la session côté serveur : désenregistre le téléphone puis révoque
+  /// le jeton. Un seul essai, borné : la déconnexion n'attend pas le réseau.
+  Future<void> closeSession({String? deviceToken}) async {
     if (_token == null) return;
-    try {
-      await call('/api/church/auth/logout', {});
-    } catch (_) {}
+    Future<void> once(String endpoint, Map<String, dynamic> params) async {
+      try {
+        await call(endpoint, params, retries: AppConstants.maxRetries)
+            .timeout(const Duration(seconds: 5));
+      } catch (_) {}
+    }
+
+    if (deviceToken != null) {
+      await once('/api/church/device/unregister', {'device_token': deviceToken});
+    }
+    await once('/api/church/auth/logout', {});
   }
 
   // ─── Dashboard ─────────────────────────────────────────────────────

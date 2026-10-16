@@ -67,6 +67,10 @@ class ChurchMobileUser(models.Model):
     # Link to related records
     evangelist_id = fields.Many2one('church.evangelist', string='Évangéliste lié', ondelete='set null')
     prayer_cell_id = fields.Many2one('church.prayer.cell', string='Cellule liée', ondelete='set null')
+    pastor_id = fields.Many2one(
+        'equipment.pastor', string='Pasteur', readonly=True, copy=False, ondelete='set null',
+        help="Le compte d'un pasteur de l'annuaire, ouvert à sa première connexion. Il suit "
+             "l'église du pasteur : après une mutation, il entre dans la nouvelle.")
     age_group_id = fields.Many2one('church.age.group', string='Groupe d\'âge lié', ondelete='set null')
 
     _phone_church_uniq = models.Constraint(
@@ -156,13 +160,73 @@ class ChurchMobileUser(models.Model):
         """Les comptes actifs d'une personne : même numéro, ou même adresse.
 
         Un même numéro peut servir dans plusieurs églises (un évangéliste aussi
-        responsable ailleurs). Le code prouve qu'on tient le numéro : il ouvre
-        donc tous ces comptes, et l'application fait choisir l'église.
+        responsable ailleurs). La session s'ouvre sur le PREMIER compte rendu :
+        on entre dans son église, et seul l'administrateur en change.
         """
         field = 'email' if kind == 'email' else 'phone_e164'
         accounts = self.sudo().search([(field, '=', identifier), ('active', '=', True)],
                                       order='last_login desc, id')
+        # Le compte d'un pasteur parti de l'annuaire ne rouvre plus rien.
+        accounts = accounts.filtered(lambda a: not a.pastor_id or a.pastor_id.active)
+        # On entre dans SON église : l'administrateur d'abord (lui seul change
+        # d'église), puis l'église où la personne est pasteur.
+        pastor_account = self._pastor_account(identifier, kind, accounts)
+        if pastor_account:
+            accounts = pastor_account | (accounts - pastor_account)
+        admin = accounts.filtered(lambda a: a.role == 'super_admin')[:1]
+        if admin:
+            accounts = admin | (accounts - admin)
         return accounts or self._back_office_account(identifier, kind)
+
+    @api.model
+    def _pastor_account(self, identifier, kind, accounts):
+        """Le compte d'un pasteur de l'annuaire, dans l'église où il est affecté.
+
+        Le pasteur n'a pas à se faire créer un compte : son numéro (ou son
+        adresse) dans l'annuaire le prouve. Il entre comme responsable de son
+        église ; muté, il entre dans la nouvelle à la connexion suivante.
+        """
+        Pastor = self.env['equipment.pastor'].sudo()
+        if kind == 'email':
+            domain = [('email', '=ilike', identifier)]
+        else:
+            domain = [('phone_intl', '=', identifier.lstrip('+'))]
+        pastor = Pastor.search(domain + [('active', '=', True), ('church_id', '!=', False)], limit=1)
+        if not pastor:
+            return self.browse()
+        church = pastor.church_id
+        account = accounts.filtered(lambda a: a.church_id == church)[:1]
+        if not account:
+            account = self.sudo().with_context(active_test=False).search(
+                [('pastor_id', '=', pastor.id)], limit=1)
+            if account and not account.active:
+                return self.browse()  # désactivé exprès : on ne le rouvre pas en silence
+        vals = {}
+        if account:
+            if account.church_id != church:
+                # Muté : le compte suit, sans ses rattachements de l'ancienne église.
+                vals.update(church_id=church.id, evangelist_id=False,
+                            prayer_cell_id=False, age_group_id=False)
+            if account.role not in ('super_admin', 'manager'):
+                vals['role'] = 'manager'
+            if account.pastor_id != pastor:
+                vals['pastor_id'] = pastor.id
+            if vals:
+                account.sudo().write(vals)
+                church._enable_followup()
+            return account
+        phone = identifier if kind == 'phone' else (
+            '+%s' % pastor.phone_intl if pastor.phone_intl else pastor.phone)
+        email = identifier if kind == 'email' else (pastor.email or '').strip().lower()
+        if not re.fullmatch(r'[^@\s]+@[^@\s]+\.[^@\s]+', email or ''):
+            email = False  # une adresse mal saisie dans l'annuaire ne bloque pas l'entrée
+        account = self.sudo().create({
+            'name': pastor.name, 'phone': phone,
+            'email': email,
+            'role': 'manager', 'church_id': church.id, 'pastor_id': pastor.id,
+        })
+        _logger.info("Compte mobile ouvert pour le pasteur %s (%s)", pastor.name, church.name)
+        return account
 
     @api.model
     def _back_office_account(self, identifier, kind):
