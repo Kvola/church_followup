@@ -250,6 +250,7 @@ class ChurchMobileApi(http.Controller):
             'phone': user.phone,
             'email': user.email or '',
             'role': user.role,
+            'role_label': user._role_display_label(),
             'church_id': user.church_id.id or False,
             'church_name': user.church_id.name or '',
             'is_multi_church': user.role == 'super_admin' and not user.church_id,
@@ -274,7 +275,7 @@ class ChurchMobileApi(http.Controller):
             'id': a.id,
             'church_name': a.church_id.name or 'Toutes les églises',
             'role': a.role,
-            'role_label': a.get_role_label(),
+            'role_label': a._role_display_label(),
         } for a in accounts]
 
     def _session_payload(self, user, message, device_label=None):
@@ -1209,6 +1210,7 @@ class ChurchMobileApi(http.Controller):
                 'name': u.name,
                 'phone': u.phone,
                 'role': u.role,
+                'role_label': u._role_display_label(),
                 'active': u.active,
                 'church_id': u.church_id.id or False,
                 'church_name': u.church_id.name or '',

@@ -90,6 +90,14 @@ void main() {
     expect(find.text('Changer d\'église'), findsNothing);
   });
 
+  testWidgets('un pasteur se lit « Pasteur », avec les droits d\'un responsable', (tester) async {
+    final app = await _app(tester, {..._manager, 'role_label': 'Pasteur', 'is_pastor': true});
+    expect(app.auth.isManager, isTrue);
+    await _openSettings(tester);
+    expect(find.text('Pasteur'), findsOneWidget);
+    expect(find.text('Responsable des évangélistes'), findsNothing);
+  });
+
   testWidgets('l\'administrateur choisit une église et revient à l\'accueil de celle-ci', (tester) async {
     final app = await _app(tester, _admin, routes: {
       '/churches': {

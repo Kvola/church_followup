@@ -577,7 +577,7 @@ class _UserCard extends StatelessWidget {
               runSpacing: 4,
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                StateBadge(state: role, small: true),
+                StateBadge(state: role, small: true, label: data['role_label']?.toString()),
                 if (neverLogged)
                   const StateBadge(state: 'never_logged', small: true),
                 if (lastLogin.isNotEmpty)

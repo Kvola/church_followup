@@ -123,6 +123,7 @@
                        decoration-success="role == 'super_admin'"
                        decoration-warning="role in ('cell_leader', 'group_leader')"
                        decoration-primary="role == 'manager'"/>
+                <field name="role_display" optional="show"/>
                 <field name="church_id" optional="show"/>
                 <field name="active" widget="boolean_toggle"/>
             </list>

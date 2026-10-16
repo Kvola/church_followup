@@ -155,12 +155,17 @@ class StateBadge extends StatelessWidget {
   final String state;
   final bool small;
 
-  const StateBadge({super.key, required this.state, this.small = false});
+  /// Libellé imposé (ex. « Pasteur ») ; sinon déduit de l'état ou du rôle.
+  final String? label;
+
+  const StateBadge({super.key, required this.state, this.small = false, this.label});
 
   @override
   Widget build(BuildContext context) {
     final color = AppColors.stateColor(state);
-    final label = AppConstants.stateLabels[state] ?? AppConstants.roleLabels[state] ?? state;
+    final label = (this.label?.isNotEmpty ?? false)
+        ? this.label!
+        : AppConstants.stateLabels[state] ?? AppConstants.roleLabels[state] ?? state;
     return Container(
       padding: EdgeInsets.symmetric(
         horizontal: small ? 8 : 12,

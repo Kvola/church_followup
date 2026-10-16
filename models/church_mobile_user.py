@@ -67,6 +67,10 @@ class ChurchMobileUser(models.Model):
     # Link to related records
     evangelist_id = fields.Many2one('church.evangelist', string='Évangéliste lié', ondelete='set null')
     prayer_cell_id = fields.Many2one('church.prayer.cell', string='Cellule liée', ondelete='set null')
+    role_display = fields.Char(
+        string='Fonction', compute='_compute_role_display',
+        help="« Pasteur » ou « Missionnaire » pour un compte de l'annuaire des pasteurs ; "
+             "sinon le rôle.")
     pastor_id = fields.Many2one(
         'equipment.pastor', string='Pasteur', readonly=True, copy=False, ondelete='set null',
         help="Le compte d'un pasteur de l'annuaire, ouvert à sa première connexion. Il suit "
@@ -134,6 +138,20 @@ class ChurchMobileUser(models.Model):
     def get_role_label(self):
         """Return the human-readable role label."""
         return dict(self._fields['role'].selection).get(self.role, self.role)
+
+    @api.depends('role', 'pastor_id.function')
+    def _compute_role_display(self):
+        for rec in self:
+            rec.role_display = rec._role_display_label()
+
+    def _role_display_label(self):
+        """Ce que la personne lit : « Pasteur » (ou « Missionnaire ») plutôt que
+        le rôle technique. Les droits restent ceux du rôle, ici responsable."""
+        self.ensure_one()
+        if self.pastor_id and self.role != 'super_admin':
+            return dict(self.pastor_id._fields['function'].selection).get(
+                self.pastor_id.function, _('Pasteur'))
+        return self.get_role_label()
 
     @api.model_create_multi
     def create(self, vals_list):
