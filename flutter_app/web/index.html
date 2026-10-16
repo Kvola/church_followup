@@ -32,6 +32,31 @@
   <meta name="theme-color" content="#5B4FCF">
   <title>Suivi Évangélisation</title>
   <link rel="manifest" href="manifest.json">
+  <script>
+    // Installation de la PWA (Chrome, Edge, Android) : le navigateur annonce
+    // une seule fois qu'elle est installable (`beforeinstallprompt`), souvent
+    // AVANT que Flutter ait démarré. On garde l'événement ici ; la banderole
+    // de l'app le rejoue quand on touche « Installer ».
+    window.suiviInstallEvent = null;
+    window.addEventListener('beforeinstallprompt', function (e) {
+      e.preventDefault();
+      window.suiviInstallEvent = e;
+    });
+    window.addEventListener('appinstalled', function () { window.suiviInstallEvent = null; });
+    window.suiviCanInstall = function () { return window.suiviInstallEvent !== null; };
+    window.suiviIsStandalone = function () {
+      return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+    };
+    window.suiviPromptInstall = function () {
+      var e = window.suiviInstallEvent;
+      if (!e) { return Promise.resolve(false); }
+      e.prompt();
+      return e.userChoice.then(function (choice) {
+        window.suiviInstallEvent = null;
+        return choice.outcome === 'accepted';
+      });
+    };
+  </script>
 </head>
 <body>
   <script src="flutter_bootstrap.js" async></script>

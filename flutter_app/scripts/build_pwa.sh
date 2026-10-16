@@ -44,7 +44,7 @@ fi
 # l'application s'installe puis ne retrouve plus ses fichiers (page blanche).
 BASE_HREF='/suivi-evangelisation/'
 VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //')
-DEFINES=(--dart-define="APP_VERSION=${VERSION%%+*}")
+DEFINES=(--dart-define="APP_VERSION=$VERSION")
 if [ -n "${FCM_WEB_APP_ID:-}" ] && [ -n "${FCM_VAPID_KEY:-}" ]; then
     DEFINES+=(--dart-define="FCM_WEB_APP_ID=$FCM_WEB_APP_ID" --dart-define="FCM_VAPID_KEY=$FCM_VAPID_KEY")
     info "▶ Notifications web : activées (app Web $FCM_WEB_APP_ID)"
