@@ -5,6 +5,12 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+// Firebase (notifications push) seulement si sa configuration est là : sans
+// `google-services.json`, l'APK se construit et le push reste muet.
+if (file("google-services.json").exists()) {
+    apply(plugin = "com.google.gms.google-services")
+}
+
 android {
     namespace = "com.church.followup.church_followup_mobile"
     compileSdk = 36

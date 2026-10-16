@@ -1,0 +1,200 @@
+{
+  "project_info": {
+    "project_number": "541286889689",
+    "project_id": "association-management-fef4d",
+    "storage_bucket": "association-management-fef4d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:541286889689:android:8232d91c686a52c633a6c8",
+        "android_client_info": {
+          "package_name": "ci.dibi.notifier_mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCYwYEwbRAawKGA9jHRN296hiZiWOkse7Y"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:541286889689:android:7fedb49587073df833a6c8",
+        "android_client_info": {
+          "package_name": "ci.kvla.pharma_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCYwYEwbRAawKGA9jHRN296hiZiWOkse7Y"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:541286889689:android:14e9ffa019884b5433a6c8",
+        "android_client_info": {
+          "package_name": "com.church.followup.church_followup_mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCYwYEwbRAawKGA9jHRN296hiZiWOkse7Y"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:541286889689:android:c703f9758d8b892133a6c8",
+        "android_client_info": {
+          "package_name": "com.icp.association_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCYwYEwbRAawKGA9jHRN296hiZiWOkse7Y"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:541286889689:android:f8c6930f56d90bb033a6c8",
+        "android_client_info": {
+          "package_name": "com.icp.association_app.ebng"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCYwYEwbRAawKGA9jHRN296hiZiWOkse7Y"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:541286889689:android:088d9af32f72897b33a6c8",
+        "android_client_info": {
+          "package_name": "com.icp.association_app.kavola"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCYwYEwbRAawKGA9jHRN296hiZiWOkse7Y"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:541286889689:android:18eb21000e19396333a6c8",
+        "android_client_info": {
+          "package_name": "site.kavola.boutik"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCYwYEwbRAawKGA9jHRN296hiZiWOkse7Y"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:541286889689:android:330112ef022bbc8733a6c8",
+        "android_client_info": {
+          "package_name": "site.kavola.restaurateur"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCYwYEwbRAawKGA9jHRN296hiZiWOkse7Y"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:541286889689:android:8ec84d67273e0e4633a6c8",
+        "android_client_info": {
+          "package_name": "site.kavola.shop"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCYwYEwbRAawKGA9jHRN296hiZiWOkse7Y"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:541286889689:android:f59f32cb861ba7c733a6c8",
+        "android_client_info": {
+          "package_name": "site.kavola.sortie"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCYwYEwbRAawKGA9jHRN296hiZiWOkse7Y"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

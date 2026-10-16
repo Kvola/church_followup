@@ -416,6 +416,50 @@ class ApiService {
     );
   }
 
+  // ─── À faire, à attribuer, contrôles ─────────────────────────────
+
+  /// Ce qui attend l'utilisateur : `{count, summary, items}`.
+  Future<Map<String, dynamic>> getTodo() async {
+    final result = await call('/api/church/todo', {});
+    _ensureSuccess(result);
+    return Map<String, dynamic>.from(result);
+  }
+
+  /// Nouvelles personnes à confier (`members`) et suivis interrompus (`interrupted`).
+  Future<Map<String, List<Map<String, dynamic>>>> getPeopleToAssign() async {
+    final result = await call('/api/church/followups/to_assign', {});
+    _ensureSuccess(result);
+    return {
+      'members': _safeList(result['members']),
+      'interrupted': _safeList(result['interrupted']),
+    };
+  }
+
+  Future<List<Map<String, dynamic>>> getCheckpoints({String state = 'planned'}) async {
+    final result = await call('/api/church/checkpoints', {'state': state});
+    return _successList(result, 'checkpoints');
+  }
+
+  Future<Map<String, dynamic>> saveCheckpoint(Map<String, dynamic> data) async {
+    return Map<String, dynamic>.from(await call('/api/church/checkpoint/save', data));
+  }
+
+  // ─── Téléphone (notifications push) ───────────────────────────────
+
+  Future<void> registerDevice(String token, String platform, String label) async {
+    await call('/api/church/device/register', {
+      'device_token': token,
+      'platform': platform,
+      'device_label': label,
+    });
+  }
+
+  Future<void> unregisterDevice(String token) async {
+    try {
+      await call('/api/church/device/unregister', {'device_token': token});
+    } catch (_) {}
+  }
+
   // ─── Reports ──────────────────────────────────────────────────────
 
   Future<Map<String, dynamic>> getFollowupReport(int evangelistId) async {

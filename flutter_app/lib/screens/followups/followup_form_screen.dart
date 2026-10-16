@@ -9,9 +9,11 @@ import '../../widgets/common.dart';
 import 'followup_detail_screen.dart' show WeeksStepper;
 
 class FollowupFormScreen extends StatefulWidget {
-  /// Personne déjà choisie (depuis la liste « À attribuer », par exemple).
-  final int? initialMemberId;
-  const FollowupFormScreen({super.key, this.initialMemberId});
+  /// Personne déjà choisie (depuis « À attribuer » ou « À faire »). Elle est
+  /// proposée même si elle n'est ni nouvelle ni interrompue (suivi rouvert
+  /// après deux contrôles défavorables).
+  final Map<String, dynamic>? initialMember;
+  const FollowupFormScreen({super.key, this.initialMember});
 
   @override
   State<FollowupFormScreen> createState() => _FollowupFormScreenState();
@@ -28,7 +30,7 @@ class _FollowupFormScreenState extends State<FollowupFormScreen> {
   @override
   void initState() {
     super.initState();
-    _selectedMemberId = widget.initialMemberId;
+    _selectedMemberId = AppConstants.safeId(widget.initialMember?['id']);
     _durationWeeks = context.read<AuthProvider>().defaultFollowupWeeks;
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final auth = context.read<AuthProvider>();
@@ -38,8 +40,17 @@ class _FollowupFormScreenState extends State<FollowupFormScreen> {
     });
   }
 
+  List<Map<String, dynamic>> _candidates(List<Map<String, dynamic>> loaded) {
+    final initial = widget.initialMember;
+    final list = loaded.where((m) => m['id'] is int).toList();
+    if (initial != null && initial['id'] is int && !list.any((m) => m['id'] == initial['id'])) {
+      list.insert(0, initial);
+    }
+    return list;
+  }
+
   Map<String, dynamic>? _member(int? id) {
-    for (final m in context.read<MemberProvider>().allMembers) {
+    for (final m in _candidates(context.read<MemberProvider>().allMembers)) {
       if (m['id'] == id) return m;
     }
     return null;
@@ -87,7 +98,7 @@ class _FollowupFormScreenState extends State<FollowupFormScreen> {
     final theme = Theme.of(context);
     final member = _member(_selectedMemberId);
     final proposedLabel = AppConstants.safeStr(member?['proposed_followup_label']);
-    final members = memberProvider.allMembers.where((m) => m['id'] is int).toList();
+    final members = _candidates(memberProvider.allMembers);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Nouveau suivi')),

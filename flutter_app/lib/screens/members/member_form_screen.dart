@@ -363,6 +363,10 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
               decoration: const InputDecoration(labelText: 'Profession', prefixIcon: Icon(Icons.work_outlined)),
               textCapitalization: TextCapitalization.sentences,
             ),
+            if (_isEdit && context.watch<MemberProvider>().currentDetail != null) ...[
+              const SizedBox(height: 24),
+              _JourneySection(detail: context.watch<MemberProvider>().currentDetail!),
+            ],
             const SizedBox(height: 32),
 
             SizedBox(
@@ -420,6 +424,86 @@ class _DateField extends StatelessWidget {
           style: TextStyle(color: value != null ? null : Theme.of(context).colorScheme.onSurfaceVariant),
         ),
       ),
+    );
+  }
+}
+
+/// Le parcours de la personne : chaque suivi (motif d'interruption, reprise),
+/// puis l'affermissement après l'intégration.
+class _JourneySection extends StatelessWidget {
+  final Map<String, dynamic> detail;
+  const _JourneySection({required this.detail});
+
+  static const _milestones = {'3m': 'à 3 mois', '6m': 'à 6 mois'};
+  static const _results = {'favorable': 'favorable', 'unfavorable': 'défavorable'};
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final journey = (detail['journey'] as List? ?? []).whereType<Map>().toList();
+    final checkpoints = (detail['checkpoints'] as List? ?? []).whereType<Map>().toList();
+    final dates = <String, String>{
+      'Intégré(e) le': AppConstants.safeStr(detail['integration_date']),
+      'Baptisé(e) le': AppConstants.safeStr(detail['baptism_date']),
+      'Affermi(e) le': AppConstants.safeStr(detail['established_date']),
+    }..removeWhere((_, v) => v.isEmpty);
+    if (journey.isEmpty && checkpoints.isEmpty && dates.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Parcours', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+        if (detail['reopen_suggested'] == true)
+          const Padding(
+            padding: EdgeInsets.only(top: 8),
+            child: Text('Deux contrôles défavorables de suite : rouvrir un suivi est proposé.',
+                style: TextStyle(color: AppColors.abandoned)),
+          ),
+        const SizedBox(height: 8),
+        ...journey.map((j) {
+          final state = AppConstants.safeStr(j['state']);
+          final reason = [AppConstants.safeStr(j['abandon_reason_label']), AppConstants.safeStr(j['abandon_note'])]
+              .where((t) => t.isNotEmpty)
+              .join(' — ');
+          return Card(
+            margin: const EdgeInsets.only(bottom: 6),
+            child: ListTile(
+              dense: true,
+              leading: Icon(Icons.assignment_outlined, color: AppColors.stateColor(state)),
+              title: Text('${AppConstants.safeStr(j['start_date'])} · ${j['duration_weeks'] ?? 0} sem. · '
+                  '${AppConstants.safeStr(j['evangelist_name'])}'),
+              subtitle: Text([
+                AppConstants.safeStr(j['state_label']),
+                if (reason.isNotEmpty) reason,
+                if (j['resumes_followup_id'] is int) 'reprise d\'un suivi interrompu',
+              ].join(' · ')),
+            ),
+          );
+        }),
+        if (dates.isNotEmpty || checkpoints.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            children: [
+              ...dates.entries.map((e) => Chip(label: Text('${e.key} ${e.value}'))),
+              ...checkpoints.map((c) {
+                final done = c['state'] == 'done';
+                final favorable = c['result'] == 'favorable';
+                return Chip(
+                  avatar: Icon(
+                    done ? (favorable ? Icons.check_circle : Icons.cancel) : Icons.schedule,
+                    size: 16,
+                    color: done ? (favorable ? AppColors.integrated : AppColors.abandoned) : Colors.grey,
+                  ),
+                  label: Text('Contrôle ${_milestones[c['milestone']] ?? ''}'
+                      '${done ? ' ${_results[c['result']] ?? ''}' : ' le ${AppConstants.safeStr(c['due_date'])}'}'),
+                );
+              }),
+            ],
+          ),
+        ],
+      ],
     );
   }
 }
