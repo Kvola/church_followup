@@ -14,7 +14,7 @@ class ChurchFollowupAssign(models.TransientModel):
     _description = 'Ouvrir un suivi'
 
     member_ids = fields.Many2many('church.member', string='Personnes', required=True)
-    church_id = fields.Many2one('church.church', compute='_compute_church_id')
+    church_id = fields.Many2one('equipment.church', compute='_compute_church_id')
     evangelist_id = fields.Many2one('church.evangelist', string='Évangéliste', required=True,
                                     domain="[('church_id', '=', church_id)]")
     duration_weeks = fields.Integer(
