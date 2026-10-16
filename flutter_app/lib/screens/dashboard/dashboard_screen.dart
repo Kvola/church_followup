@@ -55,7 +55,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       Padding(
                         padding: const EdgeInsets.symmetric(vertical: 8),
                         child: Text(
-                          'Bonjour, ${auth.userName.split(' ').first} 👋',
+                          'Bonjour ${_firstName(auth.userName)}',
                           style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
                         ),
                       ),
@@ -66,7 +66,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         crossAxisCount: 2,
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
-                        childAspectRatio: 1.4,
+                        // Hauteur réglée sur un téléphone de 390 points de large : à 1,4
+                        // la valeur et le libellé débordaient de 8 pixels.
+                        childAspectRatio: 1.25,
                         crossAxisSpacing: 12,
                         mainAxisSpacing: 12,
                         children: [
@@ -186,7 +188,7 @@ class _IntegrationRateCard extends StatelessWidget {
                       const SizedBox(height: 8),
                       _statRow('Intégrés', '$integrated', AppColors.integrated),
                       const SizedBox(height: 8),
-                      _statRow('Abandonnés', '$abandoned', AppColors.abandoned),
+                      _statRow('Interrompus', '$abandoned', AppColors.abandoned),
                     ],
                   ),
                 ),
@@ -284,7 +286,7 @@ class _FollowupOverviewCard extends StatelessWidget {
                 const SizedBox(width: 16),
                 _legend('Intégrés', AppColors.integrated),
                 const SizedBox(width: 16),
-                _legend('Abandonnés', AppColors.abandoned),
+                _legend('Interrompus', AppColors.abandoned),
               ],
             ),
           ],
@@ -307,4 +309,15 @@ class _FollowupOverviewCard extends StatelessWidget {
       ],
     );
   }
+}
+
+/// Le prénom pour saluer : un titre placé devant le nom (« Pasteur Marc
+/// Kouadio ») n'en est pas un.
+String _firstName(String fullName) {
+  const titles = {'pasteur', 'pasteure', 'frère', 'sœur', 'soeur', 'diacre', 'ancien', 'évangéliste'};
+  final words = fullName.split(' ').where((w) => w.isNotEmpty).toList();
+  while (words.length > 1 && titles.contains(words.first.toLowerCase())) {
+    words.removeAt(0);
+  }
+  return words.isEmpty ? '' : words.first;
 }

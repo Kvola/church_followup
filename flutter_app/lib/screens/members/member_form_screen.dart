@@ -450,9 +450,9 @@ class _JourneySection extends StatelessWidget {
     final journey = (detail['journey'] as List? ?? []).whereType<Map>().toList();
     final checkpoints = (detail['checkpoints'] as List? ?? []).whereType<Map>().toList();
     final dates = <String, String>{
-      'Intégré(e) le': AppConstants.safeStr(detail['integration_date']),
-      'Baptisé(e) le': AppConstants.safeStr(detail['baptism_date']),
-      'Affermi(e) le': AppConstants.safeStr(detail['established_date']),
+      'Intégré(e) le': AppConstants.frDate(detail['integration_date']),
+      'Baptisé(e) le': AppConstants.frDate(detail['baptism_date']),
+      'Affermi(e) le': AppConstants.frDate(detail['established_date']),
     }..removeWhere((_, v) => v.isEmpty);
     if (journey.isEmpty && checkpoints.isEmpty && dates.isEmpty) return const SizedBox.shrink();
 
@@ -477,7 +477,7 @@ class _JourneySection extends StatelessWidget {
             child: ListTile(
               dense: true,
               leading: Icon(Icons.assignment_outlined, color: AppColors.stateColor(state)),
-              title: Text('${AppConstants.safeStr(j['start_date'])} · ${j['duration_weeks'] ?? 0} sem. · '
+              title: Text('${AppConstants.frDate(j['start_date'])} · ${j['duration_weeks'] ?? 0} sem. · '
                   '${AppConstants.safeStr(j['evangelist_name'])}'),
               subtitle: Text([
                 AppConstants.safeStr(j['state_label']),
@@ -504,7 +504,7 @@ class _JourneySection extends StatelessWidget {
                     color: done ? (favorable ? AppColors.integrated : AppColors.abandoned) : Colors.grey,
                   ),
                   label: Text('Contrôle ${_milestones[c['milestone']] ?? ''}'
-                      '${done ? ' ${_results[c['result']] ?? ''}' : ' le ${AppConstants.safeStr(c['due_date'])}'}'),
+                      '${done ? ' ${_results[c['result']] ?? ''}' : ' le ${AppConstants.frDate(c['due_date'])}'}'),
                 );
               }),
             ],

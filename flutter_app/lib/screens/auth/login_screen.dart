@@ -194,8 +194,9 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                             size: 18,
                           ),
                           label: const Text('Paramètres serveur'),
+                          // Hérite du thème (police comprise) au lieu de le remplacer.
                           style: TextButton.styleFrom(
-                            textStyle: const TextStyle(fontSize: 12),
+                            textStyle: theme.textTheme.labelMedium,
                           ),
                         ),
                       ),

@@ -68,32 +68,52 @@ class _MobileUsersScreenState extends State<MobileUsersScreen> {
                     },
                   ),
                 ),
-      floatingActionButton: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (auth.isSuperAdmin) ...[
-            FloatingActionButton.small(
-              heroTag: 'create_user',
-              onPressed: () => _showCreateUserDialog(),
-              tooltip: 'Créer un utilisateur',
-              child: const Icon(Icons.person_add_alt),
+      // Un seul bouton, qui dit ce qu'il fait ; le choix du compte vient après.
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _chooseAccountKind(auth.isSuperAdmin),
+        icon: const Icon(Icons.person_add),
+        label: const Text('Ajouter un compte'),
+      ),
+    );
+  }
+
+  void _chooseAccountKind(bool isSuperAdmin) {
+    showModalBottomSheet(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.groups_outlined),
+              title: const Text('Responsable de cellule'),
+              subtitle: const Text('Pointe sa cellule et fait les contrôles à 3 et 6 mois'),
+              onTap: () {
+                Navigator.pop(ctx);
+                _showCreateLeaderDialog('cell');
+              },
             ),
-            const SizedBox(height: 8),
+            ListTile(
+              leading: const Icon(Icons.diversity_3_outlined),
+              title: const Text('Responsable de groupe d\'âge'),
+              subtitle: const Text('Pointe la présence de son groupe au culte'),
+              onTap: () {
+                Navigator.pop(ctx);
+                _showCreateLeaderDialog('group');
+              },
+            ),
+            if (isSuperAdmin)
+              ListTile(
+                leading: const Icon(Icons.person_add_alt),
+                title: const Text('Autre compte'),
+                subtitle: const Text('Évangéliste, responsable, avec son rôle et son église'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _showCreateUserDialog();
+                },
+              ),
           ],
-          FloatingActionButton.small(
-            heroTag: 'cell_leader',
-            onPressed: () => _showCreateLeaderDialog('cell'),
-            tooltip: 'Nouveau chef de cellule',
-            child: const Icon(Icons.group_add),
-          ),
-          const SizedBox(height: 8),
-          FloatingActionButton.extended(
-            heroTag: 'group_leader',
-            onPressed: () => _showCreateLeaderDialog('group'),
-            icon: const Icon(Icons.person_add),
-            label: const Text('Chef de groupe'),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -438,7 +458,7 @@ class _MobileUsersScreenState extends State<MobileUsersScreen> {
   void _showCreateLeaderDialog(String type) {
     final nameCtrl = TextEditingController();
     final phoneCtrl = TextEditingController();
-    final title = type == 'cell' ? 'Chef de cellule' : "Chef de groupe d'âge";
+    final title = type == 'cell' ? 'Responsable de cellule' : "Responsable de groupe d'âge";
     int? selectedId;
     final provider = context.read<OrganizationProvider>();
 
@@ -555,7 +575,8 @@ class _UserCard extends StatelessWidget {
     final name = data['name'] ?? '';
     final phone = data['phone'] ?? '';
     final role = data['role'] ?? '';
-    final lastLogin = data['last_login'] ?? '';
+    final lastLogin = _shortDate(AppConstants.safeStr(data['last_login']));
+    final pinMissing = data['pin_set'] == false;
     final isActive = data['active'] ?? true;
 
     return Card(
@@ -589,13 +610,19 @@ class _UserCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (phone.isNotEmpty) Text(phone),
-            Row(
+            const SizedBox(height: 4),
+            // Wrap, pas Row : sur un téléphone étroit, la date passe à la ligne
+            // au lieu de déborder.
+            Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                StateBadge(state: role),
-                if (lastLogin.isNotEmpty) ...[
-                  const SizedBox(width: 8),
-                  Text('Dernier: $lastLogin', style: theme.textTheme.bodySmall),
-                ],
+                StateBadge(state: role, small: true),
+                if (pinMissing)
+                  const StateBadge(state: 'pin_missing', small: true),
+                if (lastLogin.isNotEmpty)
+                  Text('Vu le $lastLogin', style: theme.textTheme.bodySmall),
               ],
             ),
           ],
@@ -638,6 +665,14 @@ class _UserCard extends StatelessWidget {
               ),
       ),
     );
+  }
+
+  /// « 2026-10-15 19:40:00 » → « 15/10 à 19:40 ».
+  static String _shortDate(String raw) {
+    final dt = DateTime.tryParse(raw);
+    if (dt == null) return '';
+    String two(int v) => v.toString().padLeft(2, '0');
+    return '${two(dt.day)}/${two(dt.month)} à ${two(dt.hour)}:${two(dt.minute)}';
   }
 
   IconData _roleIcon(String role) {

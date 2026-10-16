@@ -127,6 +127,16 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  /// Ouvre une session sans serveur : réservé aux tests et aux captures de
+  /// formation (données de démonstration).
+  @visibleForTesting
+  void debugSignIn(Map<String, dynamic> user) {
+    _currentUser = Map<String, dynamic>.from(user);
+    _isAuthenticated = true;
+    _isLoading = false;
+    notifyListeners();
+  }
+
   /// Déconnexion voulue : le téléphone cesse de recevoir les relances de ce
   /// compte, et la session est fermée côté serveur.
   Future<void> logout() async {

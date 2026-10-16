@@ -207,7 +207,7 @@
                 <filter name="filter_active" string="En cours" domain="[('state', '=', 'in_progress')]"/>
                 <filter name="filter_extended" string="Prolongés" domain="[('state', '=', 'extended')]"/>
                 <filter name="filter_integrated" string="Intégrés" domain="[('state', '=', 'integrated')]"/>
-                <filter name="filter_abandoned" string="Abandonnés" domain="[('state', '=', 'abandoned')]"/>
+                <filter name="filter_abandoned" string="Interrompus" domain="[('state', '=', 'abandoned')]"/>
                 <filter name="filter_transferred" string="Transférés" domain="[('state', '=', 'transferred')]"/>
                 <separator/>
                 <filter name="filter_expired" string="Échéance dépassée"

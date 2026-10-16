@@ -114,3 +114,12 @@ class TestEstablishment(TransactionCase):
         self.assertIn(member.id, [i['member_id'] for i in self.manager._todo_items(later)
                                   if i['kind'] == 'checkpoint_due'])
         self.assertIn('contrôle(s) à faire', self.manager._todo_summary(self.manager._todo_items(later)))
+
+    def test_corrected_integration_date_replans_pending_checkpoints(self):
+        member = self._integrated()
+        self._checkpoint(member, '3m').action_record('unfavorable')  # crée un rattrapage
+        catchup = self._checkpoint(member, '3m')
+        catchup_due = catchup.due_date
+        member.integration_date = date(2026, 1, 10)
+        self.assertEqual(self._checkpoint(member, '6m').due_date, date(2026, 7, 10))
+        self.assertEqual(catchup.due_date, catchup_due, "Le rattrapage garde son échéance")

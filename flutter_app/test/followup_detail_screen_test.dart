@@ -70,7 +70,7 @@ void main() {
     expect(find.text('8 sem.'), findsOneWidget);
     expect(find.text('2 / 8'), findsOneWidget);
     expect(find.textContaining('Événement d\'origine'), findsOneWidget);
-    expect(find.textContaining('2 semaine(s) sur 4 (50 %)'), findsOneWidget);
+    expect(find.textContaining('2 semaine(s) sur 4 (50\u00a0%)'), findsOneWidget);
     expect(find.text('Pointé(e) au culte'), findsOneWidget);
     expect(find.text('Ajouter'), findsOneWidget);
   });

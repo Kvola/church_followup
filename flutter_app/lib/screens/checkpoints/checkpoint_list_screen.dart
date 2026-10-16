@@ -75,7 +75,7 @@ class _CheckpointListScreenState extends State<CheckpointListScreen> {
                               subtitle: Text(
                                 'Contrôle ${_milestoneLabels[c['milestone']] ?? ''}'
                                 '${c['is_catchup'] == true ? ' (rattrapage)' : ''} — '
-                                '${overdue ? 'à faire' : 'prévu le ${AppConstants.safeStr(c['due_date'])}'}',
+                                '${overdue ? 'à faire' : 'prévu le ${AppConstants.frDate(c['due_date'])}'}',
                               ),
                               trailing: const Icon(Icons.chevron_right),
                               onTap: () async {

@@ -31,10 +31,11 @@ class ChurchFollowup(models.Model):
     )
 
     state = fields.Selection([
+        # Dans l'ordre du parcours : la barre d'état les affiche ainsi.
         ('in_progress', 'En cours'),
-        ('integrated', 'Intégré(e)'),
-        ('abandoned', 'Abandonné(e)'),
         ('extended', 'Prolongé(e)'),
+        ('integrated', 'Intégré(e)'),
+        ('abandoned', 'Interrompu(e)'),
         ('transferred', 'Transféré(e)'),
     ], string='État', default='in_progress', tracking=True, index=True)
 

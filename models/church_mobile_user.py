@@ -200,11 +200,11 @@ class ChurchMobileUserCredentials(models.TransientModel):
     _name = 'church.mobile.user.credentials'
     _description = 'Identifiants à transmettre'
 
-    mobile_user_id = fields.Many2one('church.mobile.user', required=True, readonly=True)
-    phone = fields.Char(related='mobile_user_id.phone')
-    pin = fields.Char(readonly=True)
-    message = fields.Text(readonly=True)
-    whatsapp_url = fields.Char(compute='_compute_whatsapp_url')
+    mobile_user_id = fields.Many2one('church.mobile.user', string='Compte', required=True, readonly=True)
+    phone = fields.Char(related='mobile_user_id.phone', string='Téléphone')
+    pin = fields.Char(string='PIN', readonly=True)
+    message = fields.Text(string='Message à transmettre', readonly=True)
+    whatsapp_url = fields.Char(string='WhatsApp', compute='_compute_whatsapp_url')
 
     @api.depends('message', 'mobile_user_id.phone_key')
     def _compute_whatsapp_url(self):

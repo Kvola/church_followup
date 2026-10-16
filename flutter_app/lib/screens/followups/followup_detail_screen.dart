@@ -519,11 +519,11 @@ class _AttendanceSummary extends StatelessWidget {
         children: [
           Text(
             'Présence au culte : ${_int(data['attendance_weeks'])} semaine(s) sur ${_int(data['elapsed_weeks'])} '
-            '(${_int(data['attendance_rate'])} %)',
+            '(${_int(data['attendance_rate'])}\u00a0%)',
             style: TextStyle(fontWeight: FontWeight.w600, color: color),
           ),
           if (threshold > 0)
-            Text(below ? 'Sous le seuil de $threshold % fixé par l\'église.' : 'Seuil de $threshold % atteint.',
+            Text(below ? 'Sous le seuil de $threshold\u00a0% fixé par l\'église.' : 'Seuil de $threshold\u00a0% atteint.',
                 style: TextStyle(fontSize: 12, color: color)),
         ],
       ),

@@ -159,6 +159,18 @@ class ChurchMember(models.Model):
         string='Rouvrir un suivi ?', tracking=True,
         help="Deux contrôles défavorables de suite : rouvrir un suivi est proposé.")
 
+    def write(self, vals):
+        res = super().write(vals)
+        if vals.get('integration_date'):
+            # Une date d'intégration corrigée (saisie après coup) replanifie les
+            # jalons encore à faire ; un rattrapage garde sa propre échéance.
+            for rec in self:
+                for checkpoint in rec.checkpoint_ids.filtered(
+                        lambda c: c.state == 'planned' and not c.is_catchup):
+                    checkpoint.due_date = rec.integration_date + relativedelta(
+                        months=MILESTONE_MONTHS[checkpoint.milestone])
+        return res
+
     def _update_establishment(self):
         """Appelé après un contrôle favorable : il lève la proposition de rouvrir
         un suivi ; les deux jalons satisfaits, la personne est affermie."""
@@ -234,6 +246,6 @@ class ChurchMobileUser(models.Model):
 
     def _todo_labels(self):
         return super()._todo_labels() + [
-            ('checkpoint_due', _('%s contrôle(s) à faire')),
-            ('reopen_suggested', _('%s suivi(s) à rouvrir')),
+            ('checkpoint_due', _('%s\u00a0contrôle(s) à faire')),
+            ('reopen_suggested', _('%s\u00a0suivi(s) à rouvrir')),
         ]

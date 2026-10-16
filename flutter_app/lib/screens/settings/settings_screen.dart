@@ -184,22 +184,7 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  String _roleLabel(String role) {
-    switch (role) {
-      case 'super_admin':
-        return 'Super Administrateur';
-      case 'manager':
-        return 'Responsable';
-      case 'evangelist':
-        return 'Évangéliste';
-      case 'cell_leader':
-        return 'Chef de cellule';
-      case 'group_leader':
-        return "Chef de groupe d'âge";
-      default:
-        return role;
-    }
-  }
+  String _roleLabel(String role) => AppConstants.roleLabels[role] ?? role;
 }
 
 class _SectionTitle extends StatelessWidget {

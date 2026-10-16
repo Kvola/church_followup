@@ -1,0 +1,10 @@
+# L'étiquette `formation` isole les tests qui PRODUISENT les captures du guide,
+# du manuel et des vidéos (test/formation/). Ce ne sont pas des tests de
+# régression : ils se régénèrent à chaque évolution de l'interface. Mis de côté
+# par défaut — sinon `flutter test` (et le script de publication) échouerait
+# dès qu'un écran change. Pour les refaire :
+#
+#     flutter test --tags formation --run-skipped --update-goldens
+tags:
+  formation:
+    skip: "Captures de formation : flutter test --tags formation --run-skipped --update-goldens"
