@@ -17,7 +17,7 @@ class TestEstablishment(TransactionCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.env = cls.env(context=dict(cls.env.context, tracking_disable=True))
-        cls.church = cls.env['church.church'].create({'name': 'Église', 'integration_min_attendance': 0})
+        cls.church = cls.env['equipment.church'].create({'name': 'Église', 'integration_min_attendance': 0})
         cls.ev = cls.env['church.evangelist'].create({'name': 'Ev', 'church_id': cls.church.id})
         cls.cell = cls.env['church.prayer.cell'].create({'name': 'Cellule', 'church_id': cls.church.id})
         cls.group = cls.env['church.age.group'].create({
@@ -114,3 +114,12 @@ class TestEstablishment(TransactionCase):
         self.assertIn(member.id, [i['member_id'] for i in self.manager._todo_items(later)
                                   if i['kind'] == 'checkpoint_due'])
         self.assertIn('contrôle(s) à faire', self.manager._todo_summary(self.manager._todo_items(later)))
+
+    def test_corrected_integration_date_replans_pending_checkpoints(self):
+        member = self._integrated()
+        self._checkpoint(member, '3m').action_record('unfavorable')  # crée un rattrapage
+        catchup = self._checkpoint(member, '3m')
+        catchup_due = catchup.due_date
+        member.integration_date = date(2026, 1, 10)
+        self.assertEqual(self._checkpoint(member, '6m').due_date, date(2026, 7, 10))
+        self.assertEqual(catchup.due_date, catchup_due, "Le rattrapage garde son échéance")

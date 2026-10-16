@@ -76,7 +76,7 @@ class ChurchMobileUser(models.Model):
                 'kind': 'decision_due', 'followup_id': f.id, 'member_id': f.member_id.id,
                 'evangelist_id': f.evangelist_id.id, 'due_date': str(f.end_date),
                 'title': _('Décision à prendre : %s') % f.member_id.display_name,
-                'detail': _('Suivi arrivé à terme le %s : intégrer, prolonger ou transférer.')
+                'detail': _('Suivi arrivé à terme le %s. Intégrer, prolonger ou transférer ?')
                 % f.end_date.strftime('%d/%m/%Y'),
             })
 
@@ -107,7 +107,7 @@ class ChurchMobileUser(models.Model):
         if incomplete:
             items.append({
                 'kind': 'to_complete', 'count': incomplete,
-                'title': _('%s fiche(s) à compléter') % incomplete,
+                'title': _('%s\u00a0fiche(s) à compléter') % incomplete,
                 'detail': _('Le sexe manque : il oriente le choix du groupe d\'âge.'),
             })
         late = {}
@@ -118,7 +118,7 @@ class ChurchMobileUser(models.Model):
         for evangelist, count in sorted(late.items(), key=lambda kv: -kv[1]):
             items.append({
                 'kind': 'evangelist_late', 'evangelist_id': evangelist.id,
-                'title': _('%(name)s : %(count)s rapport(s) en retard', name=evangelist.name, count=count),
+                'title': _('%(name)s : %(count)s\u00a0rapport(s) en retard', name=evangelist.name, count=count),
                 'detail': _('À relancer.'),
             })
         return items
@@ -135,9 +135,9 @@ class ChurchMobileUser(models.Model):
     def _todo_labels(self):
         """(type de tâche, libellé « %s … ») dans l'ordre du résumé ; extensible."""
         return [
-            ('decision_due', _('%s décision(s) à prendre')),
-            ('report_overdue', _('%s rapport(s) en retard')),
-            ('to_assign', _('%s personne(s) à attribuer')),
-            ('evangelist_late', _('%s évangéliste(s) en retard')),
-            ('to_complete', _('%s fiche(s) à compléter')),
+            ('decision_due', _('%s\u00a0décision(s) à prendre')),
+            ('report_overdue', _('%s\u00a0rapport(s) en retard')),
+            ('to_assign', _('%s\u00a0personne(s) à attribuer')),
+            ('evangelist_late', _('%s\u00a0évangéliste(s) en retard')),
+            ('to_complete', _('%s\u00a0fiche(s) à compléter')),
         ]

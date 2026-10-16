@@ -1,12 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <defs>
     <linearGradient id="fond" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#C0546C"/>
-      <stop offset="100%" stop-color="#5E1E31"/>
+      <stop offset="0%" stop-color="#7C6DD8"/>
+      <stop offset="100%" stop-color="#3A2E9E"/>
     </linearGradient>
   </defs>
   <rect width="512" height="512" rx="112" fill="url(#fond)"/>
-  <path d="M 230.0,96.0 h 52.0 v 74.0 h 70.0 v 52.0 h -70.0 v 130.0 h -52.0 v -130.0 h -70.0 v -52.0 h 70.0 Z" fill="#FFF3E6"/>
-  <path d="M 72.0,322.0 C 140.0,300.0 212.0,306.0 250.0,340.0 L 250.0,428.0 C 212.0,394.0 140.0,388.0 72.0,410.0 Z" fill="#FFF3E6"/>
-  <path d="M 440.0,322.0 C 372.0,300.0 300.0,306.0 262.0,340.0 L 262.0,428.0 C 300.0,394.0 372.0,388.0 440.0,410.0 Z" fill="#E2D2C6"/>
+  <path d="M 294.0,78.0 H 342.0 V 150.0 H 400.0 V 198.0 H 342.0 V 318.0 H 294.0 V 198.0 H 236.0 V 150.0 H 294.0 Z" fill="#FFC24B" stroke="#FFC24B" stroke-width="10.0" stroke-linejoin="round"/>
+  <circle cx="96.0" cy="424.0" r="15.0" fill="#FFF6E8" fill-opacity="0.55"/><circle cx="150.0" cy="394.0" r="19.0" fill="#FFF6E8" fill-opacity="0.75"/><circle cx="206.0" cy="368.0" r="23.0" fill="#FFF6E8" fill-opacity="0.95"/>
+  <circle cx="262.0" cy="300.0" r="30.0" fill="#FFF6E8"/><path d="M 210.0,424.0 C 210.0,362.0 232.0,340.0 262.0,340.0 C 292.0,340.0 314.0,362.0 314.0,424.0 Z" fill="#FFF6E8"/>
 </svg>

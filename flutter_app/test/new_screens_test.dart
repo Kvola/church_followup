@@ -30,7 +30,7 @@ Future<List<Map<String, dynamic>>> pump(WidgetTester tester, Widget screen, Map<
     return http.Response(jsonEncode({'result': routes[key] ?? {'status': 'success'}}), 200,
         headers: {'content-type': 'application/json; charset=utf-8'});
   });
-  final api = ApiService(client: client)..configure(baseUrl: 'https://test', userId: 1, token: 't');
+  final api = ApiService(client: client)..configure(baseUrl: 'https://test', token: 't');
   final auth = _AuthForTest(api: api);
   await tester.pumpWidget(MultiProvider(
     providers: [

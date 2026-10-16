@@ -13,7 +13,7 @@ class ChurchPrayerCell(models.Model):
     _order = 'name'
 
     name = fields.Char(string='Nom de la cellule', required=True, tracking=True)
-    church_id = fields.Many2one('church.church', string='Église', required=True, ondelete='cascade')
+    church_id = fields.Many2one('equipment.church', string='Église', required=True, ondelete='restrict')
     district_ids = fields.Many2many('church.district', string='Quartiers couverts')
 
     # Horaire

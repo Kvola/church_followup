@@ -31,6 +31,8 @@ class AppColors {
         return extended;
       case 'transferred':
         return transferred;
+      case 'never_logged':
+        return extended;
       // Statuts de la personne
       case 'new':
         return inProgress;

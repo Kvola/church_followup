@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants.dart';
 import '../../core/theme.dart';
-import '../../providers/auth_provider.dart';
 import '../../providers/followup_provider.dart';
 import '../../providers/organization_provider.dart';
 import '../../widgets/common.dart';
@@ -107,7 +106,8 @@ class _FollowupDetailScreenState extends State<FollowupDetailScreen> {
   // ─── Prolonger : nombre de semaines au choix ──────────────────────
 
   Future<void> _showExtendDialog(Map<String, dynamic> data) async {
-    int weeks = context.read<AuthProvider>().defaultFollowupWeeks;
+    // Des semaines à AJOUTER : on part de 2, pas de la durée entière (6 + 6).
+    int weeks = 2;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => StatefulBuilder(
@@ -519,11 +519,11 @@ class _AttendanceSummary extends StatelessWidget {
         children: [
           Text(
             'Présence au culte : ${_int(data['attendance_weeks'])} semaine(s) sur ${_int(data['elapsed_weeks'])} '
-            '(${_int(data['attendance_rate'])} %)',
+            '(${_int(data['attendance_rate'])}\u00a0%)',
             style: TextStyle(fontWeight: FontWeight.w600, color: color),
           ),
           if (threshold > 0)
-            Text(below ? 'Sous le seuil de $threshold % fixé par l\'église.' : 'Seuil de $threshold % atteint.',
+            Text(below ? 'Sous le seuil de $threshold\u00a0% fixé par l\'église.' : 'Seuil de $threshold\u00a0% atteint.',
                 style: TextStyle(fontSize: 12, color: color)),
         ],
       ),

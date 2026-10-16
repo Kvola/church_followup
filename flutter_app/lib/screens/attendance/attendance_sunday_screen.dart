@@ -5,6 +5,12 @@ import '../../providers/member_provider.dart';
 import '../../providers/organization_provider.dart';
 import '../../widgets/common.dart';
 
+/// Le dernier dimanche, ou ce jour s'il en est un.
+DateTime lastSunday(DateTime now) {
+  final day = DateTime(now.year, now.month, now.day);
+  return day.subtract(Duration(days: day.weekday % 7));
+}
+
 class AttendanceSundayScreen extends StatefulWidget {
   const AttendanceSundayScreen({super.key});
 
@@ -13,7 +19,10 @@ class AttendanceSundayScreen extends StatefulWidget {
 }
 
 class _AttendanceSundayScreenState extends State<AttendanceSundayScreen> {
-  DateTime _selectedDate = DateTime.now();
+  /// Le dernier dimanche (aujourd'hui si c'est dimanche) : on pointe souvent
+  /// le culte le lundi ou le mardi, et une présence datée du jour de saisie
+  /// ne serait rapprochée d'aucun culte.
+  DateTime _selectedDate = lastSunday(DateTime.now());
   final Set<int> _presentIds = {};
   bool _isSaving = false;
   String _search = '';

@@ -132,7 +132,7 @@ class _PersonCard extends StatelessWidget {
           child: Text(AppConstants.initial(name), style: TextStyle(color: color, fontWeight: FontWeight.bold)),
         ),
         title: Text(name, style: const TextStyle(fontWeight: FontWeight.w600)),
-        subtitle: subtitle.isEmpty ? null : Text(subtitle, maxLines: 2, overflow: TextOverflow.ellipsis),
+        subtitle: subtitle.isEmpty ? null : Text(subtitle, maxLines: 3, overflow: TextOverflow.ellipsis),
         trailing: FilledButton.tonal(onPressed: onTap, child: Text(actionLabel)),
         onTap: onTap,
       ),

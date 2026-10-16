@@ -13,7 +13,7 @@ class TestInterruption(TransactionCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.env = cls.env(context=dict(cls.env.context, tracking_disable=True))
-        cls.church = cls.env['church.church'].create({'name': 'Église'})
+        cls.church = cls.env['equipment.church'].create({'name': 'Église'})
         cls.ev = cls.env['church.evangelist'].create({'name': 'Ev', 'church_id': cls.church.id})
         cls.ev2 = cls.env['church.evangelist'].create({'name': 'Ev2', 'church_id': cls.church.id})
         cls.member = cls.env['church.member'].create({

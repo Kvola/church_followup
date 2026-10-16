@@ -4,7 +4,7 @@ import logging
 from psycopg2 import IntegrityError
 
 from odoo import fields, http
-from odoo.exceptions import AccessError, UserError, ValidationError
+from odoo.exceptions import AccessDenied, AccessError, UserError, ValidationError
 from odoo.http import request
 
 from odoo.addons.otp_auth.tools.client_ip import client_ip
@@ -14,15 +14,21 @@ from ..models.church_tools import ACTIVE_FOLLOWUP_STATES
 
 _logger = logging.getLogger(__name__)
 
-# Seuls les ÉCHECS de connexion sont comptés. Deux compteurs :
-# * numéro + adresse : un inconnu ne peut pas verrouiller le compte d'autrui
-#   depuis sa propre adresse ;
-# * adresse seule : une même machine ne peut pas essayer numéro après numéro.
-_LOGIN_LIMITS = (
-    ('phone_ip', 5, 15 * 60, 15 * 60),
-    ('ip', 30, 15 * 60, 30 * 60),
-)
-_LOGIN_FAILED = 'Identifiants incorrects ou trop de tentatives. Réessayez plus tard.'
+# Connexion par code à usage unique (otp_auth). Le code lui-même est limité à
+# 5 essais et 10 minutes par le socle ; ces compteurs-ci protègent la porte :
+# * demandes par adresse : une machine ne fait pas pleuvoir les SMS ;
+# * demandes par identifiant : un numéro ne reçoit pas dix codes d'affilée ;
+# * vérifications par adresse : on n'essaie pas numéro après numéro.
+OTP_SCOPE = 'church_followup'
+OTP_DEBUG_PARAM = 'church_followup.otp_debug_return'
+_OTP_LIMITS = {
+    'request_ip': (10, 15 * 60, 15 * 60),
+    'request_id': (3, 5 * 60, 5 * 60),
+    'verify_ip': (20, 15 * 60, 30 * 60),
+}
+_OTP_SENT = "Si ce numéro ou cette adresse a un compte, un code vient d'y être envoyé."
+_OTP_REFUSED = 'Code incorrect ou expiré. Demandez-en un nouveau.'
+_TOO_MANY = 'Trop de tentatives. Réessayez dans quelques minutes.'
 
 MANAGERS = ('super_admin', 'manager')
 ALL_ROLES = ('super_admin', 'manager', 'evangelist', 'cell_leader', 'group_leader')
@@ -47,8 +53,7 @@ def church_endpoint(roles=ALL_ROLES):
     def decorator(func):
         @functools.wraps(func)
         def wrapper(self, **kwargs):
-            user = request.env['church.mobile.user'].sudo()._from_session(
-                kwargs.get('user_id'), kwargs.get('token'))
+            user = request.env['church.mobile.session'].sudo()._resolve_account(_bearer())
             if not user:
                 return _error('Session expirée : veuillez vous reconnecter.', 'auth_required')
             if user.role not in roles:
@@ -69,6 +74,23 @@ def church_endpoint(roles=ALL_ROLES):
                 return _error('Erreur interne du serveur.', 'server')
         return wrapper
     return decorator
+
+
+def _bearer():
+    """Le jeton de session, lu dans l'en-tête ``Authorization: Bearer …``."""
+    header = request.httprequest.headers.get('Authorization') or ''
+    scheme, _sep, token = header.partition(' ')
+    return token.strip() if scheme.lower() == 'bearer' and len(token.strip()) >= 32 else ''
+
+
+def _mask(identifier, kind):
+    """« +225 07 •• •• •• 12 » / « a•••@exemple.ci » : de quoi reconnaître, pas de quoi lire."""
+    if kind == 'email':
+        local, _sep, domain = identifier.partition('@')
+        return '%s•••@%s' % (local[:1], domain)
+    # « +225 07 •• •• •• 01 » : l'indicatif, l'opérateur, les deux derniers chiffres.
+    head = '+225 %s' % identifier[4:6] if identifier.startswith('+225') else identifier[:-8]
+    return '%s •• •• •• %s' % (head, identifier[-2:])
 
 
 # ─── Lecture des paramètres ──────────────────────────────────────────
@@ -169,7 +191,7 @@ class ChurchMobileApi(http.Controller):
     def _resolve_church_id(self, user, kwargs):
         if user.role == 'super_admin':
             church_id = _int(kwargs, 'church_id') or user.church_id.id
-            if not church_id or not request.env['church.church'].sudo().browse(church_id).exists():
+            if not church_id or not request.env['equipment.church'].sudo().browse(church_id).exists():
                 raise ApiInputError('Église requise.')
             return church_id
         return user.church_id.id
@@ -221,63 +243,145 @@ class ChurchMobileApi(http.Controller):
 
     # ─── Authentication ───────────────────────────────────────────────
 
-    @http.route('/api/church/auth/login', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
-    def login(self, **kwargs):
-        """Connexion via téléphone + PIN."""
-        phone = phone_key(kwargs.get('phone') if isinstance(kwargs.get('phone'), str) else '')
-        pin = kwargs.get('pin') if isinstance(kwargs.get('pin'), str) else ''
-        pin = pin.strip()
-        if not phone or not pin:
-            return _error('Téléphone et PIN requis', 'invalid')
+    @staticmethod
+    def _user_payload(user):
+        data = {
+            'id': user.id,
+            'name': user.name,
+            'phone': user.phone,
+            'email': user.email or '',
+            'role': user.role,
+            'church_id': user.church_id.id or False,
+            'church_name': user.church_id.name or '',
+            'is_multi_church': user.role == 'super_admin' and not user.church_id,
+            'default_followup_weeks': user.church_id.default_followup_weeks or 4,
+        }
+        if user.role == 'evangelist' and user.evangelist_id:
+            data['evangelist_id'] = user.evangelist_id.id
+        elif user.role == 'cell_leader' and user.prayer_cell_id:
+            data['prayer_cell_id'] = user.prayer_cell_id.id
+            data['prayer_cell_name'] = user.prayer_cell_id.name
+        elif user.role == 'group_leader' and user.age_group_id:
+            data['age_group_id'] = user.age_group_id.id
+            data['age_group_name'] = user.age_group_id.name
+        return data
 
+    @staticmethod
+    def _accounts_payload(accounts):
+        return [{
+            'id': a.id,
+            'church_name': a.church_id.name or 'Toutes les églises',
+            'role': a.role,
+            'role_label': a.get_role_label(),
+        } for a in accounts]
+
+    def _session_payload(self, user, message, device_label=None):
+        token = user._open_session(device_label)
+        session = request.env['church.mobile.session'].sudo()._resolve_session(token)
+        return {
+            'status': 'success',
+            'message': message,
+            'token': token,
+            'session_expiry': fields.Datetime.to_string(session.expires_at),
+            'user': self._user_payload(user),
+            'accounts': self._accounts_payload(user._sibling_accounts()),
+        }
+
+    @staticmethod
+    def _limited(kind, key):
+        """Compte une tentative ; True si la porte est fermée pour un moment."""
+        max_req, window, block = _OTP_LIMITS[kind]
+        blocked, _retry = request.env['otp.rate.limit'].sudo().check_and_record(
+            'church_otp:%s:%s' % (kind, key), max_req, window, block)
+        return blocked
+
+    @staticmethod
+    def _identifier(kwargs):
         try:
-            ip = client_ip(request)
-            keys = {'phone_ip': 'church_login:%s:%s' % (phone, ip), 'ip': 'church_login_ip:%s' % ip}
-            Limit = request.env['otp.rate.limit'].sudo()
-            now = fields.Datetime.now()
-            if Limit.search_count([('key', 'in', list(keys.values())), ('blocked_until', '>', now)]):
-                return _error(_LOGIN_FAILED, 'auth_failed')
+            return request.env['otp.code'].sudo()._norm_identifier(_text(kwargs, 'identifier'))
+        except ValidationError:
+            raise ApiInputError('Saisissez votre numéro de téléphone ou votre adresse e-mail.')
 
-            # Un même numéro peut avoir un compte dans plusieurs églises : le PIN choisit.
-            candidates = request.env['church.mobile.user'].sudo().search([
-                ('phone_key', '=', phone), ('active', '=', True),
-            ])
-            user = next((u for u in candidates if u.verify_pin(pin)), None)
-            if not user:
-                for kind, max_req, window, block in _LOGIN_LIMITS:
-                    Limit.check_and_record(keys[kind], max_req, window, block)
-                return _error(_LOGIN_FAILED, 'auth_failed')
+    @http.route('/api/church/auth/request_otp', type='jsonrpc', auth='public', methods=['POST'],
+                csrf=False, readonly=False)
+    def request_otp(self, **kwargs):
+        """Envoie un code au numéro (WhatsApp, sinon SMS) ou à l'adresse du compte.
 
-            token = user._open_session()
-            data = {
-                'id': user.id,
-                'name': user.name,
-                'phone': user.phone,
-                'role': user.role,
-                'church_id': user.church_id.id or False,
-                'church_name': user.church_id.name or '',
-                'is_multi_church': user.role == 'super_admin' and not user.church_id,
-                'session_expiry': fields.Datetime.to_string(user.token_expiry),
-                'default_followup_weeks': user.church_id.default_followup_weeks or 4,
+        La réponse est la même qu'un compte existe ou non : sinon la route
+        deviendrait un annuaire des numéros enregistrés.
+        """
+        try:
+            identifier, kind = self._identifier(kwargs)
+            if self._limited('request_ip', client_ip(request)) or self._limited('request_id', identifier):
+                return _error(_TOO_MANY, 'rate_limited')
+            payload = {
+                'status': 'success',
+                'message': _OTP_SENT,
+                'identifier_masked': _mask(identifier, kind),
+                'channel': kind,
+                'expires_in_seconds': 600,
+                'resend_after_seconds': 60,
             }
-            if user.role == 'evangelist' and user.evangelist_id:
-                data['evangelist_id'] = user.evangelist_id.id
-            elif user.role == 'cell_leader' and user.prayer_cell_id:
-                data['prayer_cell_id'] = user.prayer_cell_id.id
-                data['prayer_cell_name'] = user.prayer_cell_id.name
-            elif user.role == 'group_leader' and user.age_group_id:
-                data['age_group_id'] = user.age_group_id.id
-                data['age_group_name'] = user.age_group_id.name
-
-            return {'status': 'success', 'message': 'Connexion réussie', 'user': data, 'token': token}
+            accounts = request.env['church.mobile.user'].sudo()._accounts_for_identifier(identifier, kind)
+            if accounts:
+                account = accounts[0]
+                code = request.env['otp.code'].sudo()._issue(
+                    identifier, OTP_SCOPE, phone=account.phone_e164 or None, email=account.email or None)
+                if code and request.env['ir.config_parameter'].sudo().get_param(OTP_DEBUG_PARAM):
+                    payload['debug_otp'] = code
+            return payload
+        except ApiInputError as e:
+            return _error(str(e), 'invalid')
         except Exception:
-            _logger.exception("Erreur de connexion")
+            _logger.exception("Envoi du code de connexion")
             return _error('Erreur interne du serveur.', 'server')
+
+    @http.route('/api/church/auth/verify_otp', type='jsonrpc', auth='public', methods=['POST'],
+                csrf=False, readonly=False)
+    def verify_otp(self, **kwargs):
+        """Vérifie le code et ouvre une session sur le compte utilisé en dernier.
+
+        Si la personne a des comptes dans plusieurs églises, ils sont tous
+        rendus dans ``accounts`` : l'application propose d'en changer.
+        """
+        try:
+            identifier, kind = self._identifier(kwargs)
+            if self._limited('verify_ip', client_ip(request)):
+                return _error(_TOO_MANY, 'rate_limited')
+            try:
+                request.env['otp.code'].sudo()._verify(identifier, OTP_SCOPE, _text(kwargs, 'code'))
+            except AccessDenied:
+                return _error(_OTP_REFUSED, 'auth_failed')
+            accounts = request.env['church.mobile.user'].sudo()._accounts_for_identifier(identifier, kind)
+            if not accounts:
+                # Le compte a été désactivé entre l'envoi et la saisie du code.
+                return _error("Ce compte n'est plus actif. Adressez-vous à votre responsable.", 'auth_failed')
+            return self._session_payload(accounts[0], 'Connexion réussie', _text(kwargs, 'device_label'))
+        except ApiInputError as e:
+            return _error(str(e), 'invalid')
+        except Exception:
+            _logger.exception("Vérification du code de connexion")
+            return _error('Erreur interne du serveur.', 'server')
+
+    @http.route('/api/church/auth/switch', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
+    @church_endpoint()
+    def switch_account(self, user, **kwargs):
+        """Passe au compte de la même personne dans une autre église.
+
+        Le code a prouvé qu'on tient ce numéro : il vaut pour tous ses comptes.
+        La session en cours est fermée, une nouvelle est ouverte.
+        """
+        target = user._sibling_accounts().filtered(lambda a: a.id == _int(kwargs, 'account_id', True, 'compte'))
+        if not target:
+            raise ApiInputError('Compte introuvable.')
+        request.env['church.mobile.session'].sudo()._revoke(_bearer())
+        return self._session_payload(target, 'Vous êtes sur %s' % (target.church_id.name or 'toutes les églises'),
+                                     _text(kwargs, 'device_label'))
 
     @http.route('/api/church/auth/logout', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     @church_endpoint()
     def logout(self, user, **kwargs):
-        user.action_close_session()
+        request.env['church.mobile.session'].sudo()._revoke(_bearer())
         return {'status': 'success', 'message': 'Déconnecté'}
 
     # ─── Dashboard ────────────────────────────────────────────────────
@@ -365,7 +469,7 @@ class ChurchMobileApi(http.Controller):
     @http.route('/api/church/evangelist/create', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     @church_endpoint(roles=MANAGERS)
     def create_evangelist(self, user, **kwargs):
-        """Créer un évangéliste et son compte mobile ; le PIN n'est rendu qu'ici."""
+        """Créer un évangéliste et son compte mobile, avec l'invitation à lui transmettre."""
         evangelist = request.env['church.evangelist'].sudo().create({
             'name': _text(kwargs, 'name', True, 'nom'),
             'phone': _text(kwargs, 'phone', True, 'téléphone'),
@@ -379,7 +483,7 @@ class ChurchMobileApi(http.Controller):
                 'id': evangelist.id,
                 'name': evangelist.name,
                 'phone': evangelist.phone,
-                'pin': account._issue_pin() if account else '',
+                'invitation': account.get_invitation_message() if account else '',
             },
         }
 
@@ -834,7 +938,7 @@ class ChurchMobileApi(http.Controller):
     @church_endpoint()
     def church_settings(self, user, **kwargs):
         """Réglages de l'église ; un responsable peut changer la durée de suivi par défaut."""
-        church = request.env['church.church'].sudo().browse(self._resolve_church_id(user, kwargs))
+        church = request.env['equipment.church'].sudo().browse(self._resolve_church_id(user, kwargs))
         settings = {'default_followup_weeks': 'durée de suivi par défaut',
                     'integration_min_attendance': 'présence minimale pour intégrer'}
         vals = {key: _int(kwargs, key, True, label) for key, label in settings.items() if key in kwargs}
@@ -1000,18 +1104,13 @@ class ChurchMobileApi(http.Controller):
     @http.route('/api/church/user/share_message', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     @church_endpoint(roles=MANAGERS)
     def get_share_message(self, user, **kwargs):
-        """Message de partage des identifiants.
-
-        Le PIN n'étant plus conservé en clair, partager revient à en générer un
-        nouveau : l'ancien cesse de fonctionner.
-        """
+        """L'invitation à installer l'app et à s'y connecter. Aucun secret : on
+        peut la renvoyer autant de fois qu'il faut."""
         target = self._get_account(user, kwargs)
-        pin = target._issue_pin()
         return {
             'status': 'success',
-            'message': target.get_share_message(pin),
+            'message': target.get_invitation_message(),
             'phone': target.phone,
-            'pin_regenerated': True,
         }
 
     # ─── Report data ──────────────────────────────────────────────────
@@ -1076,7 +1175,7 @@ class ChurchMobileApi(http.Controller):
                 'active': u.active,
                 'church_id': u.church_id.id or False,
                 'church_name': u.church_id.name or '',
-                'pin_set': bool(u.pin_set_date),
+                'email': u.email or '',
                 'last_login': fields.Datetime.to_string(u.last_login) if u.last_login else '',
             } for u in users],
         }
@@ -1089,21 +1188,21 @@ class ChurchMobileApi(http.Controller):
         })
         record.action_create_leader_account()
         account = record.mobile_user_id
-        return account._issue_pin() if account else ''
+        return account.get_invitation_message() if account else ''
 
     @http.route('/api/church/cell_leader/create', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     @church_endpoint(roles=MANAGERS)
     def create_cell_leader(self, user, **kwargs):
         """Créer un responsable de cellule (manager/super_admin uniquement)."""
-        pin = self._create_leader(user, kwargs, 'church.prayer.cell', 'prayer_cell_id', 'Cellule')
-        return {'status': 'success', 'message': 'Responsable de cellule créé', 'pin': pin}
+        invitation = self._create_leader(user, kwargs, 'church.prayer.cell', 'prayer_cell_id', 'Cellule')
+        return {'status': 'success', 'message': 'Responsable de cellule créé', 'invitation': invitation}
 
     @http.route('/api/church/group_leader/create', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     @church_endpoint(roles=MANAGERS)
     def create_group_leader(self, user, **kwargs):
         """Créer un responsable de groupe d'âge (manager/super_admin uniquement)."""
-        pin = self._create_leader(user, kwargs, 'church.age.group', 'age_group_id', 'Groupe d\'âge')
-        return {'status': 'success', 'message': 'Responsable de groupe créé', 'pin': pin}
+        invitation = self._create_leader(user, kwargs, 'church.age.group', 'age_group_id', 'Groupe d\'âge')
+        return {'status': 'success', 'message': 'Responsable de groupe créé', 'invitation': invitation}
 
     # ─── Super Admin: User Management ─────────────────────────────────
 
@@ -1123,16 +1222,19 @@ class ChurchMobileApi(http.Controller):
             model, key, label = self._LEADER_UNITS[role]
             if not _int(kwargs, key):
                 raise ApiInputError('Choisissez %s de ce responsable.' % label.lower())
-            pin = self._create_leader(user, kwargs, model, key, label)
+            invitation = self._create_leader(user, kwargs, model, key, label)
             new_user = request.env[model].sudo().browse(_int(kwargs, key)).mobile_user_id
+            if _text(kwargs, 'email'):
+                new_user.email = _text(kwargs, 'email')
             return {
                 'status': 'success',
                 'message': 'Utilisateur %s créé avec le rôle %s' % (name, role),
                 'user': {'id': new_user.id, 'name': new_user.name, 'phone': new_user.phone,
-                         'role': new_user.role, 'pin': pin},
+                         'role': new_user.role, 'invitation': invitation},
             }
         church_id = self._resolve_church_id(user, kwargs)
-        vals = {'name': name, 'phone': phone, 'role': role, 'church_id': church_id}
+        vals = {'name': name, 'phone': phone, 'role': role, 'church_id': church_id,
+                'email': _text(kwargs, 'email') or False}
         if role == 'evangelist':
             vals['evangelist_id'] = self._evangelist_for(user, kwargs, name, phone, church_id)
         new_user = request.env['church.mobile.user'].sudo().create(vals)
@@ -1144,7 +1246,7 @@ class ChurchMobileApi(http.Controller):
                 'name': new_user.name,
                 'phone': new_user.phone,
                 'role': new_user.role,
-                'pin': new_user._issue_pin(),
+                'invitation': new_user.get_invitation_message(),
             },
         }
 
@@ -1195,6 +1297,8 @@ class ChurchMobileApi(http.Controller):
             vals['active'] = _bool(kwargs, 'active')
         if _text(kwargs, 'name'):
             vals['name'] = _text(kwargs, 'name')
+        if 'email' in kwargs:
+            vals['email'] = _text(kwargs, 'email') or False
         if vals.get('role') or any(k in kwargs for k in ('prayer_cell_id', 'age_group_id', 'evangelist_id')):
             vals.update(self._role_links(user, target, vals.get('role') or target.role, kwargs))
         if vals:
@@ -1212,78 +1316,103 @@ class ChurchMobileApi(http.Controller):
             'user': {'id': target.id, 'name': target.name, 'role': target.role, 'active': target.active},
         }
 
-    @http.route('/api/church/admin/reset_pin', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
-    @church_endpoint(roles=('super_admin',))
-    def admin_reset_pin(self, user, **kwargs):
-        """Régénérer le PIN d'un utilisateur (super_admin uniquement)."""
-        target = self._get_account(user, kwargs)
-        return {'status': 'success', 'message': 'PIN régénéré pour %s' % target.name, 'pin': target._issue_pin()}
+    # ─── Églises de l'annuaire (super_admin) ──────────────────────────
+    # L'église et ses pasteurs vivent dans l'annuaire du réseau (church_core,
+    # bng_equipment_loan). Le suivi les lit, et n'écrit que ce qui est à lui :
+    # entrer dans le suivi, et ses propres réglages.
 
-    # ─── Church Management (super_admin only) ─────────────────────────
+    @staticmethod
+    def _pastors_json(church):
+        return [{
+            'id': p.id,
+            'name': p.name,
+            'function': p.function,
+            'is_titular': p.function == 'pastor',
+            'phone': p.phone or '',
+        } for p in church.pastor_ids.filtered('active').sorted(lambda p: (p.function != 'pastor', p.name))]
+
+    def _church_json(self, church):
+        return {
+            'id': church.id,
+            'name': church.name,
+            'code': church.code or '',
+            'region': church.region_id.name or '',
+            'address': church.address or '',
+            'city': church.city or '',
+            'phone': church.phone or '',
+            'email': church.email or '',
+            'pastor_name': church.pastor_name or '',
+            'pastors': self._pastors_json(church),
+            'active': church.active,
+            'followup_enabled': church.followup_enabled,
+            'member_count': church.member_count,
+            'evangelist_count': church.evangelist_count,
+            'cell_count': church.cell_count,
+        }
 
     @http.route('/api/church/churches', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     @church_endpoint(roles=('super_admin',))
     def get_churches(self, user, **kwargs):
-        """Liste de toutes les églises (super_admin uniquement)."""
-        churches = request.env['church.church'].sudo().with_context(active_test=False).search([])
-        return {
-            'status': 'success',
-            'churches': [{
-                'id': c.id,
-                'name': c.name,
-                'code': c.code or '',
-                'address': c.address or '',
-                'city': c.city or '',
-                'phone': c.phone or '',
-                'email': c.email or '',
-                'pastor_name': c.pastor_name or '',
-                'pastors': [{
-                    'id': p.id,
-                    'name': p.name,
-                    'pastor_type': p.pastor_type,
-                    'phone': p.phone or '',
-                } for p in c.pastor_ids.filtered('active')],
-                'active': c.active,
-                'member_count': c.member_count,
-                'evangelist_count': c.evangelist_count,
-                'cell_count': c.cell_count,
-            } for c in churches],
-        }
+        """Les églises qui utilisent le suivi (super_admin uniquement)."""
+        churches = request.env['equipment.church'].sudo().with_context(active_test=False).search(
+            [('followup_enabled', '=', True)])
+        return {'status': 'success', 'churches': [self._church_json(c) for c in churches]}
+
+    @http.route('/api/church/churches/directory', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
+    @church_endpoint(roles=('super_admin',))
+    def search_directory(self, user, **kwargs):
+        """Chercher une église dans l'annuaire du réseau pour l'ajouter au suivi."""
+        query = _text(kwargs, 'query')
+        Church = request.env['equipment.church'].sudo()
+        domain = [('followup_enabled', '=', False)]
+        if query:
+            domain += ['|', '|', ('name', 'ilike', query), ('city', 'ilike', query), ('code', 'ilike', query)]
+        churches = Church.search(domain, limit=30)
+        return {'status': 'success', 'churches': [{
+            'id': c.id, 'name': c.name, 'city': c.city or '', 'region': c.region_id.name or '',
+            'pastor_name': c.pastor_name or '',
+        } for c in churches]}
 
     @http.route('/api/church/churches/create', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     @church_endpoint(roles=('super_admin',))
     def create_church(self, user, **kwargs):
-        """Créer une nouvelle église (super_admin uniquement)."""
-        code = _text(kwargs, 'code')
-        Church = request.env['church.church'].sudo()
-        if code and Church.with_context(active_test=False).search_count([('code', '=', code)]):
-            raise ApiInputError('Ce code est déjà utilisé par une autre église.')
-        church = Church.create({
-            'name': _text(kwargs, 'name', True, 'nom'),
-            'code': code or False,
-            'address': _text(kwargs, 'address') or False,
-            'city': _text(kwargs, 'city') or False,
-            'phone': _text(kwargs, 'phone') or False,
-            'email': _text(kwargs, 'email') or False,
-        })
-        pastors = kwargs.get('pastors') or []
-        if not isinstance(pastors, list):
-            raise ApiInputError('« pastors » doit être une liste.')
-        for pd in pastors:
-            if not isinstance(pd, dict) or not _text(pd, 'name'):
-                continue
-            self._create_pastor(church, {
-                'name': _text(pd, 'name'),
-                'phone': _text(pd, 'phone') or False,
-            }, _choice('church.pastor', 'pastor_type', pd.get('pastor_type') or 'assistant', 'type'))
+        """Faire entrer une église dans le suivi.
+
+        Par son identifiant dans l'annuaire, ou par son nom : une église déjà
+        connue sous une autre écriture (« EGLISE BNG ANGRE ») est reprise, pas
+        doublée. Elle n'est créée dans l'annuaire que si elle n'y est pas.
+        """
+        Church = request.env['equipment.church'].sudo()
+        church_id = _int(kwargs, 'church_id', label='église')
+        if church_id:
+            church = Church.browse(church_id)
+            if not church.exists():
+                raise ApiInputError('Église non trouvée.')
+            created = False
+        else:
+            name = _text(kwargs, 'name', True, 'nom')
+            # La clé de rapprochement se calcule sur le nom normalisé : « b.n.g »
+            # y redevient « BNG ».
+            church = Church._find_by_name(Church._normalize_name(name))
+            created = not church
+            if created:
+                church = Church.create({
+                    'name': name,
+                    'address': _text(kwargs, 'address') or False,
+                    'city': _text(kwargs, 'city') or False,
+                    'phone': _text(kwargs, 'phone') or False,
+                    'email': _text(kwargs, 'email') or False,
+                })
+        church._enable_followup()
         return {
             'status': 'success',
-            'message': 'Église « %s » créée avec succès' % church.name,
+            'message': ('Église « %s » ajoutée à l\'annuaire et au suivi' if created
+                        else 'Église « %s » ajoutée au suivi') % church.name,
             'church': {'id': church.id, 'name': church.name, 'code': church.code or ''},
         }
 
     def _get_church(self, kwargs):
-        church = request.env['church.church'].sudo().with_context(active_test=False).browse(
+        church = request.env['equipment.church'].sudo().with_context(active_test=False).browse(
             _int(kwargs, 'church_id', True, 'église'))
         if not church.exists():
             raise ApiInputError('Église non trouvée.')
@@ -1292,18 +1421,16 @@ class ChurchMobileApi(http.Controller):
     @http.route('/api/church/churches/update', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     @church_endpoint(roles=('super_admin',))
     def update_church(self, user, **kwargs):
-        """Mettre à jour une église (super_admin uniquement)."""
+        """Réglages du suivi d'une église ; son identité se corrige dans l'annuaire."""
         church = self._get_church(kwargs)
         vals = {}
-        for f in ('name', 'code', 'address', 'city', 'phone', 'email'):
-            if f in kwargs:
-                vals[f] = _text(kwargs, f) or False
-        if 'name' in vals and not vals['name']:
-            raise ApiInputError('Le nom est requis.')
-        if 'active' in kwargs:
-            vals['active'] = _bool(kwargs, 'active')
+        if 'followup_enabled' in kwargs:
+            vals['followup_enabled'] = _bool(kwargs, 'followup_enabled')
         if 'default_followup_weeks' in kwargs:
             vals['default_followup_weeks'] = _int(kwargs, 'default_followup_weeks', True, 'durée de suivi par défaut')
+        if 'integration_min_attendance' in kwargs:
+            vals['integration_min_attendance'] = _int(
+                kwargs, 'integration_min_attendance', True, 'présence minimale pour intégrer')
         if vals:
             church.write(vals)
         return {
@@ -1323,32 +1450,15 @@ class ChurchMobileApi(http.Controller):
         ])
         return {
             'status': 'success',
-            'church': {
-                'id': church.id,
-                'name': church.name,
-                'code': church.code or '',
-                'address': church.address or '',
-                'city': church.city or '',
-                'phone': church.phone or '',
-                'email': church.email or '',
-                'pastor_name': church.pastor_name or '',
-                'pastors': [{
-                    'id': p.id,
-                    'name': p.name,
-                    'pastor_type': p.pastor_type,
-                    'phone': p.phone or '',
-                    'start_date': str(p.start_date) if p.start_date else '',
-                } for p in church.pastor_ids.filtered('active')],
-                'active': church.active,
-                'member_count': church.member_count,
-                'evangelist_count': church.evangelist_count,
-                'cell_count': church.cell_count,
-                'age_group_count': church.age_group_count,
-                'default_followup_weeks': church.default_followup_weeks,
-                'active_followups': len(followups.filtered(lambda f: f.state in ACTIVE_FOLLOWUP_STATES)),
-                'total_integrated': len(followups.filtered(lambda f: f.state == 'integrated')),
-                'managers': [{'id': m.id, 'name': m.name, 'phone': m.phone} for m in managers],
-            },
+            'church': dict(
+                self._church_json(church),
+                age_group_count=church.age_group_count,
+                default_followup_weeks=church.default_followup_weeks,
+                integration_min_attendance=church.integration_min_attendance,
+                active_followups=len(followups.filtered(lambda f: f.state in ACTIVE_FOLLOWUP_STATES)),
+                total_integrated=len(followups.filtered(lambda f: f.state == 'integrated')),
+                managers=[{'id': m.id, 'name': m.name, 'phone': m.phone} for m in managers],
+            ),
         }
 
     @http.route('/api/church/manager/create', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
@@ -1361,6 +1471,7 @@ class ChurchMobileApi(http.Controller):
             'phone': _text(kwargs, 'phone', True, 'téléphone'),
             'role': 'manager',
             'church_id': church.id,
+            'email': _text(kwargs, 'email') or False,
         })
         return {
             'status': 'success',
@@ -1370,102 +1481,36 @@ class ChurchMobileApi(http.Controller):
                 'name': new_manager.name,
                 'phone': new_manager.phone,
                 'role': new_manager.role,
-                'pin': new_manager._issue_pin(),
+                'invitation': new_manager.get_invitation_message(),
                 'church_name': church.name,
             },
         }
 
-    # ─── Pastor Management ──────────────────────────────────────────
+    # ─── Pasteurs (annuaire du réseau, lecture seule) ─────────────────
 
     @http.route('/api/church/pastors', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     @church_endpoint()
     def get_pastors(self, user, **kwargs):
-        """Liste des pasteurs : son église, ou n'importe laquelle pour le super admin."""
+        """Les pasteurs de son église, ou de n'importe laquelle pour le super admin.
+
+        On les ajoute, les mute ou les retire dans l'annuaire du réseau.
+        """
         domain = [('active', '=', True)]
         church_id = _int(kwargs, 'church_id', label='église')
         if user.role != 'super_admin':
             church_id = user.church_id.id
         if church_id:
             domain.append(('church_id', '=', church_id))
-        pastors = request.env['church.pastor'].sudo().search(domain, order='pastor_type, name')
+        pastors = request.env['equipment.pastor'].sudo().search(domain, order='function desc, name')
         return {
             'status': 'success',
             'pastors': [{
                 'id': p.id,
                 'name': p.name,
                 'phone': p.phone or '',
-                'pastor_type': p.pastor_type,
-                'start_date': str(p.start_date) if p.start_date else '',
+                'function': p.function,
+                'is_titular': p.function == 'pastor',
                 'church_id': p.church_id.id,
                 'church_name': p.church_id.name,
             } for p in pastors],
         }
-
-    @http.route('/api/church/pastors/create', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
-    @church_endpoint(roles=('super_admin',))
-    def create_pastor(self, user, **kwargs):
-        """Créer un pasteur (super_admin uniquement)."""
-        church = self._get_church(kwargs)
-        pastor = self._create_pastor(church, {
-            'name': _text(kwargs, 'name', True, 'nom'),
-            'phone': _text(kwargs, 'phone') or False,
-            'start_date': _date(kwargs, 'start_date', 'date d\'entrée en fonction'),
-        }, _choice('church.pastor', 'pastor_type', kwargs.get('pastor_type') or 'assistant', 'type'))
-        return {
-            'status': 'success',
-            'message': 'Pasteur « %s » ajouté à %s' % (pastor.name, church.name),
-            'pastor': {
-                'id': pastor.id,
-                'name': pastor.name,
-                'pastor_type': pastor.pastor_type,
-                'phone': pastor.phone or '',
-                'church_id': church.id,
-            },
-        }
-
-    @staticmethod
-    def _create_pastor(church, vals, pastor_type):
-        """Crée un pasteur ; « principal » passe par la désignation explicite."""
-        pastor = request.env['church.pastor'].sudo().create(
-            dict(vals, church_id=church.id, pastor_type='assistant'))
-        if pastor_type == 'principal':
-            pastor.action_set_principal()
-        return pastor
-
-    def _get_pastor(self, kwargs):
-        pastor = request.env['church.pastor'].sudo().with_context(active_test=False).browse(
-            _int(kwargs, 'pastor_id', True, 'pasteur'))
-        if not pastor.exists():
-            raise ApiInputError('Pasteur non trouvé.')
-        return pastor
-
-    @http.route('/api/church/pastors/update', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
-    @church_endpoint(roles=('super_admin',))
-    def update_pastor(self, user, **kwargs):
-        """Mettre à jour un pasteur (super_admin uniquement)."""
-        pastor = self._get_pastor(kwargs)
-        vals = {}
-        if 'name' in kwargs:
-            vals['name'] = _text(kwargs, 'name', True, 'nom')
-        if 'phone' in kwargs:
-            vals['phone'] = _text(kwargs, 'phone') or False
-        new_type = _choice('church.pastor', 'pastor_type', kwargs.get('pastor_type'), 'type')
-        if new_type == 'assistant':
-            vals['pastor_type'] = 'assistant'
-        if 'start_date' in kwargs:
-            vals['start_date'] = _date(kwargs, 'start_date', 'date d\'entrée en fonction')
-        if 'active' in kwargs:
-            vals['active'] = _bool(kwargs, 'active')
-        if vals:
-            pastor.write(vals)
-        if new_type == 'principal':
-            pastor.action_set_principal()
-        return {'status': 'success', 'message': 'Pasteur mis à jour'}
-
-    @http.route('/api/church/pastors/delete', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
-    @church_endpoint(roles=('super_admin',))
-    def delete_pastor(self, user, **kwargs):
-        """Archiver un pasteur (super_admin uniquement)."""
-        pastor = self._get_pastor(kwargs)
-        pastor.write({'active': False})
-        return {'status': 'success', 'message': 'Pasteur « %s » archivé' % pastor.name}

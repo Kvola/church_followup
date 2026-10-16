@@ -1,6 +1,6 @@
 {
     'name': 'Suivi Évangélisation Église',
-    'version': '19.0.1.9.0',
+    'version': '19.0.2.2.0',
     'category': 'Church Management',
     'summary': 'Suivi des classes d\'évangile et gestion des cellules de prière',
     'description': """
@@ -19,7 +19,15 @@
     """,
     'author': 'ICP',
     'license': 'AGPL-3',
-    'depends': ['base', 'mail', 'otp_auth', 'mobile_app_release'],
+    'depends': [
+        'base', 'mail', 'otp_auth', 'mobile_app_release',
+        # L'annuaire des églises et des régions du réseau : le suivi n'en tient
+        # plus de copie.
+        'church_core',
+        # Les pasteurs (titulaires, mutations) vivent dans l'annuaire tenu par
+        # ce module, pas dans church_core.
+        'bng_equipment_loan',
+    ],
     'data': [
         # Security
         'security/church_followup_security.xml',
@@ -34,8 +42,9 @@
         'reports/report_cell_members.xml',
         'reports/report_age_group_members.xml',
         'reports/report_dashboard.xml',
+        'reports/user_guide.xml',
+        'reports/training_manual.xml',
         # Views
-        'views/church_pastor_views.xml',
         'views/church_church_views.xml',
         'views/church_district_views.xml',
         'views/church_member_views.xml',

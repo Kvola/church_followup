@@ -7,7 +7,7 @@ import '../../core/theme.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/organization_provider.dart';
 import '../../widgets/common.dart';
-import '../../widgets/pin_share_dialog.dart';
+import '../../widgets/invitation_dialog.dart';
 
 class MobileUsersScreen extends StatefulWidget {
   const MobileUsersScreen({super.key});
@@ -59,60 +59,71 @@ class _MobileUsersScreenState extends State<MobileUsersScreen> {
                       final user = provider.mobileUsers[index];
                       return _UserCard(
                         data: user,
-                        onShare: () => _shareCredentials(user),
+                        onShare: () => _shareInvitation(user),
                         isSuperAdmin: auth.isSuperAdmin,
                         onEditRole: auth.isSuperAdmin ? () => _showEditRoleDialog(user) : null,
-                        onResetPin: auth.isSuperAdmin ? () => _resetPin(user) : null,
                         onToggleActive: auth.isSuperAdmin ? () => _toggleActive(user) : null,
                       );
                     },
                   ),
                 ),
-      floatingActionButton: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (auth.isSuperAdmin) ...[
-            FloatingActionButton.small(
-              heroTag: 'create_user',
-              onPressed: () => _showCreateUserDialog(),
-              tooltip: 'Créer un utilisateur',
-              child: const Icon(Icons.person_add_alt),
-            ),
-            const SizedBox(height: 8),
-          ],
-          FloatingActionButton.small(
-            heroTag: 'cell_leader',
-            onPressed: () => _showCreateLeaderDialog('cell'),
-            tooltip: 'Nouveau chef de cellule',
-            child: const Icon(Icons.group_add),
-          ),
-          const SizedBox(height: 8),
-          FloatingActionButton.extended(
-            heroTag: 'group_leader',
-            onPressed: () => _showCreateLeaderDialog('group'),
-            icon: const Icon(Icons.person_add),
-            label: const Text('Chef de groupe'),
-          ),
-        ],
+      // Un seul bouton, qui dit ce qu'il fait ; le choix du compte vient après.
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _chooseAccountKind(auth.isSuperAdmin),
+        icon: const Icon(Icons.person_add),
+        label: const Text('Ajouter un compte'),
       ),
     );
   }
 
-  Future<void> _shareCredentials(Map<String, dynamic> user) async {
+  void _chooseAccountKind(bool isSuperAdmin) {
+    showModalBottomSheet(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.groups_outlined),
+              title: const Text('Responsable de cellule'),
+              subtitle: const Text('Pointe sa cellule et fait les contrôles à 3 et 6 mois'),
+              onTap: () {
+                Navigator.pop(ctx);
+                _showCreateLeaderDialog('cell');
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.diversity_3_outlined),
+              title: const Text('Responsable de groupe d\'âge'),
+              subtitle: const Text('Pointe la présence de son groupe au culte'),
+              onTap: () {
+                Navigator.pop(ctx);
+                _showCreateLeaderDialog('group');
+              },
+            ),
+            if (isSuperAdmin)
+              ListTile(
+                leading: const Icon(Icons.person_add_alt),
+                title: const Text('Autre compte'),
+                subtitle: const Text('Évangéliste, responsable, avec son rôle et son église'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _showCreateUserDialog();
+                },
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// L'invitation à installer l'app et à s'y connecter. Sans secret : on peut
+  /// la renvoyer autant de fois qu'il faut, rien n'est invalidé.
+  Future<void> _shareInvitation(Map<String, dynamic> user) async {
     final userId = user['id'];
     if (userId == null) return;
 
-    // Le PIN n'est plus conservé en clair : partager, c'est en générer un nouveau.
-    final confirmed = await showConfirmDialog(
-      context,
-      title: 'Partager les identifiants',
-      message: 'Un nouveau PIN va être généré pour ${user['name'] ?? 'cet utilisateur'}. '
-          'L\'ancien cessera de fonctionner et sa session en cours sera fermée.',
-      confirmLabel: 'Générer et partager',
-    );
-    if (!confirmed || !mounted) return;
-
-    final result = await context.read<OrganizationProvider>().shareCredentials(userId);
+    final result = await context.read<OrganizationProvider>().shareInvitation(userId);
     if (!mounted) return;
 
     if (result['status'] != 'success') {
@@ -137,17 +148,9 @@ class _MobileUsersScreenState extends State<MobileUsersScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                width: 40,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
+              // La poignée vient du thème (showDragHandle) : pas de seconde.
               Text(
-                'Partager les identifiants de $userName',
+                'Inviter $userName',
                 style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 textAlign: TextAlign.center,
               ),
@@ -211,28 +214,6 @@ class _MobileUsersScreenState extends State<MobileUsersScreen> {
         ),
       ),
     );
-  }
-
-  Future<void> _resetPin(Map<String, dynamic> user) async {
-    final userId = user['id'];
-    if (userId == null) return;
-
-    final confirmed = await showConfirmDialog(
-      context,
-      title: 'Régénérer le PIN',
-      message: 'Régénérer le PIN de ${user['name'] ?? 'cet utilisateur'} ? L\'ancien PIN sera invalidé.',
-    );
-    if (!confirmed || !mounted) return;
-
-    final result = await context.read<OrganizationProvider>().adminResetPin(userId);
-    if (mounted) {
-      if (result['status'] == 'success') {
-        final pin = result['pin'] ?? '';
-        showPinShareDialog(context, pin, user['name'] ?? 'Utilisateur', AppConstants.safeStr(user['phone']));
-      } else {
-        showErrorSnackbar(context, result['message'] ?? 'Erreur');
-      }
-    }
   }
 
   Future<void> _toggleActive(Map<String, dynamic> user) async {
@@ -419,8 +400,8 @@ class _MobileUsersScreenState extends State<MobileUsersScreen> {
 
                   if (mounted) {
                     if (result['status'] == 'success') {
-                      final pin = result['user']?['pin'] ?? '';
-                      showPinShareDialog(context, pin, nameCtrl.text.trim(), phoneCtrl.text.trim());
+                      final invitation = AppConstants.safeStr(result['user']?['invitation']);
+                      showInvitationDialog(context, invitation, nameCtrl.text.trim(), phoneCtrl.text.trim());
                     } else {
                       showErrorSnackbar(context, result['message'] ?? 'Erreur');
                     }
@@ -438,7 +419,7 @@ class _MobileUsersScreenState extends State<MobileUsersScreen> {
   void _showCreateLeaderDialog(String type) {
     final nameCtrl = TextEditingController();
     final phoneCtrl = TextEditingController();
-    final title = type == 'cell' ? 'Chef de cellule' : "Chef de groupe d'âge";
+    final title = type == 'cell' ? 'Responsable de cellule' : "Responsable de groupe d'âge";
     int? selectedId;
     final provider = context.read<OrganizationProvider>();
 
@@ -512,9 +493,9 @@ class _MobileUsersScreenState extends State<MobileUsersScreen> {
                 if (mounted) {
                   if (result['status'] == 'success') {
                     provider.loadMobileUsers();
-                    final pin = AppConstants.safeStr(result['pin']);
-                    if (pin.isNotEmpty) {
-                      showPinShareDialog(context, pin, nameCtrl.text.trim(), phoneCtrl.text.trim());
+                    final invitation = AppConstants.safeStr(result['invitation']);
+                    if (invitation.isNotEmpty) {
+                      showInvitationDialog(context, invitation, nameCtrl.text.trim(), phoneCtrl.text.trim());
                     } else {
                       showSuccessSnackbar(context, '$title créé');
                     }
@@ -538,14 +519,12 @@ class _UserCard extends StatelessWidget {
   final VoidCallback onShare;
   final bool isSuperAdmin;
   final VoidCallback? onEditRole;
-  final VoidCallback? onResetPin;
   final VoidCallback? onToggleActive;
   const _UserCard({
     required this.data,
     required this.onShare,
     this.isSuperAdmin = false,
     this.onEditRole,
-    this.onResetPin,
     this.onToggleActive,
   });
 
@@ -555,7 +534,8 @@ class _UserCard extends StatelessWidget {
     final name = data['name'] ?? '';
     final phone = data['phone'] ?? '';
     final role = data['role'] ?? '';
-    final lastLogin = data['last_login'] ?? '';
+    final lastLogin = _shortDate(AppConstants.safeStr(data['last_login']));
+    final neverLogged = lastLogin.isEmpty;
     final isActive = data['active'] ?? true;
 
     return Card(
@@ -589,13 +569,19 @@ class _UserCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (phone.isNotEmpty) Text(phone),
-            Row(
+            const SizedBox(height: 4),
+            // Wrap, pas Row : sur un téléphone étroit, la date passe à la ligne
+            // au lieu de déborder.
+            Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                StateBadge(state: role),
-                if (lastLogin.isNotEmpty) ...[
-                  const SizedBox(width: 8),
-                  Text('Dernier: $lastLogin', style: theme.textTheme.bodySmall),
-                ],
+                StateBadge(state: role, small: true),
+                if (neverLogged)
+                  const StateBadge(state: 'never_logged', small: true),
+                if (lastLogin.isNotEmpty)
+                  Text('Vu le $lastLogin', style: theme.textTheme.bodySmall),
               ],
             ),
           ],
@@ -610,18 +596,14 @@ class _UserCard extends StatelessWidget {
                     case 'edit_role':
                       onEditRole?.call();
                       break;
-                    case 'reset_pin':
-                      onResetPin?.call();
-                      break;
                     case 'toggle_active':
                       onToggleActive?.call();
                       break;
                   }
                 },
                 itemBuilder: (_) => [
-                  const PopupMenuItem(value: 'share', child: ListTile(leading: Icon(Icons.share_outlined), title: Text('Partager identifiants'))),
+                  const PopupMenuItem(value: 'share', child: ListTile(leading: Icon(Icons.share_outlined), title: Text('Envoyer l\'invitation'))),
                   const PopupMenuItem(value: 'edit_role', child: ListTile(leading: Icon(Icons.edit_outlined), title: Text('Modifier le rôle'))),
-                  const PopupMenuItem(value: 'reset_pin', child: ListTile(leading: Icon(Icons.refresh), title: Text('Régénérer PIN'))),
                   PopupMenuItem(
                     value: 'toggle_active',
                     child: ListTile(
@@ -633,11 +615,19 @@ class _UserCard extends StatelessWidget {
               )
             : IconButton(
                 icon: const Icon(Icons.share_outlined),
-                tooltip: 'Partager les identifiants',
+                tooltip: 'Envoyer l\'invitation',
                 onPressed: onShare,
               ),
       ),
     );
+  }
+
+  /// « 2026-10-15 19:40:00 » → « 15/10 à 19:40 ».
+  static String _shortDate(String raw) {
+    final dt = DateTime.tryParse(raw);
+    if (dt == null) return '';
+    String two(int v) => v.toString().padLeft(2, '0');
+    return '${two(dt.day)}/${two(dt.month)} à ${two(dt.hour)}:${two(dt.minute)}';
   }
 
   IconData _roleIcon(String role) {

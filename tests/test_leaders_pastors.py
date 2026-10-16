@@ -1,20 +1,17 @@
-from psycopg2 import IntegrityError
-
 from odoo.exceptions import UserError
 from odoo.tests.common import TransactionCase, tagged
-from odoo.tools import mute_logger
 
 
 @tagged('post_install', '-at_install')
 class TestLeadersPastors(TransactionCase):
-    """Phase G : un responsable remplacé perd son accès ; le pasteur principal
-    se désigne explicitement ; un sexe inconnu n'est jamais inventé."""
+    """Phase G : un responsable remplacé perd son accès ; les pasteurs
+    sont ceux de l'annuaire ; un sexe inconnu n'est jamais inventé."""
 
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
         cls.env = cls.env(context=dict(cls.env.context, tracking_disable=True))
-        cls.church = cls.env['church.church'].create({'name': 'Église'})
+        cls.church = cls.env['equipment.church'].create({'name': 'Église'})
         cls.cell = cls.env['church.prayer.cell'].create({
             'name': 'Cellule', 'church_id': cls.church.id,
             'leader_name': 'Ancien Chef', 'leader_phone': '+225 07 00 00 11'})
@@ -23,12 +20,11 @@ class TestLeadersPastors(TransactionCase):
 
     def test_changing_leader_revokes_the_old_account(self):
         old = self.cell.action_create_leader_account()
-        old._issue_pin()
         old._open_session()
         self.cell.write({'leader_name': 'Nouveau Chef', 'leader_phone': '+225 07 00 00 12'})
         self.assertFalse(old.active)
         self.assertFalse(old.prayer_cell_id)
-        self.assertFalse(old.sudo().token_hash, "Sa session tombe")
+        self.assertTrue(all(old.session_ids.mapped('revoked')), "Sa session tombe")
         self.assertFalse(self.cell.mobile_user_id)
         new = self.cell.action_create_leader_account()
         self.assertNotEqual(new, old)
@@ -66,37 +62,26 @@ class TestLeadersPastors(TransactionCase):
         group.leader_phone = '+225 07 00 00 22'
         self.assertFalse(old.active)
 
-    # ─── Pasteur principal ────────────────────────────────────────────
+    # ─── Pasteurs : ceux de l'annuaire du réseau ──────────────────────
 
-    def _pastor(self, name, pastor_type='assistant', **vals):
-        return self.env['church.pastor'].create({
-            'name': name, 'pastor_type': pastor_type, 'church_id': self.church.id, **vals})
+    def _pastor(self, name, phone, function='pastor', **vals):
+        return self.env['equipment.pastor'].create({
+            'name': name, 'phone': phone, 'function': function, 'church_id': self.church.id, **vals})
 
-    def test_a_second_principal_is_refused_by_the_database(self):
-        self._pastor('P1', 'principal')
-        with mute_logger('odoo.sql_db'), self.assertRaises(IntegrityError), self.cr.savepoint():
-            self._pastor('P2', 'principal')
+    def test_titular_pastors_come_from_the_directory(self):
+        self._pastor('Kouadio Emmanuel', '+225 07 00 00 51')
+        self._pastor('Gnahoré Samuel', '+225 07 00 00 52')
+        self._pastor('Bamba Ruth', '+225 07 00 00 53', function='missionary')
+        self._pastor('Ancien Pasteur', '+225 07 00 00 54', active=False)
+        self.assertEqual(self.church.pastor_name, 'Gnahoré Samuel, Kouadio Emmanuel',
+                         "Les titulaires actifs, sans missionnaire ni pasteur parti")
 
-    def test_set_principal_demotes_the_current_one(self):
-        p1 = self._pastor('P1', 'principal')
-        p2 = self._pastor('P2')
-        p2.action_set_principal()
-        self.assertEqual((p1.pastor_type, p2.pastor_type), ('assistant', 'principal'))
-        self.assertEqual(self.church.pastor_name, 'P2')
-
-    def test_reactivating_a_former_principal_cannot_make_two(self):
-        old = self._pastor('Ancien', 'principal')
-        old.active = False
-        old.flush_recordset()
-        self._pastor('Actuel', 'principal')
-        with mute_logger('odoo.sql_db'), self.assertRaises(IntegrityError), self.cr.savepoint():
-            old.active = True
-            old.flush_recordset()
-
-    def test_archived_pastor_cannot_be_designated(self):
-        p = self._pastor('Archivé', active=False)
-        with self.assertRaises(UserError):
-            p.action_set_principal()
+    def test_a_pastor_transferred_elsewhere_leaves_the_church(self):
+        pastor = self._pastor('Kouadio Emmanuel', '+225 07 00 00 51')
+        other = self.env['equipment.church'].create({'name': 'Église Ailleurs'})
+        pastor.church_id = other
+        self.assertFalse(self.church.pastor_name)
+        self.assertEqual(other.pastor_name, 'Kouadio Emmanuel')
 
     # ─── Sexe non renseigné ───────────────────────────────────────────
 

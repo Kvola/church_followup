@@ -2,8 +2,12 @@
     <uses-permission android:name="android.permission.INTERNET"/>
     <!-- Android 13+ : sans elle, une notification arrive et rien ne s'affiche. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <!-- Pas de sauvegarde automatique : restauré sur un autre appareil, le
+         coffre chiffré (session) arrive sans sa clé et devient illisible. -->
     <application
         android:label="Suivi Évangélisation"
+        android:allowBackup="false"
+        android:fullBackupContent="false"
         android:usesCleartextTraffic="true"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">

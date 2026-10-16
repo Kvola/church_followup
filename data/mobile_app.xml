@@ -11,6 +11,10 @@
             <field name="summary">Accompagner les nouvelles personnes jusqu'à ce qu'elles deviennent des fidèles</field>
             <field name="icon" type="base64" file="church_followup/static/description/icon.png"/>
             <field name="min_android">8.0</field>
+            <!-- Des CHAÎNES que rien ne vérifie au chargement : éprouvées par
+                 tests/test_user_guide.py. -->
+            <field name="guide_template_xmlid">church_followup.user_guide_content</field>
+            <field name="guide_report_xmlid">church_followup.action_report_user_guide</field>
             <field name="description" type="html">
                 <div>
                     <p>
@@ -26,7 +30,7 @@
                     </p>
                 </div>
             </field>
-            <field name="first_run_note">Connectez-vous avec votre numéro de téléphone et le PIN reçu de votre responsable.</field>
+            <field name="first_run_note">Connectez-vous avec le numéro de téléphone que votre responsable a enregistré : un code vous est envoyé par WhatsApp ou SMS.</field>
         </record>
     </data>
 </odoo>

@@ -32,6 +32,7 @@ class AppConstants {
     'abandoned': 'Interrompu',
     'extended': 'Prolongé',
     'transferred': 'Transféré',
+    'never_logged': 'Jamais connecté',
   };
 
   static const Map<String, String> spiritualLabels = {
@@ -43,11 +44,11 @@ class AppConstants {
   };
 
   static const Map<String, String> roleLabels = {
-    'super_admin': 'Super Admin',
-    'manager': 'Gestionnaire',
+    'super_admin': 'Super administrateur',
+    'manager': 'Responsable',
     'evangelist': 'Évangéliste',
-    'cell_leader': 'Chef de cellule',
-    'group_leader': 'Chef de groupe',
+    'cell_leader': 'Responsable de cellule',
+    'group_leader': 'Responsable de groupe d\'âge',
   };
 
   static const Map<String, String> memberTypeLabels = {
@@ -137,6 +138,15 @@ class AppConstants {
 
   /// Safely extract a display string from Odoo data.
   /// Handles false, null, and non-string types.
+  /// « 2026-03-15 » → « 15/03/2026 » ; une valeur illisible est rendue telle quelle.
+  static String frDate(dynamic value) {
+    final raw = safeStr(value);
+    final d = DateTime.tryParse(raw);
+    if (d == null) return raw;
+    String two(int v) => v.toString().padLeft(2, '0');
+    return '${two(d.day)}/${two(d.month)}/${d.year}';
+  }
+
   static String safeStr(dynamic value, [String fallback = '']) {
     if (value == null || value == false) return fallback;
     final s = value.toString();

@@ -1,0 +1,444 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         MANUEL DE FORMATION — SUIVI ÉVANGÉLISATION
+
+         Une séance d'une demi-journée, module par module, sur la base de
+         démonstration `suivi_demo` (données inventées : voir
+         tools/formation/LISEZMOI.md). Chaque module : public, durée,
+         objectifs, démonstration, exercices (« Vous devez voir »), contrôle,
+         note du formateur. Les corrigés sont à la fin.
+
+         tests/test_training_manual.py vérifie que chaque module a ses cinq
+         parties, que chaque capture existe et qu'il y a autant de réponses
+         que de questions.
+    ═══════════════════════════════════════════════════════════════════ -->
+    <template id="training_manual_content" name="Manuel de formation Suivi Évangélisation — contenu">
+        <t>
+            <h2>Avant la séance</h2>
+            <div class="attention">
+                <p>
+                    <strong>Ce que les participants sauront faire en sortant</strong> :
+                    se connecter avec un code, rédiger le rapport de la semaine, décider au
+                    terme d'un suivi, confier une nouvelle personne, faire un point de
+                    contrôle, et — pour l'administrateur — régler l'église et inviter les
+                    comptes.
+                </p>
+                <p>
+                    <strong>Matériel</strong> : un téléphone Android par participant avec
+                    l'application installée depuis <code>/apps/suivi-evangelisation</code> ;
+                    un vidéoprojecteur pour le back-office ; la base de démonstration
+                    <code>suivi_demo</code>, recréée la veille.
+                </p>
+                <p>
+                    <strong>Comptes de démonstration</strong> (personnes et numéros
+                    inventés) : Awa Koné, évangéliste, <code>07 00 01 01 01</code> ;
+                    Paul Yao, évangéliste, <code>07 00 02 02 02</code> ; Pasteur Marc Kouadio,
+                    responsable, <code>07 00 09 09 09</code> ; Fatou Cissé, responsable de
+                    cellule, <code>07 00 05 05 05</code>. Back-office : <code>formateur</code>,
+                    mot de passe <code>formation2026</code>.
+                </p>
+            </div>
+
+            <h3>Le déroulé</h3>
+            <table>
+                <tr><th>Module</th><th>Public</th><th>Durée</th></tr>
+                <tr><td>1. Pourquoi suivre, et ce que l'on y gagne</td><td>Tous, pasteurs compris</td><td>20 min</td></tr>
+                <tr><td>2. Se connecter avec un code</td><td>Tous</td><td>15 min</td></tr>
+                <tr><td>3. Suivre une personne semaine après semaine</td><td>Évangélistes</td><td>40 min</td></tr>
+                <tr><td>4. Décider au terme du suivi</td><td>Évangélistes, responsables</td><td>30 min</td></tr>
+                <tr><td>5. Piloter l'église</td><td>Responsables</td><td>35 min</td></tr>
+                <tr><td>6. Affermir : les points de contrôle</td><td>Responsables de cellule</td><td>20 min</td></tr>
+                <tr><td>7. Administrer dans Odoo</td><td>Administrateur</td><td>40 min</td></tr>
+            </table>
+
+            <!-- ─── Module 1 ─────────────────────────────────────────── -->
+            <div class="module">
+                <h2>Module 1 — Pourquoi suivre, et ce que l'on y gagne</h2>
+                <p class="meta">Tous, pasteurs et responsables compris · 20 min</p>
+                <h3>Objectifs</h3>
+                <ul>
+                    <li>Dire en une phrase ce que devient une nouvelle personne, de la conversion à « Fidèle affermi(e) ».</li>
+                    <li>Nommer les bénéfices pour l'évangéliste, le responsable et le pasteur.</li>
+                </ul>
+                <h3>Démonstration</h3>
+                <p>
+                    Projetez la fiche de <strong>Yapi Serge</strong> (« Parcours ») : un premier
+                    suivi interrompu, un second repris par Awa Koné, l'intégration dans la
+                    cellule, le baptême, les contrôles à 3 et 6 mois. C'est l'histoire que
+                    l'application permet de raconter — et que, sans elle, personne ne
+                    retrouve.
+                </p>
+                <t t-call="mobile_app_release.guide_capture">
+                    <t t-set="chemin" t-value="'church_followup/static/help/app/fiche_parcours.png'"/>
+                    <t t-set="alt" t-value="'Le parcours de Yapi Serge'"/>
+                </t>
+                <h3>Les bénéfices</h3>
+                <table>
+                    <tr><th>Pour qui</th><th>Ce que cela change</th></tr>
+                    <tr><td>La nouvelle personne</td><td>Quelqu'un l'appelle chaque semaine, la visite, la conduit dans une cellule. Elle n'est plus un nom sur une feuille.</td></tr>
+                    <tr><td>L'évangéliste</td><td>Une liste « À faire » qui dit quoi faire aujourd'hui ; un rapport d'une minute ; la présence du dimanche déjà remplie.</td></tr>
+                    <tr><td>Le responsable</td><td>Personne n'attend sans évangéliste ; les retards se voient le lundi, pas trois mois plus tard ; les comptes s'ouvrent par une simple invitation.</td></tr>
+                    <tr><td>Le pasteur</td><td>Combien de personnes sont suivies, intégrées, perdues — et pourquoi. Une décision d'intégrer sous le seuil de présence est justifiée par écrit.</td></tr>
+                    <tr><td>Le réseau</td><td>Une seule liste d'églises et de pasteurs pour toutes les applications ; aucun mot de passe à distribuer ni à perdre.</td></tr>
+                </table>
+                <h3>Exercice</h3>
+                <p>Par groupes de trois, racontez le parcours de Yapi Serge à partir de sa fiche, dans l'ordre.</p>
+                <p class="voir"><strong>Vous devez voir</strong> : deux suivis, dont le premier interrompu avec son motif ; l'intégration ; « Fidèle affermi(e) ».</p>
+                <h3>Contrôle</h3>
+                <ol class="questions">
+                    <li>Quelles sont les cinq étapes du parcours d'une nouvelle personne ?</li>
+                    <li>Citez un bénéfice pour le pasteur.</li>
+                </ol>
+                <p class="note"><strong>Note du formateur</strong> : commencez par une histoire vraie (sans nom) d'une personne perdue faute de suivi. Le reste de la séance y répond.</p>
+            </div>
+
+            <!-- ─── Module 2 ─────────────────────────────────────────── -->
+            <div class="module">
+                <h2>Module 2 — Se connecter avec un code</h2>
+                <p class="meta">Tous · 15 min</p>
+                <h3>Objectifs</h3>
+                <ul>
+                    <li>Se connecter avec son numéro et le code reçu.</li>
+                    <li>Savoir quoi faire quand le code n'arrive pas.</li>
+                    <li>Changer d'église quand on sert dans deux églises.</li>
+                </ul>
+                <div class="bloc">
+                <h3>Démonstration</h3>
+                <t t-call="mobile_app_release.guide_capture">
+                    <t t-set="chemin" t-value="'church_followup/static/help/app/connexion_code.png'"/>
+                    <t t-set="alt" t-value="'La saisie du code'"/>
+                </t>
+                </div>
+                <p>
+                    Saisissez le numéro, « Recevoir un code », recopiez les six chiffres. Il
+                    n'y a <strong>aucun mot de passe</strong> : le code prouve que l'on tient
+                    le téléphone.
+                </p>
+                <h3>Exercices</h3>
+                <ol>
+                    <li>Connectez-vous avec le numéro de démonstration qui vous a été remis.
+                        <p class="voir"><strong>Vous devez voir</strong> : le message « Si ce compte existe, un code de 6 chiffres vient d'être envoyé », puis l'onglet « À faire ».</p></li>
+                    <li>Déconnectez-vous (« Paramètres », « Déconnexion »), puis saisissez un numéro qui n'a pas de compte.
+                        <p class="voir"><strong>Vous devez voir</strong> : exactement le même message. L'application ne dit jamais si un numéro est connu.</p></li>
+                    <li>Connecté en Pasteur Marc Kouadio, ouvrez « Paramètres », puis « Changer d'église ».
+                        <p class="voir"><strong>Vous devez voir</strong> : l'Église Bonne Nouvelle de la Grâce de Angré et celle de Yopougon ; passer de l'une à l'autre ne redemande aucun code.</p></li>
+                </ol>
+                <h3>Contrôle</h3>
+                <ol class="questions">
+                    <li>Combien de temps un code est-il valable ?</li>
+                    <li>Pourquoi l'application répond-elle la même chose à un numéro inconnu ?</li>
+                    <li>Que faire si le code n'arrive ni par WhatsApp ni par SMS ?</li>
+                </ol>
+                <p class="note"><strong>Note du formateur</strong> : sur la base de démonstration, le code s'affiche sous le champ (« Code de test ») ; en production, il n'apparaît jamais à l'écran. Dites-le, sinon les participants le chercheront.</p>
+            </div>
+
+            <!-- ─── Module 3 ─────────────────────────────────────────── -->
+            <div class="module">
+                <h2>Module 3 — Suivre une personne semaine après semaine</h2>
+                <p class="meta">Évangélistes · 40 min · connecté en Awa Koné</p>
+                <h3>Objectifs</h3>
+                <ul>
+                    <li>Lire « À faire » et traiter d'abord ce qui est en retard.</li>
+                    <li>Rédiger le rapport de la semaine.</li>
+                    <li>Pointer la présence du dimanche.</li>
+                    <li>Enregistrer une nouvelle personne avec la bonne durée de suivi.</li>
+                </ul>
+                <div class="bloc">
+                <h3>Démonstration</h3>
+                <t t-call="mobile_app_release.guide_capture">
+                    <t t-set="chemin" t-value="'church_followup/static/help/app/evangeliste_a_faire.png'"/>
+                    <t t-set="alt" t-value="'À faire, côté évangéliste'"/>
+                </t>
+                </div>
+                <p>
+                    Un rapport est en retard trois jours après la fin de sa semaine. Le
+                    rapport de <strong>Traoré Mariam</strong> pour la semaine 3 l'est.
+                </p>
+                <h3>Exercices</h3>
+                <ol>
+                    <li>Ouvrez « À faire ».
+                        <p class="voir"><strong>Vous devez voir</strong> : le rapport en retard de Traoré Mariam, et la décision à prendre pour Konan Aya.</p></li>
+                    <li>Ouvrez le suivi de Traoré Mariam, « Ajouter », et rédigez le rapport : venue au culte, appelée, pas visitée, état « Bon », une note.
+                        <p class="voir"><strong>Vous devez voir</strong> : la semaine 3 dans la liste des rapports, et le retard disparu de « À faire ».</p></li>
+                    <li>Onglet « Présence » : pointez Traoré Mariam présente au culte de dimanche dernier.
+                        <p class="voir"><strong>Vous devez voir</strong> : la case « Présence au culte » déjà cochée au prochain rapport.</p></li>
+                    <li>« Nouveau suivi » pour Kouassi Esther.
+                        <p class="voir"><strong>Vous devez voir</strong> : 6 semaines proposées, la durée de l'église ; modifiable pour elle seule.</p></li>
+                </ol>
+                <t t-call="mobile_app_release.guide_capture">
+                    <t t-set="chemin" t-value="'church_followup/static/help/app/rapport_semaine.png'"/>
+                    <t t-set="alt" t-value="'Le rapport de la semaine'"/>
+                </t>
+                <h3>Contrôle</h3>
+                <ol class="questions">
+                    <li>Quand un rapport est-il en retard ?</li>
+                    <li>D'où vient la coche « Présence au culte » déjà mise ?</li>
+                    <li>Quelle durée est proposée pour une personne venue d'un événement ?</li>
+                </ol>
+                <p class="note"><strong>Note du formateur</strong> : insistez sur la note du rapport — c'est elle que relira le responsable au moment de décider. Une phrase suffit.</p>
+            </div>
+
+            <!-- ─── Module 4 ─────────────────────────────────────────── -->
+            <div class="module">
+                <h2>Module 4 — Décider au terme du suivi</h2>
+                <p class="meta">Évangélistes et responsables · 30 min</p>
+                <h3>Objectifs</h3>
+                <ul>
+                    <li>Choisir entre intégrer, prolonger, interrompre et transférer.</li>
+                    <li>Justifier une intégration sous le seuil de présence.</li>
+                    <li>Interrompre sans rien effacer.</li>
+                </ul>
+                <div class="bloc">
+                <h3>Démonstration</h3>
+                <t t-call="mobile_app_release.guide_capture">
+                    <t t-set="chemin" t-value="'church_followup/static/help/app/integrer_sous_le_seuil.png'"/>
+                    <t t-set="alt" t-value="'Intégrer sous le seuil'"/>
+                </t>
+                </div>
+                <p>
+                    <strong>Konan Aya</strong> est arrivée au terme de son suivi, mais n'est
+                    venue au culte que sous le seuil de l'église (75 %). On peut l'intégrer :
+                    il faut alors écrire pourquoi.
+                </p>
+                <h3>Exercices</h3>
+                <ol>
+                    <li>Sur le suivi de Konan Aya, « Intégrer » : choisissez la cellule « Cellule Angré 8e tranche » et le groupe « Jeunes ».
+                        <p class="voir"><strong>Vous devez voir</strong> : la demande de justification ; sans elle, l'intégration est refusée.</p></li>
+                    <li>Sur le suivi de Koffi Jean (connecté en Paul Yao), « Prolonger » de 2 semaines.
+                        <p class="voir"><strong>Vous devez voir</strong> : la durée passer à 6 semaines et le suivi rester actif.</p></li>
+                    <li>Sur un suivi en cours, « Interrompre » avec le motif « A déménagé ».
+                        <p class="voir"><strong>Vous devez voir</strong> : la personne dans « À attribuer », parmi les suivis interrompus à reprendre.</p></li>
+                </ol>
+                <h3>Contrôle</h3>
+                <ol class="questions">
+                    <li>Que demande l'application pour intégrer une personne sous le seuil de présence ?</li>
+                    <li>Une interruption efface-t-elle le suivi ?</li>
+                    <li>Que choisir quand l'évangéliste part en mission pour deux mois ?</li>
+                </ol>
+                <p class="note"><strong>Note du formateur</strong> : le seuil n'est pas une sanction. Il oblige seulement à dire pourquoi — et cette justification se relit des mois plus tard.</p>
+            </div>
+
+            <!-- ─── Module 5 ─────────────────────────────────────────── -->
+            <div class="module">
+                <h2>Module 5 — Piloter l'église</h2>
+                <p class="meta">Responsables · 35 min · connecté en Pasteur Marc Kouadio</p>
+                <h3>Objectifs</h3>
+                <ul>
+                    <li>Lire le tableau de bord.</li>
+                    <li>Confier les nouvelles personnes depuis « À attribuer ».</li>
+                    <li>Ouvrir un compte et envoyer l'invitation.</li>
+                </ul>
+                <div class="bloc">
+                <h3>Démonstration</h3>
+                <t t-call="mobile_app_release.guide_capture">
+                    <t t-set="chemin" t-value="'church_followup/static/help/app/a_attribuer.png'"/>
+                    <t t-set="alt" t-value="'À attribuer'"/>
+                </t>
+                </div>
+                <p>
+                    <strong>Bamba Ibrahim</strong> vient du « Camp de Toussaint 2026 » : sa fiche
+                    a été créée par l'événement, avec les 8 semaines de suivi qu'il prévoit. Il
+                    attend un évangéliste.
+                </p>
+                <h3>Exercices</h3>
+                <ol>
+                    <li>Ouvrez « À attribuer », touchez Bamba Ibrahim, confiez-le à Paul Yao.
+                        <p class="voir"><strong>Vous devez voir</strong> : 8 semaines proposées (origine : l'événement), puis Bamba Ibrahim dans les suivis de Paul Yao.</p></li>
+                    <li>« Plus », « Utilisateurs » : repérez les comptes « Jamais connecté ».
+                        <p class="voir"><strong>Vous devez voir</strong> : Fatou Cissé, jamais connectée.</p></li>
+                    <li>Envoyez l'invitation à Fatou Cissé.
+                        <p class="voir"><strong>Vous devez voir</strong> : un message avec le lien de l'application et son numéro — aucun code, aucun mot de passe.</p></li>
+                </ol>
+                <t t-call="mobile_app_release.guide_capture">
+                    <t t-set="chemin" t-value="'church_followup/static/help/app/invitation.png'"/>
+                    <t t-set="alt" t-value="'L\'invitation'"/>
+                </t>
+                <h3>Contrôle</h3>
+                <ol class="questions">
+                    <li>D'où viennent les personnes de « À attribuer » ?</li>
+                    <li>Pourquoi peut-on renvoyer une invitation sans risque ?</li>
+                    <li>Que signale le badge « Jamais connecté » ?</li>
+                </ol>
+                <p class="note"><strong>Note du formateur</strong> : faites le tour des comptes en fin de séance — chaque « Jamais connecté » est un évangéliste qui ne recevra pas les relances du lundi.</p>
+            </div>
+
+            <!-- ─── Module 6 ─────────────────────────────────────────── -->
+            <div class="module">
+                <h2>Module 6 — Affermir : les points de contrôle</h2>
+                <p class="meta">Responsables de cellule · 20 min · connecté en Fatou Cissé</p>
+                <h3>Objectifs</h3>
+                <ul>
+                    <li>Faire un point de contrôle à 3 et 6 mois.</li>
+                    <li>Comprendre le rattrapage et la proposition de rouvrir un suivi.</li>
+                </ul>
+                <div class="bloc">
+                <h3>Démonstration</h3>
+                <t t-call="mobile_app_release.guide_capture">
+                    <t t-set="chemin" t-value="'church_followup/static/help/app/controle.png'"/>
+                    <t t-set="alt" t-value="'Un point de contrôle'"/>
+                </t>
+                </div>
+                <p><strong>Ouattara Fanta</strong> a été intégrée il y a trois mois : son contrôle « À 3 mois » est dû.</p>
+                <h3>Exercice</h3>
+                <ol>
+                    <li>« Points de contrôle », Ouattara Fanta : « Oui, elle tient », avec une observation.
+                        <p class="voir"><strong>Vous devez voir</strong> : le contrôle passer dans les contrôles faits ; le suivant reste planifié à 6 mois.</p></li>
+                </ol>
+                <h3>Contrôle</h3>
+                <ol class="questions">
+                    <li>Que se passe-t-il après un contrôle défavorable ?</li>
+                    <li>Quand une personne devient-elle « Fidèle affermi(e) » ?</li>
+                </ol>
+                <p class="note"><strong>Note du formateur</strong> : le contrôle regarde la présence des 90 derniers jours ; invitez le responsable à appeler la personne avant de répondre, pas à se fier au seul chiffre.</p>
+            </div>
+
+            <!-- ─── Module 7 ─────────────────────────────────────────── -->
+            <div class="module">
+                <h2>Module 7 — Administrer dans Odoo</h2>
+                <p class="meta">Administrateur · 40 min · back-office, compte formateur</p>
+                <h3>Objectifs</h3>
+                <ul>
+                    <li>Faire entrer une église de l'annuaire dans le suivi et régler sa durée et son seuil.</li>
+                    <li>Gérer les comptes : invitation, sessions.</li>
+                    <li>Brancher un événement d'évangélisation sur le suivi.</li>
+                </ul>
+                <div class="bloc">
+                <h3>Démonstration</h3>
+                <div class="capture ecran">
+                    <img t-att-src="guide_image_mode == 'data' and app.help_image('church_followup/static/help/backoffice/bo_eglise.png') or '/church_followup/static/help/backoffice/bo_eglise.png'" alt="La fiche de l'église"/>
+                </div>
+                </div>
+                <p>
+                    L'église vient de <strong>l'annuaire du réseau</strong> : son nom, sa région
+                    et ses pasteurs se tiennent là, une fois pour toutes les applications. Le
+                    suivi n'y ajoute que ses réglages.
+                </p>
+                <h3>Exercices</h3>
+                <ol>
+                    <li>« Configuration › Églises », l'Église Bonne Nouvelle de la Grâce de Angré : passez la durée par défaut à 5 semaines.
+                        <p class="voir"><strong>Vous devez voir</strong> : dans l'application, « Nouveau suivi » pour Kouassi Esther propose maintenant 5 semaines.</p></li>
+                    <li>Onglet « Pasteurs ».
+                        <p class="voir"><strong>Vous devez voir</strong> : Marc Kouadio (Pasteur) et Rose Diomandé (Missionnaire), en lecture seule.</p></li>
+                    <li>« Configuration › Utilisateurs mobiles », Fatou Cissé : « Inviter », puis l'onglet « Sessions ».
+                        <p class="voir"><strong>Vous devez voir</strong> : le message à transmettre, et — si elle s'est connectée pendant la séance — son téléphone dans les sessions.</p></li>
+                    <li>L'événement « Camp de Toussaint 2026 », onglet « Évangélisation ».
+                        <p class="voir"><strong>Vous devez voir</strong> : l'église de rattachement et la durée de suivi propre à l'événement (8 semaines).</p></li>
+                </ol>
+                <div class="capture ecran">
+                    <img t-att-src="guide_image_mode == 'data' and app.help_image('church_followup/static/help/backoffice/bo_evenement.png') or '/church_followup/static/help/backoffice/bo_evenement.png'" alt="L'onglet Évangélisation d'un événement"/>
+                </div>
+                <h3>Contrôle</h3>
+                <ol class="questions">
+                    <li>Où corrige-t-on le nom ou les pasteurs d'une église ?</li>
+                    <li>Comment couper l'accès d'un téléphone perdu ?</li>
+                    <li>Que fait l'onglet « Évangélisation » d'un événement ?</li>
+                </ol>
+                <p class="note"><strong>Note du formateur</strong> : sans gabarit WhatsApp approuvé par Meta, les codes et les relances partent par SMS ; vérifiez les réglages des notifications avant la mise en service.</p>
+            </div>
+
+            <!-- ─── Corrigés ─────────────────────────────────────────── -->
+            <h2>Corrigés</h2>
+            <h3>Module 1</h3>
+            <ol class="reponses">
+                <li>Nouvelle personne ; confiée à un évangéliste ; suivie chaque semaine ; décision au terme (intégrer, prolonger, interrompre, transférer) ; affermissement par les contrôles à 3 et 6 mois.</li>
+                <li>Il voit combien de personnes sont suivies, intégrées ou perdues et pourquoi ; toute intégration sous le seuil est justifiée par écrit.</li>
+            </ol>
+            <h3>Module 2</h3>
+            <ol class="reponses">
+                <li>10 minutes ; on peut en redemander un après une minute.</li>
+                <li>Pour qu'on ne puisse pas découvrir quels numéros ont un compte.</li>
+                <li>Vérifier le numéro saisi, renvoyer le code, puis demander à l'administrateur d'ajouter une adresse e-mail au compte (back-office) : le code y partira aussi.</li>
+            </ol>
+            <h3>Module 3</h3>
+            <ol class="reponses">
+                <li>Trois jours après la fin de sa semaine.</li>
+                <li>Du pointage de la présence du dimanche.</li>
+                <li>La durée fixée sur l'événement ; à défaut, celle de l'église.</li>
+            </ol>
+            <h3>Module 4</h3>
+            <ol class="reponses">
+                <li>Une justification écrite.</li>
+                <li>Non : le motif est gardé, le suivi peut être repris et reste dans le parcours.</li>
+                <li>Transférer le suivi à un autre évangéliste.</li>
+            </ol>
+            <h3>Module 5</h3>
+            <ol class="reponses">
+                <li>Des nouvelles personnes sans évangéliste (dont celles créées par un événement) et des suivis interrompus à reprendre.</li>
+                <li>Elle ne contient aucun secret : le code arrive au moment de se connecter, sur le numéro du compte.</li>
+                <li>Un compte qui ne s'est encore jamais connecté.</li>
+            </ol>
+            <h3>Module 6</h3>
+            <ol class="reponses">
+                <li>Un rattrapage est planifié un mois plus tard ; deux défavorables de suite proposent de rouvrir un suivi.</li>
+                <li>Quand les contrôles à 3 mois et à 6 mois sont favorables.</li>
+            </ol>
+            <h3>Module 7</h3>
+            <ol class="reponses">
+                <li>Dans l'annuaire du réseau (la gestion des églises), pas dans le suivi.</li>
+                <li>Sur son compte, « Fermer les sessions ».</li>
+                <li>Il crée une fiche pour chaque participant pointé présent, rattachée à l'église choisie, avec la durée de suivi de l'événement.</li>
+            </ol>
+        </t>
+    </template>
+
+    <template id="report_training_manual">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+            <t t-call="web.basic_layout">
+            <div class="page">
+                <style>
+                    .page { font-family: Helvetica, Arial, sans-serif;
+                            color: #1a1a1a; font-size: 10.5pt; line-height: 1.45; }
+                    .page h1 { font-size: 20pt; margin: 0 0 4px; color: #3A2E9E; }
+                    .page h2 { font-size: 13pt; margin: 18px 0 8px; color: #3A2E9E;
+                               border-bottom: 1px solid #ddd; padding-bottom: 4px;
+                               page-break-after: avoid; }
+                    .page h3 { font-size: 11pt; margin: 12px 0 6px; page-break-after: avoid; }
+                    .page .module { page-break-before: always; }
+                    .page .meta { color: #666; font-style: italic; margin-top: -4px; }
+                    .page .voir { margin: 4px 0 8px; padding: 6px 10px; background: #eef8ef;
+                                  border-left: 3px solid #4CAF50; }
+                    .page .note { margin: 10px 0; padding: 8px 12px; background: #fff7e6;
+                                  border-left: 3px solid #FF9800; }
+                    .page table { width: 100%; border-collapse: collapse;
+                                  margin: 0 0 14px; font-size: 9.5pt; }
+                    .page th, .page td { border: 1px solid #ddd; padding: 6px 8px;
+                                         text-align: left; vertical-align: top; }
+                    .page th { background: #f3f1fc; }
+                    .page .attention { border-left: 3px solid #5B4FCF;
+                                       background: #f8f7fe; padding: 10px 14px; margin: 0 0 14px; }
+                    .page code { background: #f0f0f0; padding: 1px 4px; font-size: 9pt; }
+                    .page .bloc { page-break-inside: avoid; }
+                    .page .capture { text-align: center; margin: 0 0 14px;
+                                     page-break-inside: avoid; }
+                    .page .capture img { height: 95mm; border: 1px solid #ddd; border-radius: 4px; }
+                    .page .capture.ecran img { height: auto; width: 160mm; }
+                    .page .titre { border-bottom: 2px solid #5B4FCF;
+                                   padding-bottom: 10px; margin-bottom: 18px; }
+                </style>
+                <div class="titre">
+                    <h1>Manuel de formation</h1>
+                    <div t-esc="doc.name"/>
+                </div>
+                <t t-set="guide_image_mode" t-value="'data'"/>
+                <t t-set="app" t-value="doc"/>
+                <t t-call="church_followup.training_manual_content"/>
+            </div>
+            </t>
+            </t>
+        </t>
+    </template>
+
+    <record id="action_report_training_manual" model="ir.actions.report">
+        <field name="name">Manuel de formation — Suivi Évangélisation</field>
+        <field name="model">mobile.app</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">church_followup.report_training_manual</field>
+        <field name="report_file">church_followup.report_training_manual</field>
+        <field name="print_report_name">'Manuel de formation - %s' % (object.name)</field>
+        <field name="binding_model_id" eval="False"/>
+    </record>
+
+</odoo>

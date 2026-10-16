@@ -1,8 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme.dart';
 import '../../providers/organization_provider.dart';
+import '../../core/constants.dart';
 import '../../widgets/common.dart';
+import '../../widgets/invitation_dialog.dart';
 
 class ChurchManagementScreen extends StatefulWidget {
   const ChurchManagementScreen({super.key});
@@ -86,7 +90,7 @@ class _ChurchManagementScreenState extends State<ChurchManagementScreen> {
                     ? const EmptyState(
                         icon: Icons.church_outlined,
                         title: 'Aucune église',
-                        subtitle: 'Créez votre première église',
+                        subtitle: 'Ajoutez une église de l\'annuaire du réseau',
                       )
                     : RefreshIndicator(
                         onRefresh: () => org.loadChurches(),
@@ -105,7 +109,7 @@ class _ChurchManagementScreenState extends State<ChurchManagementScreen> {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showCreateChurchSheet(context),
         icon: const Icon(Icons.add),
-        label: const Text('Nouvelle église'),
+        label: const Text('Ajouter une église'),
       ),
     );
   }
@@ -118,7 +122,7 @@ class _ChurchManagementScreenState extends State<ChurchManagementScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (ctx) => _CreateChurchSheet(
+      builder: (ctx) => _AddChurchSheet(
         onCreated: () {
           context.read<OrganizationProvider>().loadChurches();
         },
@@ -136,307 +140,146 @@ class _ChurchManagementScreenState extends State<ChurchManagementScreen> {
   }
 }
 
-// ─── Create Church Bottom Sheet ──────────────────────────────────────
+// ─── Ajouter une église : la chercher dans l'annuaire du réseau ──────
 
-class _CreateChurchSheet extends StatefulWidget {
+/// Les églises existent déjà dans l'annuaire du réseau, avec leurs pasteurs :
+/// on en fait entrer une dans le suivi. On n'en crée une que si elle n'y est
+/// pas — et une saisie qui la désigne sous une autre écriture la retrouve.
+class _AddChurchSheet extends StatefulWidget {
   final VoidCallback onCreated;
-  const _CreateChurchSheet({required this.onCreated});
+  const _AddChurchSheet({required this.onCreated});
 
   @override
-  State<_CreateChurchSheet> createState() => _CreateChurchSheetState();
+  State<_AddChurchSheet> createState() => _AddChurchSheetState();
 }
 
-class _CreateChurchSheetState extends State<_CreateChurchSheet> {
-  final _nameC = TextEditingController();
-  final _codeC = TextEditingController();
-  final _addressC = TextEditingController();
+class _AddChurchSheetState extends State<_AddChurchSheet> {
+  final _queryC = TextEditingController();
   final _cityC = TextEditingController();
-  final _phoneC = TextEditingController();
-  final _emailC = TextEditingController();
-  final _formKey = GlobalKey<FormState>();
+  Timer? _debounce;
+  List<Map<String, dynamic>> _results = [];
+  bool _searching = false;
   bool _submitting = false;
+  bool _searched = false;
 
-  // Pastors to create along with the church
-  final List<Map<String, dynamic>> _pastors = [];
-
-  void _addPastor() {
-    final nameC = TextEditingController();
-    final phoneC = TextEditingController();
-    String type = 'assistant';
-
-    // If no pastors yet, default to principal
-    if (_pastors.isEmpty) {
-      type = 'principal';
-    }
-
-    showDialog(
-      context: context,
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (ctx, setDialogState) => AlertDialog(
-            title: const Text('Ajouter un pasteur'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: nameC,
-                  decoration: const InputDecoration(
-                    labelText: 'Nom complet *',
-                    prefixIcon: Icon(Icons.person),
-                  ),
-                  textCapitalization: TextCapitalization.words,
-                ),
-                const SizedBox(height: 10),
-                TextField(
-                  controller: phoneC,
-                  decoration: const InputDecoration(
-                    labelText: 'Téléphone',
-                    prefixIcon: Icon(Icons.phone),
-                  ),
-                  keyboardType: TextInputType.phone,
-                ),
-                const SizedBox(height: 12),
-                SegmentedButton<String>(
-                  segments: const [
-                    ButtonSegment(value: 'principal', label: Text('Principal'), icon: Icon(Icons.star)),
-                    ButtonSegment(value: 'assistant', label: Text('Assistant'), icon: Icon(Icons.person_outline)),
-                  ],
-                  selected: {type},
-                  onSelectionChanged: (v) => setDialogState(() => type = v.first),
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler')),
-              FilledButton(
-                onPressed: () {
-                  if (nameC.text.trim().isEmpty) {
-                    showErrorSnackbar(ctx, 'Le nom est requis');
-                    return;
-                  }
-                  setState(() {
-                    // If this is principal, demote any existing principal
-                    if (type == 'principal') {
-                      for (var p in _pastors) {
-                        if (p['pastor_type'] == 'principal') {
-                          p['pastor_type'] = 'assistant';
-                        }
-                      }
-                    }
-                    _pastors.add({
-                      'name': nameC.text.trim(),
-                      'phone': phoneC.text.trim(),
-                      'pastor_type': type,
-                    });
-                  });
-                  Navigator.pop(ctx);
-                },
-                child: const Text('Ajouter'),
-              ),
-            ],
-          ),
-        );
-      },
-    );
+  @override
+  void initState() {
+    super.initState();
+    _search('');
   }
 
-  Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
-    setState(() => _submitting = true);
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _queryC.dispose();
+    _cityC.dispose();
+    super.dispose();
+  }
 
-    final org = context.read<OrganizationProvider>();
-    final result = await org.createChurch({
-      'name': _nameC.text.trim(),
-      'code': _codeC.text.trim(),
-      'address': _addressC.text.trim(),
-      'city': _cityC.text.trim(),
-      'phone': _phoneC.text.trim(),
-      'email': _emailC.text.trim(),
-      'pastors': _pastors,
+  void _onQueryChanged(String value) {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 350), () => _search(value.trim()));
+  }
+
+  Future<void> _search(String query) async {
+    setState(() => _searching = true);
+    final found = await context.read<OrganizationProvider>().searchDirectory(query);
+    if (!mounted) return;
+    setState(() {
+      _results = found;
+      _searching = false;
+      _searched = query.isNotEmpty;
     });
+  }
 
+  Future<void> _add(Map<String, dynamic> data) async {
+    setState(() => _submitting = true);
+    final result = await context.read<OrganizationProvider>().createChurch(data);
     if (!mounted) return;
     setState(() => _submitting = false);
-
     if (result['status'] == 'success') {
       widget.onCreated();
       Navigator.pop(context);
-      showSuccessSnackbar(context, result['message'] ?? 'Église créée');
+      showSuccessSnackbar(context, result['message'] ?? 'Église ajoutée');
     } else {
       showErrorSnackbar(context, result['message'] ?? 'Erreur');
     }
   }
 
   @override
-  void dispose() {
-    _nameC.dispose();
-    _codeC.dispose();
-    _addressC.dispose();
-    _cityC.dispose();
-    _phoneC.dispose();
-    _emailC.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return SafeArea(
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(
-          20, 12, 20, MediaQuery.of(context).viewInsets.bottom + 16,
-        ),
-        child: Form(
-          key: _formKey,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Handle
-                Center(
-                  child: Container(
-                    width: 40, height: 4,
-                    margin: const EdgeInsets.only(bottom: 16),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[300],
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-                Row(
-                  children: [
-                    const Icon(Icons.church, color: AppColors.primary),
-                    const SizedBox(width: 10),
-                    Text('Nouvelle Église', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
-                  ],
-                ),
-                const SizedBox(height: 20),
-
-                // Church info section
-                Text('Informations', style: theme.textTheme.titleSmall?.copyWith(color: AppColors.primary)),
-                const SizedBox(height: 8),
-                TextFormField(
-                  controller: _nameC,
-                  decoration: const InputDecoration(labelText: 'Nom de l\'église *', prefixIcon: Icon(Icons.church)),
-                  textCapitalization: TextCapitalization.words,
-                  validator: (v) => (v == null || v.trim().isEmpty) ? 'Requis' : null,
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _codeC,
-                        decoration: const InputDecoration(labelText: 'Code', prefixIcon: Icon(Icons.tag)),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _cityC,
-                        decoration: const InputDecoration(labelText: 'Ville', prefixIcon: Icon(Icons.location_city)),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                TextFormField(
-                  controller: _addressC,
-                  decoration: const InputDecoration(labelText: 'Adresse', prefixIcon: Icon(Icons.location_on)),
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _phoneC,
-                        decoration: const InputDecoration(labelText: 'Téléphone', prefixIcon: Icon(Icons.phone)),
-                        keyboardType: TextInputType.phone,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _emailC,
-                        decoration: const InputDecoration(labelText: 'Email', prefixIcon: Icon(Icons.email)),
-                        keyboardType: TextInputType.emailAddress,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-
-                // Pastors section
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('Pasteurs', style: theme.textTheme.titleSmall?.copyWith(color: AppColors.primary)),
-                    TextButton.icon(
-                      onPressed: _addPastor,
-                      icon: const Icon(Icons.person_add, size: 18),
-                      label: const Text('Ajouter'),
-                    ),
-                  ],
-                ),
-                if (_pastors.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: Text(
-                      'Aucun pasteur ajouté (optionnel)',
-                      style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey),
-                    ),
-                  )
-                else
-                  ..._pastors.asMap().entries.map((e) {
-                    final i = e.key;
-                    final p = e.value;
-                    final isPrincipal = p['pastor_type'] == 'principal';
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: 6),
-                      child: ListTile(
-                        dense: true,
-                        leading: CircleAvatar(
-                          radius: 16,
-                          backgroundColor: isPrincipal
-                              ? AppColors.extended.withValues(alpha: 0.15)
-                              : AppColors.secondary.withValues(alpha: 0.12),
-                          child: Icon(
-                            isPrincipal ? Icons.star : Icons.person,
-                            size: 16,
-                            color: isPrincipal ? AppColors.extended : AppColors.secondary,
-                          ),
-                        ),
-                        title: Text(p['name'], style: const TextStyle(fontSize: 13)),
-                        subtitle: Text(
-                          isPrincipal ? 'Principal' : 'Assistant',
-                          style: TextStyle(fontSize: 11, color: isPrincipal ? AppColors.extended : Colors.grey),
-                        ),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.close, size: 18),
-                          onPressed: () => setState(() => _pastors.removeAt(i)),
-                        ),
-                      ),
-                    );
-                  }),
-                const SizedBox(height: 20),
-
-                // Submit
-                FilledButton.icon(
-                  onPressed: _submitting ? null : _submit,
-                  icon: _submitting
-                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                      : const Icon(Icons.check),
-                  label: const Text('Créer l\'église'),
-                  style: FilledButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                  ),
-                ),
-                const SizedBox(height: 8),
-              ],
+    final query = _queryC.text.trim();
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 20,
+        right: 20,
+        top: 20,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('Ajouter une église au suivi',
+              style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 4),
+          Text('Cherchez-la dans l\'annuaire du réseau : ses pasteurs viennent avec elle.',
+              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _queryC,
+            autofocus: true,
+            decoration: const InputDecoration(
+              labelText: 'Nom, commune ou code',
+              prefixIcon: Icon(Icons.search),
             ),
+            onChanged: _onQueryChanged,
           ),
-        ),
+          const SizedBox(height: 8),
+          ConstrainedBox(
+            constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.4),
+            child: _searching
+                ? const Padding(padding: EdgeInsets.all(24), child: Center(child: CircularProgressIndicator()))
+                : ListView(
+                    shrinkWrap: true,
+                    children: [
+                      for (final c in _results)
+                        ListTile(
+                          leading: const Icon(Icons.church_outlined, color: AppColors.primary),
+                          title: Text(c['name'] ?? ''),
+                          subtitle: Text([
+                            c['city'],
+                            c['region'],
+                            c['pastor_name'],
+                          ].where((v) => (v ?? '').toString().isNotEmpty).join(' · ')),
+                          trailing: const Icon(Icons.add_circle_outline),
+                          onTap: _submitting ? null : () => _add({'church_id': c['id']}),
+                        ),
+                      if (_results.isEmpty && _searched)
+                        const Padding(
+                          padding: EdgeInsets.all(12),
+                          child: Text('Aucune église de l\'annuaire ne correspond.'),
+                        ),
+                    ],
+                  ),
+          ),
+          if (query.length >= 3) ...[
+            const Divider(height: 24),
+            Text('Elle n\'est pas dans l\'annuaire ?', style: theme.textTheme.titleSmall),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _cityC,
+              decoration: const InputDecoration(labelText: 'Commune', prefixIcon: Icon(Icons.location_city)),
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: _submitting ? null : () => _add({'name': query, 'city': _cityC.text.trim()}),
+              icon: const Icon(Icons.add),
+              label: Text('Ajouter « $query »'),
+            ),
+          ],
+        ],
       ),
     );
   }
@@ -453,11 +296,8 @@ class _ChurchCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final pastors = (church['pastors'] as List?)?.cast<Map<String, dynamic>>() ?? [];
-    final principal = pastors.where((p) => p['pastor_type'] == 'principal').toList();
-    final pastorLabel = principal.isNotEmpty
-        ? principal.first['name']
-        : (church['pastor_name'] ?? '').toString();
+    // Les pasteurs titulaires de l'annuaire du réseau.
+    final pastorLabel = (church['pastor_name'] ?? '').toString();
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
@@ -493,9 +333,6 @@ class _ChurchCard extends StatelessWidget {
                                 style: theme.textTheme.bodySmall,
                                 overflow: TextOverflow.ellipsis),
                           ),
-                          if (pastors.length > 1)
-                            Text(' +${pastors.length - 1}',
-                                style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey)),
                         ],
                       ),
                   ],
@@ -605,7 +442,8 @@ class _ChurchDetailScreenState extends State<_ChurchDetailScreen> {
         actions: [
           if (_detail != null)
             IconButton(
-              icon: const Icon(Icons.edit),
+              icon: const Icon(Icons.tune),
+              tooltip: 'Réglages du suivi',
               onPressed: _showEditSheet,
             ),
         ],
@@ -719,185 +557,18 @@ class _ChurchDetailScreenState extends State<_ChurchDetailScreen> {
     );
   }
 
-  Widget _buildPastorsSection(ThemeData theme) {
-    final pastors = (_detail!['pastors'] as List?)?.cast<Map<String, dynamic>>() ?? [];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text('Pasteurs', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
-            TextButton.icon(
-              onPressed: _showAddPastorDialog,
-              icon: const Icon(Icons.person_add, size: 18),
-              label: const Text('Ajouter'),
-            ),
-          ],
-        ),
-        if (pastors.isEmpty)
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Text('Aucun pasteur enregistré',
-                  style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey)),
-            ),
-          )
-        else
-          ...pastors.map((p) {
-            final isPrincipal = p['pastor_type'] == 'principal';
-            return Card(
-              margin: const EdgeInsets.only(bottom: 6),
-              child: ListTile(
-                leading: CircleAvatar(
-                  backgroundColor: isPrincipal
-                      ? AppColors.extended.withValues(alpha: 0.15)
-                      : AppColors.secondary.withValues(alpha: 0.12),
-                  child: Icon(
-                    isPrincipal ? Icons.star : Icons.person,
-                    color: isPrincipal ? AppColors.extended : AppColors.secondary,
-                  ),
-                ),
-                title: Text(p['name'] ?? ''),
-                subtitle: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: (isPrincipal ? AppColors.extended : AppColors.inProgress).withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        isPrincipal ? 'Principal' : 'Assistant',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: isPrincipal ? AppColors.extended : AppColors.inProgress,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                    if ((p['phone'] ?? '').toString().isNotEmpty) ...[
-                      const SizedBox(width: 8),
-                      Text(p['phone'], style: theme.textTheme.bodySmall),
-                    ],
-                  ],
-                ),
-                trailing: PopupMenuButton<String>(
-                  onSelected: (action) => _handlePastorAction(action, p),
-                  itemBuilder: (_) => [
-                    if (!isPrincipal)
-                      const PopupMenuItem(
-                        value: 'promote',
-                        child: ListTile(
-                          dense: true,
-                          leading: Icon(Icons.star, color: Colors.amber),
-                          title: Text('Définir principal'),
-                        ),
-                      ),
-                    const PopupMenuItem(
-                      value: 'delete',
-                      child: ListTile(
-                        dense: true,
-                        leading: Icon(Icons.archive, color: Colors.red),
-                        title: Text('Archiver'),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }),
-      ],
-    );
-  }
-
-  Future<void> _handlePastorAction(String action, Map<String, dynamic> pastor) async {
-    final org = context.read<OrganizationProvider>();
-    Map<String, dynamic> result;
-
-    if (action == 'promote') {
-      result = await org.updatePastor(pastor['id'] as int, {'pastor_type': 'principal'});
-    } else {
-      result = await org.deletePastor(pastor['id'] as int);
-    }
-
-    if (!mounted) return;
-    if (result['status'] == 'success') {
-      showSuccessSnackbar(context, result['message'] ?? 'OK');
-      _loadDetail();
-    } else {
-      showErrorSnackbar(context, result['message'] ?? 'Erreur');
-    }
-  }
-
-  void _showAddPastorDialog() {
-    final nameC = TextEditingController();
-    final phoneC = TextEditingController();
-    String type = 'assistant';
-
-    showDialog(
+  void _showEditSheet() {
+    showModalBottomSheet(
       context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          title: const Text('Ajouter un pasteur'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('Église: ${_detail?['name'] ?? ''}',
-                  style: const TextStyle(fontWeight: FontWeight.w500)),
-              const SizedBox(height: 12),
-              TextField(
-                controller: nameC,
-                decoration: const InputDecoration(labelText: 'Nom complet *', prefixIcon: Icon(Icons.person)),
-                textCapitalization: TextCapitalization.words,
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: phoneC,
-                decoration: const InputDecoration(labelText: 'Téléphone', prefixIcon: Icon(Icons.phone)),
-                keyboardType: TextInputType.phone,
-              ),
-              const SizedBox(height: 12),
-              SegmentedButton<String>(
-                segments: const [
-                  ButtonSegment(value: 'principal', label: Text('Principal'), icon: Icon(Icons.star)),
-                  ButtonSegment(value: 'assistant', label: Text('Assistant'), icon: Icon(Icons.person_outline)),
-                ],
-                selected: {type},
-                onSelectionChanged: (v) => setDialogState(() => type = v.first),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler')),
-            FilledButton(
-              onPressed: () async {
-                if (nameC.text.trim().isEmpty) {
-                  showErrorSnackbar(ctx, 'Le nom est requis');
-                  return;
-                }
-                final org = context.read<OrganizationProvider>();
-                final result = await org.createPastor({
-                  'name': nameC.text.trim(),
-                  'phone': phoneC.text.trim(),
-                  'pastor_type': type,
-                  'church_id': widget.churchId,
-                });
-                if (!ctx.mounted) return;
-                Navigator.pop(ctx);
-                if (!mounted) return;
-                if (result['status'] == 'success') {
-                  showSuccessSnackbar(context, result['message'] ?? 'Pasteur ajouté');
-                  _loadDetail();
-                } else {
-                  showErrorSnackbar(context, result['message'] ?? 'Erreur');
-                }
-              },
-              child: const Text('Ajouter'),
-            ),
-          ],
-        ),
+      isScrollControlled: true,
+      useSafeArea: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => _EditChurchSheet(
+        detail: _detail!,
+        churchId: widget.churchId,
+        onUpdated: _loadDetail,
       ),
     );
   }
@@ -939,8 +610,8 @@ class _ChurchDetailScreenState extends State<_ChurchDetailScreen> {
               Navigator.pop(ctx);
               if (!mounted) return;
               if (result['status'] == 'success') {
-                final pin = result['user']?['pin'] ?? '';
-                showSuccessSnackbar(context, '${result['message']} — PIN: $pin');
+                showInvitationDialog(context, AppConstants.safeStr(result['user']?['invitation']),
+                    nameC.text.trim(), phoneC.text.trim());
                 _loadDetail();
               } else {
                 showErrorSnackbar(context, result['message'] ?? 'Erreur');
@@ -953,25 +624,54 @@ class _ChurchDetailScreenState extends State<_ChurchDetailScreen> {
     );
   }
 
-  void _showEditSheet() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) => _EditChurchSheet(
-        detail: _detail!,
-        churchId: widget.churchId,
-        onUpdated: _loadDetail,
-      ),
+  /// Les pasteurs de l'annuaire du réseau : on les lit ici, on les ajoute,
+  /// mute ou retire dans la gestion des églises du réseau.
+  Widget _buildPastorsSection(ThemeData theme) {
+    final pastors = (_detail!['pastors'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Pasteurs', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
+        const SizedBox(height: 2),
+        Text('Tenus dans l\'annuaire du réseau',
+            style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+        const SizedBox(height: 8),
+        if (pastors.isEmpty)
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text('Aucun pasteur dans l\'annuaire pour cette église',
+                  style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey)),
+            ),
+          )
+        else
+          ...pastors.map((p) {
+            final titular = p['is_titular'] == true;
+            return Card(
+              margin: const EdgeInsets.only(bottom: 6),
+              child: ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: (titular ? AppColors.integrated : AppColors.secondary).withValues(alpha: 0.12),
+                  child: Icon(Icons.person, color: titular ? AppColors.integrated : AppColors.secondary),
+                ),
+                title: Text(p['name'] ?? ''),
+                subtitle: Text([
+                  titular ? 'Pasteur titulaire' : 'Missionnaire',
+                  p['phone'],
+                ].where((v) => (v ?? '').toString().isNotEmpty).join(' · ')),
+              ),
+            );
+          }),
+      ],
     );
   }
 }
 
-// ─── Edit Church Bottom Sheet ────────────────────────────────────────
+// ─── Réglages du suivi d'une église ──────────────────────────────────
 
+/// Ce que le suivi règle lui-même. Le nom, l'adresse et les pasteurs de
+/// l'église appartiennent à l'annuaire du réseau et s'y corrigent.
 class _EditChurchSheet extends StatefulWidget {
   final Map<String, dynamic> detail;
   final int churchId;
@@ -988,60 +688,45 @@ class _EditChurchSheet extends StatefulWidget {
 }
 
 class _EditChurchSheetState extends State<_EditChurchSheet> {
-  late final TextEditingController _nameC;
-  late final TextEditingController _codeC;
-  late final TextEditingController _addressC;
-  late final TextEditingController _cityC;
-  late final TextEditingController _phoneC;
-  late final TextEditingController _emailC;
+  late final TextEditingController _weeksC;
+  late final TextEditingController _attendanceC;
+  late bool _enabled;
   bool _submitting = false;
 
   @override
   void initState() {
     super.initState();
-    _nameC = TextEditingController(text: widget.detail['name'] ?? '');
-    _codeC = TextEditingController(text: widget.detail['code'] ?? '');
-    _addressC = TextEditingController(text: widget.detail['address'] ?? '');
-    _cityC = TextEditingController(text: widget.detail['city'] ?? '');
-    _phoneC = TextEditingController(text: widget.detail['phone'] ?? '');
-    _emailC = TextEditingController(text: widget.detail['email'] ?? '');
+    _weeksC = TextEditingController(text: '${widget.detail['default_followup_weeks'] ?? 4}');
+    _attendanceC = TextEditingController(text: '${widget.detail['integration_min_attendance'] ?? 75}');
+    _enabled = widget.detail['followup_enabled'] != false;
   }
 
   @override
   void dispose() {
-    _nameC.dispose();
-    _codeC.dispose();
-    _addressC.dispose();
-    _cityC.dispose();
-    _phoneC.dispose();
-    _emailC.dispose();
+    _weeksC.dispose();
+    _attendanceC.dispose();
     super.dispose();
   }
 
   Future<void> _submit() async {
-    if (_nameC.text.trim().isEmpty) {
-      showErrorSnackbar(context, 'Le nom est requis');
+    final weeks = int.tryParse(_weeksC.text.trim());
+    final attendance = int.tryParse(_attendanceC.text.trim());
+    if (weeks == null || attendance == null) {
+      showErrorSnackbar(context, 'Saisissez des nombres');
       return;
     }
     setState(() => _submitting = true);
-
-    final org = context.read<OrganizationProvider>();
-    final result = await org.updateChurch(widget.churchId, {
-      'name': _nameC.text.trim(),
-      'code': _codeC.text.trim(),
-      'address': _addressC.text.trim(),
-      'city': _cityC.text.trim(),
-      'phone': _phoneC.text.trim(),
-      'email': _emailC.text.trim(),
+    final result = await context.read<OrganizationProvider>().updateChurch(widget.churchId, {
+      'default_followup_weeks': weeks,
+      'integration_min_attendance': attendance,
+      'followup_enabled': _enabled,
     });
-
     if (!mounted) return;
     setState(() => _submitting = false);
-
     if (result['status'] == 'success') {
       widget.onUpdated();
       Navigator.pop(context);
-      showSuccessSnackbar(context, 'Église mise à jour');
+      showSuccessSnackbar(context, 'Réglages enregistrés');
     } else {
       showErrorSnackbar(context, result['message'] ?? 'Erreur');
     }
@@ -1052,9 +737,7 @@ class _EditChurchSheetState extends State<_EditChurchSheet> {
     final theme = Theme.of(context);
     return SafeArea(
       child: Padding(
-        padding: EdgeInsets.fromLTRB(
-          20, 12, 20, MediaQuery.of(context).viewInsets.bottom + 16,
-        ),
+        padding: EdgeInsets.fromLTRB(20, 12, 20, MediaQuery.of(context).viewInsets.bottom + 16),
         child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -1064,45 +747,47 @@ class _EditChurchSheetState extends State<_EditChurchSheet> {
                 child: Container(
                   width: 40, height: 4,
                   margin: const EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(2),
-                  ),
+                  decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)),
                 ),
               ),
               Row(
                 children: [
-                  const Icon(Icons.edit, color: AppColors.primary),
+                  const Icon(Icons.tune, color: AppColors.primary),
                   const SizedBox(width: 10),
-                  Text('Modifier l\'église',
-                      style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+                  Expanded(
+                    child: Text('Réglages du suivi',
+                        style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+                  ),
                 ],
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
               TextField(
-                controller: _nameC,
-                decoration: const InputDecoration(labelText: 'Nom *', prefixIcon: Icon(Icons.church)),
+                controller: _weeksC,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Durée de suivi par défaut (semaines)',
+                  prefixIcon: Icon(Icons.date_range),
+                ),
               ),
               const SizedBox(height: 10),
-              Row(
-                children: [
-                  Expanded(child: TextField(controller: _codeC, decoration: const InputDecoration(labelText: 'Code', prefixIcon: Icon(Icons.tag)))),
-                  const SizedBox(width: 10),
-                  Expanded(child: TextField(controller: _cityC, decoration: const InputDecoration(labelText: 'Ville', prefixIcon: Icon(Icons.location_city)))),
-                ],
+              TextField(
+                controller: _attendanceC,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Présence minimale pour intégrer (%)',
+                  prefixIcon: Icon(Icons.how_to_reg),
+                ),
               ),
-              const SizedBox(height: 10),
-              TextField(controller: _addressC, decoration: const InputDecoration(labelText: 'Adresse', prefixIcon: Icon(Icons.location_on))),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  Expanded(child: TextField(controller: _phoneC, decoration: const InputDecoration(labelText: 'Téléphone', prefixIcon: Icon(Icons.phone)), keyboardType: TextInputType.phone)),
-                  const SizedBox(width: 10),
-                  Expanded(child: TextField(controller: _emailC, decoration: const InputDecoration(labelText: 'Email', prefixIcon: Icon(Icons.email)), keyboardType: TextInputType.emailAddress)),
-                ],
+              const SizedBox(height: 4),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                value: _enabled,
+                onChanged: (v) => setState(() => _enabled = v),
+                title: const Text('Suivi d\'évangélisation actif'),
+                subtitle: const Text('Désactivé, l\'église quitte cette liste ; ses données restent.'),
               ),
-              const SizedBox(height: 8),
-              Text('Les pasteurs se gèrent depuis la page de détail de l\'église.',
+              const SizedBox(height: 4),
+              Text('Le nom, l\'adresse et les pasteurs se corrigent dans l\'annuaire du réseau.',
                   style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey, fontStyle: FontStyle.italic)),
               const SizedBox(height: 16),
               FilledButton.icon(

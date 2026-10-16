@@ -5,24 +5,37 @@
         <!-- ============================================================ -->
         <!-- ÉGLISE PRINCIPALE                                            -->
         <!-- ============================================================ -->
-        <record id="church_demo_iyf_kinshasa" model="church.church">
-            <field name="name">IYF Kinshasa Centre</field>
-            <field name="code">IYF-KIN</field>
-            <field name="address">Avenue de la Libération, 45</field>
-            <field name="city">Kinshasa</field>
-            <field name="phone">+243 81 234 5678</field>
-            <field name="email">iyf.kinshasa@example.com</field>
-            <field name="pastor_name">Pasteur Jean-Michel Kabongo</field>
+        <record id="church_demo_iyf_kinshasa" model="equipment.church">
+            <field name="name">Église Bonne Nouvelle de la Grâce de Angré</field>
+            <field name="code">BNG-ANG</field>
+            <field name="address">Angré 8e tranche, près du carrefour Djibi</field>
+            <field name="city">Cocody</field>
+            <field name="phone">+225 07 00 00 10 01</field>
+            <field name="followup_enabled" eval="True"/>
         </record>
 
-        <record id="church_demo_iyf_lubumbashi" model="church.church">
-            <field name="name">IYF Lubumbashi</field>
-            <field name="code">IYF-LUB</field>
-            <field name="address">Boulevard Kamanyola, 12</field>
-            <field name="city">Lubumbashi</field>
-            <field name="phone">+243 97 876 5432</field>
-            <field name="email">iyf.lubumbashi@example.com</field>
-            <field name="pastor_name">Pasteur Samuel Mbuyi</field>
+        <record id="church_demo_iyf_lubumbashi" model="equipment.church">
+            <field name="name">Église Bonne Nouvelle de la Grâce de Yopougon</field>
+            <field name="code">BNG-YOP</field>
+            <field name="address">Yopougon Maroc, rue des Jardins</field>
+            <field name="city">Yopougon</field>
+            <field name="phone">+225 07 00 00 10 02</field>
+            <field name="followup_enabled" eval="True"/>
+        </record>
+
+        <!-- Pasteurs titulaires : ils vivent dans l'annuaire du réseau. -->
+        <record id="pastor_demo_angre" model="equipment.pastor">
+            <field name="name">Kouadio Emmanuel</field>
+            <field name="function">pastor</field>
+            <field name="phone">+225 07 00 00 20 01</field>
+            <field name="church_id" ref="church_demo_iyf_kinshasa"/>
+        </record>
+
+        <record id="pastor_demo_yopougon" model="equipment.pastor">
+            <field name="name">Gnahoré Samuel</field>
+            <field name="function">pastor</field>
+            <field name="phone">+225 07 00 00 20 02</field>
+            <field name="church_id" ref="church_demo_iyf_lubumbashi"/>
         </record>
 
         <!-- ============================================================ -->

@@ -34,6 +34,15 @@ class AuthProvider extends ChangeNotifier {
   String get userName => _currentUser?['name'] ?? '';
   bool get isMultiChurch => _currentUser?['is_multi_church'] == true;
 
+  /// Les comptes de la personne, un par église (au moins le sien).
+  List<Map<String, dynamic>> _accounts = [];
+  List<Map<String, dynamic>> get accounts => _accounts;
+  bool get hasSeveralAccounts => _accounts.length > 1;
+
+  /// Le numéro ou l'adresse en cours de connexion (entre l'envoi du code et sa saisie).
+  String _pendingIdentifier = '';
+  String get pendingIdentifier => _pendingIdentifier;
+
   bool get isManager => userRole == 'manager' || userRole == 'super_admin';
   bool get isSuperAdmin => userRole == 'super_admin';
   bool get isEvangelist => userRole == 'evangelist';
@@ -73,10 +82,13 @@ class AuthProvider extends ChangeNotifier {
 
       final userData = await _secure.read(key: AppConstants.keyUserData);
       final token = await _secure.read(key: 'auth_token');
-      if (userData != null) {
+      final accounts = await _secure.read(key: _keyAccounts);
+      // Sans jeton, pas de session : l'ancienne app (PIN) en gardait un autre.
+      if (userData != null && token != null) {
         _currentUser = jsonDecode(userData);
+        _accounts = _asList(accounts == null ? null : jsonDecode(accounts));
         _isAuthenticated = true;
-        _api.configure(baseUrl: _serverUrl, userId: _currentUser!['id'], token: token);
+        _api.configure(baseUrl: _serverUrl, token: token);
         unawaited(_registerDevice());
       }
     } catch (e) {
@@ -87,44 +99,98 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  Future<Map<String, dynamic>> login({
+  static const _keyAccounts = 'accounts';
+
+  static List<Map<String, dynamic>> _asList(dynamic value) => value is List
+      ? value.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList()
+      : <Map<String, dynamic>>[];
+
+  String get _deviceLabel {
+    try {
+      return push.deviceLabel;
+    } catch (_) {
+      return 'Téléphone';
+    }
+  }
+
+  /// Étape 1 : demande un code pour ce numéro ou cette adresse.
+  ///
+  /// Rend `{success, message, masked, debugOtp}`. Le serveur répond pareil
+  /// qu'un compte existe ou non : l'app ne peut pas dire « inconnu ».
+  Future<Map<String, dynamic>> requestOtp({
     required String url,
     required String db,
-    required String phone,
-    required String pin,
+    required String identifier,
   }) async {
     _serverUrl = url.endsWith('/') ? url.substring(0, url.length - 1) : url;
     _database = db;
     _api.configure(baseUrl: _serverUrl);
-
     try {
-      final result = await _api.login(phone, pin, db);
-
-      if (result['status'] == 'success') {
-        _sessionMessage = null;
-        _currentUser = Map<String, dynamic>.from(result['user']);
-        final token = result['token'] as String?;
-        _isAuthenticated = true;
-        _api.configure(baseUrl: _serverUrl, userId: _currentUser!['id'], token: token);
-
-        // Persist
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString(AppConstants.keyServerUrl, _serverUrl);
-        await prefs.setString(AppConstants.keyDatabase, _database);
-        await prefs.setString(AppConstants.keyPhone, phone);
-        await _secure.write(key: AppConstants.keyUserData, value: jsonEncode(_currentUser));
-        if (token != null) {
-          await _secure.write(key: 'auth_token', value: token);
-        }
-
-        notifyListeners();
-        unawaited(_registerDevice());
-        return {'success': true};
-      }
-      return {'success': false, 'message': result['message'] ?? 'Identifiants incorrects'};
+      final result = await _api.requestOtp(identifier);
+      _pendingIdentifier = identifier;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(AppConstants.keyServerUrl, _serverUrl);
+      await prefs.setString(AppConstants.keyDatabase, _database);
+      await prefs.setString(AppConstants.keyPhone, identifier);
+      return {
+        'success': true,
+        'message': result['message'] ?? '',
+        'masked': result['identifier_masked'] ?? identifier,
+        'debugOtp': result['debug_otp'],
+      };
     } catch (e) {
       return {'success': false, 'message': '$e'};
     }
+  }
+
+  /// Étape 2 : vérifie le code reçu et ouvre la session.
+  Future<Map<String, dynamic>> verifyOtp(String code) async {
+    try {
+      final result = await _api.verifyOtp(_pendingIdentifier, code, _deviceLabel);
+      await _openSession(result);
+      return {'success': true};
+    } catch (e) {
+      return {'success': false, 'message': '$e'};
+    }
+  }
+
+  /// Passe sur le compte de la même personne dans une autre église.
+  Future<Map<String, dynamic>> switchAccount(int accountId) async {
+    try {
+      final result = await _api.switchAccount(accountId, _deviceLabel);
+      await _openSession(result);
+      return {'success': true, 'message': result['message'] ?? ''};
+    } catch (e) {
+      return {'success': false, 'message': '$e'};
+    }
+  }
+
+  Future<void> _openSession(Map<String, dynamic> result) async {
+    final token = result['token'] as String?;
+    if (token == null || result['user'] is! Map) {
+      throw ApiException('Réponse de connexion incomplète');
+    }
+    _sessionMessage = null;
+    _currentUser = Map<String, dynamic>.from(result['user']);
+    _accounts = _asList(result['accounts']);
+    _isAuthenticated = true;
+    _api.configure(baseUrl: _serverUrl, token: token);
+    await _secure.write(key: AppConstants.keyUserData, value: jsonEncode(_currentUser));
+    await _secure.write(key: _keyAccounts, value: jsonEncode(_accounts));
+    await _secure.write(key: 'auth_token', value: token);
+    notifyListeners();
+    unawaited(_registerDevice());
+  }
+
+  /// Ouvre une session sans serveur : réservé aux tests et aux captures de
+  /// formation (données de démonstration).
+  @visibleForTesting
+  void debugSignIn(Map<String, dynamic> user, {List<Map<String, dynamic>> accounts = const []}) {
+    _currentUser = Map<String, dynamic>.from(user);
+    _accounts = accounts;
+    _isAuthenticated = true;
+    _isLoading = false;
+    notifyListeners();
   }
 
   /// Déconnexion voulue : le téléphone cesse de recevoir les relances de ce
@@ -161,8 +227,10 @@ class AuthProvider extends ChangeNotifier {
     _sessionMessage = message;
     _isAuthenticated = false;
     _currentUser = null;
-    _api.configure(baseUrl: _serverUrl, userId: null, token: null);
+    _accounts = [];
+    _api.configure(baseUrl: _serverUrl);
     await _secure.delete(key: AppConstants.keyUserData);
+    await _secure.delete(key: _keyAccounts);
     await _secure.delete(key: 'auth_token');
     notifyListeners();
   }

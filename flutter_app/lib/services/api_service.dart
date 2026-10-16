@@ -27,7 +27,6 @@ class ApiService {
 
   final http.Client _client;
   String _baseUrl = '';
-  int? _userId;
   String? _token;
 
   String get baseUrl => _baseUrl;
@@ -65,21 +64,15 @@ class ApiService {
     return value is Map ? Map<String, dynamic>.from(value) : <String, dynamic>{};
   }
 
-  void configure({required String baseUrl, int? userId, String? token}) {
+  void configure({required String baseUrl, String? token}) {
     _baseUrl = baseUrl.endsWith('/') ? baseUrl.substring(0, baseUrl.length - 1) : baseUrl;
-    _userId = userId;
     _token = token;
   }
 
+  bool get hasSession => _token != null;
+
   Future<dynamic> call(String endpoint, Map<String, dynamic> params, {int retries = 0}) async {
     final url = Uri.parse('$_baseUrl$endpoint');
-
-    if (_userId != null) {
-      params['user_id'] = _userId;
-    }
-    if (_token != null) {
-      params['token'] = _token;
-    }
 
     final body = jsonEncode({
       'jsonrpc': '2.0',
@@ -90,7 +83,12 @@ class ApiService {
 
     try {
       final response = await _client
-          .post(url, headers: {'Content-Type': 'application/json'}, body: body)
+          .post(url, headers: {
+            'Content-Type': 'application/json',
+            // La session voyage dans l'en-tête, jamais dans le corps : un
+            // journal de requêtes ne la recopie pas.
+            if (_token != null) 'Authorization': 'Bearer $_token',
+          }, body: body)
           .timeout(AppConstants.requestTimeout);
 
       if (response.statusCode != 200) {
@@ -149,12 +147,28 @@ class ApiService {
 
   // ─── Auth ──────────────────────────────────────────────────────────
 
-  Future<Map<String, dynamic>> login(String phone, String pin, String db) async {
-    final result = await call('/api/church/auth/login', {
-      'phone': phone,
-      'pin': pin,
-      'db': db,
-    });
+  /// Demande un code de connexion pour ce numéro ou cette adresse. La réponse
+  /// est la même qu'un compte existe ou non.
+  Future<Map<String, dynamic>> requestOtp(String identifier) async {
+    final result = await call('/api/church/auth/request_otp', {'identifier': identifier});
+    _ensureSuccess(result);
+    return Map<String, dynamic>.from(result);
+  }
+
+  /// Vérifie le code ; rend le jeton, le compte ouvert et tous les comptes de
+  /// la personne (un par église).
+  Future<Map<String, dynamic>> verifyOtp(String identifier, String code, String deviceLabel) async {
+    final result = await call('/api/church/auth/verify_otp',
+        {'identifier': identifier, 'code': code, 'device_label': deviceLabel});
+    _ensureSuccess(result);
+    return Map<String, dynamic>.from(result);
+  }
+
+  /// Passe au compte de la même personne dans une autre église.
+  Future<Map<String, dynamic>> switchAccount(int accountId, String deviceLabel) async {
+    final result = await call('/api/church/auth/switch',
+        {'account_id': accountId, 'device_label': deviceLabel});
+    _ensureSuccess(result);
     return Map<String, dynamic>.from(result);
   }
 
@@ -306,7 +320,8 @@ class ApiService {
     return _successList(result, 'users');
   }
 
-  Future<Map<String, dynamic>> shareCredentials(int targetUserId) async {
+  /// L'invitation à installer l'app (sans secret : on peut la renvoyer).
+  Future<Map<String, dynamic>> shareInvitation(int targetUserId) async {
     return Map<String, dynamic>.from(
       await call('/api/church/user/share_message', {'target_user_id': targetUserId}),
     );
@@ -347,19 +362,23 @@ class ApiService {
     );
   }
 
-  Future<Map<String, dynamic>> adminResetPin(int targetUserId) async {
-    return Map<String, dynamic>.from(
-      await call('/api/church/admin/reset_pin', {'target_user_id': targetUserId}),
-    );
-  }
+  // ─── Églises : celles de l'annuaire du réseau (Super Admin) ────────
 
-  // ─── Churches (Super Admin) ───────────────────────────────────────
-
+  /// Les églises qui utilisent le suivi.
   Future<List<Map<String, dynamic>>> getChurches() async {
     final result = await call('/api/church/churches', {});
     return _successList(result, 'churches');
   }
 
+  /// Cherche dans l'annuaire du réseau les églises pas encore dans le suivi.
+  Future<List<Map<String, dynamic>>> searchDirectory(String query) async {
+    final result = await call('/api/church/churches/directory', {'query': query});
+    return _successList(result, 'churches');
+  }
+
+  /// Fait entrer une église dans le suivi : par son `church_id` dans
+  /// l'annuaire, ou par son nom (reprise si elle y est déjà sous une autre
+  /// écriture, créée sinon).
   Future<Map<String, dynamic>> createChurch(Map<String, dynamic> data) async {
     return Map<String, dynamic>.from(
       await call('/api/church/churches/create', data),
@@ -378,42 +397,24 @@ class ApiService {
     return _successMap(result, 'church');
   }
 
-  Future<Map<String, dynamic>> createManager(String name, String phone, int churchId) async {
+  Future<Map<String, dynamic>> createManager(String name, String phone, int churchId, {String email = ''}) async {
     return Map<String, dynamic>.from(
       await call('/api/church/manager/create', {
         'name': name,
         'phone': phone,
         'church_id': churchId,
+        if (email.isNotEmpty) 'email': email,
       }),
     );
   }
 
-  // ─── Pastors ──────────────────────────────────────────────────────
+  // ─── Pasteurs : lus dans l'annuaire du réseau ─────────────────────
 
   Future<List<Map<String, dynamic>>> getPastors({int? churchId}) async {
     final result = await call('/api/church/pastors', {
       if (churchId != null) 'church_id': churchId,
     });
     return _successList(result, 'pastors');
-  }
-
-  Future<Map<String, dynamic>> createPastor(Map<String, dynamic> data) async {
-    return Map<String, dynamic>.from(
-      await call('/api/church/pastors/create', data),
-    );
-  }
-
-  Future<Map<String, dynamic>> updatePastor(int pastorId, Map<String, dynamic> data) async {
-    data['pastor_id'] = pastorId;
-    return Map<String, dynamic>.from(
-      await call('/api/church/pastors/update', data),
-    );
-  }
-
-  Future<Map<String, dynamic>> deletePastor(int pastorId) async {
-    return Map<String, dynamic>.from(
-      await call('/api/church/pastors/delete', {'pastor_id': pastorId}),
-    );
   }
 
   // ─── À faire, à attribuer, contrôles ─────────────────────────────

@@ -13,7 +13,7 @@ class TestTodo(TransactionCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.env = cls.env(context=dict(cls.env.context, tracking_disable=True))
-        cls.church = cls.env['church.church'].create({'name': 'Église'})
+        cls.church = cls.env['equipment.church'].create({'name': 'Église'})
         cls.ev = cls.env['church.evangelist'].create({
             'name': 'Ev', 'phone': '+225 07 00 00 01', 'church_id': cls.church.id})
         cls.ev_account = cls.ev.mobile_user_id
@@ -66,7 +66,7 @@ class TestTodo(TransactionCase):
     def test_summary_is_one_line(self):
         self._followup(self.today - relativedelta(weeks=4))
         summary = self.ev_account._todo_summary(self.ev_account._todo_items(self.today))
-        self.assertIn('1 décision(s) à prendre', summary)
+        self.assertIn('1\u00a0décision(s) à prendre', summary)
         self.assertNotIn('\n', summary)
 
     def test_cell_leader_has_no_followup_tasks(self):

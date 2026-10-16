@@ -9,7 +9,7 @@ class ChurchAttendanceSunday(models.Model):
     _description = 'Présence au culte du dimanche'
     _order = 'date desc'
 
-    church_id = fields.Many2one('church.church', string='Église', required=True, ondelete='cascade')
+    church_id = fields.Many2one('equipment.church', string='Église', required=True, ondelete='restrict')
     age_group_id = fields.Many2one('church.age.group', string='Groupe d\'âge', ondelete='set null')
     member_id = fields.Many2one('church.member', string='Membre', required=True, ondelete='cascade')
     date = fields.Date(string='Date du culte', required=True, default=fields.Date.today)

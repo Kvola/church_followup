@@ -1,74 +1,84 @@
 #!/usr/bin/env python3
-"""Génère le logo de « Suivi des classes d'Évangile » en SVG, puis le rasterise.
+"""Génère l'icône de « Suivi Évangélisation » en SVG, puis toutes ses tailles.
 
-L'icône précédente portait son titre en toutes lettres sur un ruban qui
-traversait le dessin. Le recadrer n'aurait servi à rien — le texte chevauchait
-le livre. D'où un redessin complet.
+Une seule source pour le module Odoo, le catalogue /apps et l'application
+mobile : l'icône d'avant portait son titre (« Suivi Classes d'Évangile », un
+nom qui n'est plus le sien) en toutes lettres, illisible sous 96 px.
 
-Le dessin : une croix posée sur un livre ouvert. Le livre dit « classes », la
-croix dit « Évangile ». Deux formes franches, aucune ne dépend de l'autre pour
-être reconnue à 32 px.
+Le dessin : une personne arrive au pied d'une croix, précédée de trois pas
+qui grandissent — les semaines du suivi. Il dit ce que fait l'application,
+accompagner quelqu'un jusqu'au bout, et reste lisible à 48 px.
+
+Les couleurs sont celles de l'application (AppColors.primary).
+
+    python3 static/description/make_logo.py
 """
 import pathlib
 
 import cairosvg
 
-WINE_LIGHT = '#C0546C'
-WINE_DARK = '#5E1E31'
-CREAM = '#FFF3E6'
-CREAM_SHADE = '#E2D2C6'
+TOP = '#7C6DD8'
+BOTTOM = '#3A2E9E'
+CREAM = '#FFF6E8'
+GOLD = '#FFC24B'
+BACKGROUND = '#5B4FCF'  # fond de l'icône adaptative Android (pubspec.yaml)
 
 
-def svg(with_background=True, scale=1.0):
+def svg(with_background=True, scale=1.0, rounded=True):
     """Dessin sur une grille de 512.
 
-    ``scale`` réduit le motif sans toucher au cadre, pour les rognages
-    circulaires (icônes adaptatives, « maskable »).
+    ``scale`` réduit le motif sans toucher au cadre : Android rogne l'icône
+    adaptative en cercle, le motif doit tenir dans les 66 % du centre.
     """
-    center = 256
+    c = 256
 
-    def sx(x):
-        return center + (x - center) * scale
+    def x(v):
+        return c + (v - c) * scale
 
-    def sy(y):
-        return center + (y - center) * scale
+    def y(v):
+        return c + (v - c) * scale
 
     background = ''
     if with_background:
         background = f'''
   <defs>
     <linearGradient id="fond" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="{WINE_LIGHT}"/>
-      <stop offset="100%" stop-color="{WINE_DARK}"/>
+      <stop offset="0%" stop-color="{TOP}"/>
+      <stop offset="100%" stop-color="{BOTTOM}"/>
     </linearGradient>
   </defs>
-  <rect width="512" height="512" rx="112" fill="url(#fond)"/>'''
+  <rect width="512" height="512" rx="{112 if rounded else 0}" fill="url(#fond)"/>'''
 
-    # Croix, dessinée avant le livre : les pages passent par-dessus le pied.
-    cross = (f'<path d="M {sx(230):.1f},{sy(96):.1f} h {52 * scale:.1f} '
-             f'v {74 * scale:.1f} h {70 * scale:.1f} v {52 * scale:.1f} '
-             f'h {-70 * scale:.1f} v {130 * scale:.1f} h {-52 * scale:.1f} '
-             f'v {-130 * scale:.1f} h {-70 * scale:.1f} v {-52 * scale:.1f} '
-             f'h {70 * scale:.1f} Z" fill="{CREAM}"/>')
+    # La croix : une seule forme, coins adoucis par un trait de même couleur.
+    cx, top, w, arm, beam, bottom = 318, 78, 48, 164, 150, 318
+    cross = (
+        f'<path d="M {x(cx - w / 2):.1f},{y(top):.1f} H {x(cx + w / 2):.1f} '
+        f'V {y(beam):.1f} H {x(cx + arm / 2):.1f} V {y(beam + w):.1f} '
+        f'H {x(cx + w / 2):.1f} V {y(bottom):.1f} H {x(cx - w / 2):.1f} '
+        f'V {y(beam + w):.1f} H {x(cx - arm / 2):.1f} V {y(beam):.1f} '
+        f'H {x(cx - w / 2):.1f} Z" fill="{GOLD}" stroke="{GOLD}" '
+        f'stroke-width="{10 * scale:.1f}" stroke-linejoin="round"/>')
 
-    # Livre ouvert : deux pages qui se rejoignent sur une reliure creusée.
-    left = (f'<path d="M {sx(72):.1f},{sy(322):.1f} '
-            f'C {sx(140):.1f},{sy(300):.1f} {sx(212):.1f},{sy(306):.1f} '
-            f'{sx(250):.1f},{sy(340):.1f} '
-            f'L {sx(250):.1f},{sy(428):.1f} '
-            f'C {sx(212):.1f},{sy(394):.1f} {sx(140):.1f},{sy(388):.1f} '
-            f'{sx(72):.1f},{sy(410):.1f} Z" fill="{CREAM}"/>')
-    right = (f'<path d="M {sx(440):.1f},{sy(322):.1f} '
-             f'C {sx(372):.1f},{sy(300):.1f} {sx(300):.1f},{sy(306):.1f} '
-             f'{sx(262):.1f},{sy(340):.1f} '
-             f'L {sx(262):.1f},{sy(428):.1f} '
-             f'C {sx(300):.1f},{sy(394):.1f} {sx(372):.1f},{sy(388):.1f} '
-             f'{sx(440):.1f},{sy(410):.1f} Z" fill="{CREAM_SHADE}"/>')
+    # Les pas : de plus en plus nets à mesure qu'on avance.
+    steps = ''.join(
+        f'<circle cx="{x(px):.1f}" cy="{y(py):.1f}" r="{r * scale:.1f}" '
+        f'fill="{CREAM}" fill-opacity="{opacity}"/>'
+        for px, py, r, opacity in ((96, 424, 15, 0.55), (150, 394, 19, 0.75),
+                                   (206, 368, 23, 0.95)))
+
+    # La personne, arrivée.
+    px = 262
+    person = (
+        f'<circle cx="{x(px):.1f}" cy="{y(300):.1f}" r="{30 * scale:.1f}" fill="{CREAM}"/>'
+        f'<path d="M {x(px - 52):.1f},{y(424):.1f} '
+        f'C {x(px - 52):.1f},{y(362):.1f} {x(px - 30):.1f},{y(340):.1f} {x(px):.1f},{y(340):.1f} '
+        f'C {x(px + 30):.1f},{y(340):.1f} {x(px + 52):.1f},{y(362):.1f} {x(px + 52):.1f},{y(424):.1f} Z" '
+        f'fill="{CREAM}"/>')
 
     return f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">{background}
   {cross}
-  {left}
-  {right}
+  {steps}
+  {person}
 </svg>'''
 
 
@@ -80,10 +90,18 @@ def write_png(source, destination, size):
 
 
 HERE = pathlib.Path(__file__).resolve().parent
+APP = HERE.parent.parent / 'flutter_app' / 'assets'
 
-full = svg(with_background=True)
+full = svg()
 (HERE / 'logo.svg').write_text(full)
 
 # 256 px : Odoo embarque ce fichier en base64 dans le menu chargé à chaque
-# ouverture du client web.
+# ouverture du client web ; c'est aussi l'icône du catalogue /apps.
 write_png(full, HERE / 'icon.png', 256)
+
+# Application : iOS refuse la transparence et arrondit lui-même — carré plein.
+write_png(svg(rounded=False), APP / 'icon.png', 1024)
+# Avant-plan de l'icône adaptative Android, posé sur BACKGROUND et rogné (le motif occupe déjà 75 % du cadre : 0,6 le garde (les pas, dans le coin, sont les premiers rognés) dans le cercle visible).
+write_png(svg(with_background=False, scale=0.6), APP / 'icon_foreground.png', 1024)
+# Le logo affiché dans l'application (écran de connexion) : coins arrondis.
+write_png(full, APP / 'logo.png', 512)

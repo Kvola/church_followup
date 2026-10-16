@@ -1,10 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <odoo>
+    <!-- L'église est celle de l'annuaire du réseau (church_core). Ces vues sont
+         celles du suivi : priorité haute pour ne pas remplacer celles de
+         l'annuaire, et appelées explicitement par l'action ci-dessous. -->
     <record id="view_church_church_form" model="ir.ui.view">
-        <field name="name">church.church.form</field>
-        <field name="model">church.church</field>
+        <field name="name">equipment.church.followup.form</field>
+        <field name="model">equipment.church</field>
+        <field name="priority">50</field>
         <field name="arch" type="xml">
             <form string="Église">
+                <header>
+                    <field name="followup_enabled" widget="boolean_toggle"/>
+                    <span class="text-muted ms-2">Suivi d'évangélisation actif</span>
+                </header>
                 <sheet>
                     <div class="oe_button_box" name="button_box">
                         <button class="oe_stat_button" icon="fa-users" type="object" name="action_view_members">
@@ -22,39 +30,38 @@
                         <button class="oe_stat_button" icon="fa-line-chart" type="object" name="action_view_active_followups">
                             <field name="followup_active_count" widget="statinfo" string="Suivis actifs"/>
                         </button>
-                        <button class="oe_stat_button" icon="fa-user-circle" type="object" name="action_view_pastors">
-                            <field name="pastor_count" widget="statinfo" string="Pasteurs"/>
-                        </button>
                     </div>
                     <div class="oe_title">
                         <h1><field name="name" placeholder="Nom de l'église"/></h1>
                     </div>
                     <group>
-                        <group string="Informations générales">
-                            <field name="code"/>
-                            <field name="pastor_name"/>
+                        <group string="Suivi des nouvelles personnes">
                             <field name="default_followup_weeks"/>
                             <field name="integration_min_attendance"/>
+                        </group>
+                        <group string="Dans l'annuaire du réseau">
+                            <field name="region_id" options="{'no_create': True}"/>
+                            <field name="code"/>
+                            <field name="city"/>
                             <field name="phone" widget="phone"/>
                             <field name="email" widget="email"/>
-                        </group>
-                        <group string="Adresse">
-                            <field name="address"/>
-                            <field name="city"/>
-                            <field name="country_id"/>
                         </group>
                     </group>
                     <notebook>
                         <page string="Pasteurs" name="page_pastors">
-                            <field name="pastor_ids">
-                                <list editable="bottom">
+                            <p class="text-muted">
+                                Les pasteurs viennent de l'annuaire du réseau : on les ajoute, les mute
+                                ou les retire depuis la gestion des églises, pas d'ici. Les titulaires
+                                sont ceux que l’application affiche comme pasteurs de l’église.
+                            </p>
+                            <field name="pastor_ids" readonly="1">
+                                <list>
                                     <field name="name"/>
-                                    <field name="pastor_type" widget="badge"
-                                           decoration-success="pastor_type == 'principal'"
-                                           decoration-info="pastor_type == 'assistant'"/>
+                                    <field name="function" widget="badge"
+                                           decoration-success="function == 'pastor'"
+                                           decoration-info="function == 'missionary'"/>
                                     <field name="phone" widget="phone"/>
-                                    <field name="start_date"/>
-                                    <field name="active" widget="boolean_toggle" column_invisible="True"/>
+                                    <field name="email" optional="hide"/>
                                 </list>
                             </field>
                         </page>
@@ -75,39 +82,40 @@
     </record>
 
     <record id="view_church_church_list" model="ir.ui.view">
-        <field name="name">church.church.list</field>
-        <field name="model">church.church</field>
+        <field name="name">equipment.church.followup.list</field>
+        <field name="model">equipment.church</field>
+        <field name="priority">50</field>
         <field name="arch" type="xml">
             <list>
                 <field name="name"/>
-                <field name="code" optional="show"/>
-                <field name="city"/>
+                <field name="region_id" optional="show"/>
+                <field name="city" optional="show"/>
                 <field name="pastor_name"/>
-                <field name="phone" widget="phone" optional="show"/>
                 <field name="member_count"/>
                 <field name="evangelist_count"/>
                 <field name="cell_count"/>
-                <field name="age_group_count"/>
-                <field name="pastor_count" optional="show"/>
+                <field name="age_group_count" optional="hide"/>
                 <field name="followup_active_count" string="Suivis actifs"/>
             </list>
         </field>
     </record>
 
     <record id="view_church_church_search" model="ir.ui.view">
-        <field name="name">church.church.search</field>
-        <field name="model">church.church</field>
+        <field name="name">equipment.church.followup.search</field>
+        <field name="model">equipment.church</field>
+        <field name="priority">50</field>
         <field name="arch" type="xml">
             <search string="Rechercher une église">
                 <field name="name"/>
                 <field name="code"/>
                 <field name="city"/>
-                <field name="pastor_name"/>
+                <field name="region_id"/>
                 <separator/>
+                <filter name="filter_followup" string="Suivi actif" domain="[('followup_enabled', '=', True)]"/>
                 <filter name="filter_archived" string="Archivées" domain="[('active', '=', False)]"/>
                 <group>
+                    <filter name="group_region" string="Région" context="{'group_by': 'region_id'}"/>
                     <filter name="group_city" string="Ville" context="{'group_by': 'city'}"/>
-                    <filter name="group_country" string="Pays" context="{'group_by': 'country_id'}"/>
                 </group>
             </search>
         </field>
@@ -115,15 +123,20 @@
 
     <record id="action_church_church" model="ir.actions.act_window">
         <field name="name">Églises</field>
-        <field name="res_model">church.church</field>
+        <field name="res_model">equipment.church</field>
         <field name="view_mode">list,form</field>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'list', 'view_id': ref('view_church_church_list')}),
+            (0, 0, {'view_mode': 'form', 'view_id': ref('view_church_church_form')})]"/>
         <field name="search_view_id" ref="view_church_church_search"/>
+        <field name="context">{'search_default_filter_followup': 1, 'default_followup_enabled': True}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
-                Aucune église enregistrée
+                Aucune église ne suit encore de nouvelles personnes
             </p>
             <p>
-                Créez votre première église pour commencer la gestion du suivi.
+                Retirez le filtre « Suivi actif » pour voir tout l'annuaire du réseau, ouvrez
+                l'église et activez « Suivi d'évangélisation ».
             </p>
         </field>
     </record>
