@@ -79,8 +79,15 @@ class TestChurchIntegrity(TransactionCase):
         Account = self.env['church.mobile.user']
         kept = Account.create({'name': 'Resp', 'phone': '+225 07 00 00 41', 'role': 'manager',
                                'church_id': self.church.id})
-        twin = Account.create({'name': 'Resp bis', 'phone': '+22507000041', 'role': 'manager',
+        # Un doublon hérité d'avant la règle « un numéro, une église » : la
+        # création le refuse désormais, on le reconstitue en base.
+        twin = Account.create({'name': 'Resp bis', 'phone': '+22507000049', 'role': 'manager',
                                'church_id': self.other.id})
+        self.env.flush_all()  # sinon le calcul différé réécrirait le numéro après nous
+        self.env.cr.execute(
+            "UPDATE church_mobile_user SET phone = %s, phone_key = %s, phone_e164 = %s WHERE id = %s",
+            ('+22507000041', kept.phone_key, kept.phone_e164, twin.id))
+        twin.invalidate_recordset()
         alone = Account.create({'name': 'Autre', 'phone': '+225 07 00 00 42', 'role': 'evangelist',
                                 'church_id': self.other.id})
         journal = self.other._merge_absorb_into(self.church)

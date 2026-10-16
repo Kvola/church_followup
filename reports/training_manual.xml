@@ -36,8 +36,9 @@
                     inventés) : Awa Koné, évangéliste, <code>07 00 01 01 01</code> ;
                     Paul Yao, évangéliste, <code>07 00 02 02 02</code> ; Pasteur Marc Kouadio,
                     responsable, <code>07 00 09 09 09</code> ; Fatou Cissé, responsable de
-                    cellule, <code>07 00 05 05 05</code>. Back-office : <code>formateur</code>,
-                    mot de passe <code>formation2026</code>.
+                    cellule, <code>07 00 05 05 05</code> ; administrateur, <code>formateur@exemple.ci</code>
+                    (code reçu par e-mail). Back-office : <code>formateur</code>,
+                    mot de passe <code>formation2026</code>. Un numéro n'ouvre qu'une église.
                 </p>
             </div>
 
@@ -122,7 +123,7 @@
                         <p class="voir"><strong>Vous devez voir</strong> : le message « Si ce compte existe, un code de 6 chiffres vient d'être envoyé », puis l'onglet « À faire ».</p></li>
                     <li>Déconnectez-vous (« Paramètres », « Déconnexion »), puis saisissez un numéro qui n'a pas de compte.
                         <p class="voir"><strong>Vous devez voir</strong> : exactement le même message. L'application ne dit jamais si un numéro est connu.</p></li>
-                    <li>Connecté avec un compte administrateur, ouvrez « Paramètres », puis « Changer d'église », et choisissez l'église de Yopougon.
+                    <li>Connecté en administrateur (<code>formateur@exemple.ci</code>), ouvrez « Paramètres », puis « Changer d'église », et choisissez l'église de Yopougon.
                         <p class="voir"><strong>Vous devez voir</strong> : la liste des églises du suivi et « Toutes les églises » ; le choix ramène à l'accueil de Yopougon, sans nouveau code. Connecté en évangéliste ou en pasteur, la ligne « Changer d'église » n'existe pas : on entre dans son église et l'on y reste.</p></li>
                     <li>Sur l'ordinateur du formateur (ou un iPhone), ouvrez <code>/suivi-evangelisation</code> et connectez-vous avec le même numéro.
                         <p class="voir"><strong>Vous devez voir</strong> : la même application, les mêmes données ; une banderole qui propose de l'installer (sur iPhone : « Sur l'écran d'accueil »).</p></li>

@@ -128,6 +128,33 @@ class ChurchMobileUser(models.Model):
     def _check_same_church(self):
         check_same_church(self, ['evangelist_id', 'prayer_cell_id', 'age_group_id'])
 
+    @api.constrains('phone', 'email', 'church_id', 'role', 'active')
+    def _check_one_church_per_person(self):
+        """Une personne n'entre que dans UNE église (l'administrateur excepté).
+
+        La connexion se fait au numéro ou à l'adresse : avec deux comptes dans
+        deux églises, le serveur devrait deviner laquelle ouvrir, et la
+        personne — qui ne peut pas changer d'église — resterait bloquée dans
+        l'autre. On le refuse donc à la création, là où l'on peut corriger.
+        """
+        for rec in self.sudo():
+            if not rec.active or rec.role == 'super_admin':
+                continue
+            for field, label in (('phone_e164', _('numéro')), ('email', _('adresse'))):
+                if not rec[field]:
+                    continue
+                other = self.sudo().search([
+                    (field, '=', rec[field]), ('active', '=', True), ('role', '!=', 'super_admin'),
+                    ('church_id', '!=', rec.church_id.id), ('id', '!=', rec.id)], limit=1)
+                if other:
+                    raise ValidationError(_(
+                        "Le %(what)s %(value)s a déjà un compte dans une autre église : "
+                        "%(church)s (%(name)s, %(role)s). Une personne n'entre que dans son église. "
+                        "Désactivez ou modifiez ce compte d'abord, ou adressez-vous à "
+                        "l'administrateur si elle sert vraiment dans deux églises.",
+                        what=label, value=rec[field], church=other.church_id.name,
+                        name=other.name, role=other._role_display_label()))
+
     @api.constrains('role', 'church_id')
     def _check_church_required(self):
         """church_id is required for all roles except super_admin."""
@@ -219,10 +246,18 @@ class ChurchMobileUser(models.Model):
                 [('pastor_id', '=', pastor.id)], limit=1)
             if account and not account.active:
                 return self.browse()  # désactivé exprès : on ne le rouvre pas en silence
+        if not account:
+            # Une personne, une église : son compte d'ailleurs la suit dans
+            # l'église où l'annuaire l'affecte comme pasteur.
+            account = accounts.filtered(lambda a: a.role != 'super_admin')[:1]
         vals = {}
         if account:
             if account.church_id != church:
-                # Muté : le compte suit, sans ses rattachements de l'ancienne église.
+                # Muté : le compte suit, sans ses rattachements de l'ancienne église
+                # — et ces fiches-là ne désignent plus ce compte.
+                for link in (account.evangelist_id, account.prayer_cell_id, account.age_group_id):
+                    if link and link.mobile_user_id == account:
+                        link.sudo().mobile_user_id = False
                 vals.update(church_id=church.id, evangelist_id=False,
                             prayer_cell_id=False, age_group_id=False)
             if account.role not in ('super_admin', 'manager'):
