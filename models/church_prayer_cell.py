@@ -36,6 +36,12 @@ class ChurchPrayerCell(models.Model):
     active = fields.Boolean(default=True)
     notes = fields.Text(string='Notes')
 
+    # Les anciens membres que la cellule suit (comme un évangéliste suit les nouvelles personnes).
+    followup_ids = fields.One2many('church.followup', 'prayer_cell_id', string='Suivis')
+    active_followup_count = fields.Integer(string='Suivis en cours', compute='_compute_followup_stats')
+    integrated_followup_count = fields.Integer(string='Réintégrés', compute='_compute_followup_stats')
+    total_followup_count = fields.Integer(string='Suivis', compute='_compute_followup_stats')
+
     @api.constrains('church_id', 'district_ids')
     def _check_same_church(self):
         check_same_church(self, ['district_ids'])
@@ -44,6 +50,14 @@ class ChurchPrayerCell(models.Model):
     def _compute_member_count(self):
         for rec in self:
             rec.member_count = len(rec.member_ids)
+
+    @api.depends('followup_ids.state')
+    def _compute_followup_stats(self):
+        for rec in self:
+            states = rec.followup_ids.mapped('state')
+            rec.active_followup_count = sum(s in ('in_progress', 'extended') for s in states)
+            rec.integrated_followup_count = states.count('integrated')
+            rec.total_followup_count = len(states)
 
     def action_view_members(self):
         return {

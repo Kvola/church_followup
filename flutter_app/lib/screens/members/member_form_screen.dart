@@ -535,7 +535,7 @@ class _JourneySection extends StatelessWidget {
               dense: true,
               leading: Icon(Icons.assignment_outlined, color: AppColors.stateColor(state)),
               title: Text('${AppConstants.frDate(j['start_date'])} · ${j['duration_weeks'] ?? 0} sem. · '
-                  '${AppConstants.safeStr(j['evangelist_name'])}'),
+                  '${AppConstants.safeStr(j['followed_by_name'], AppConstants.safeStr(j['evangelist_name']))}'),
               subtitle: Text([
                 AppConstants.safeStr(j['state_label']),
                 if (reason.isNotEmpty) reason,

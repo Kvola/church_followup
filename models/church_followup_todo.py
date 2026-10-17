@@ -51,8 +51,10 @@ class ChurchMobileUser(models.Model):
         """Ce que ce compte a à faire, du plus urgent au moins urgent.
 
         Évangéliste : décisions à prendre et rapports en retard sur SES suivis.
-        Responsable : décisions à prendre dans l'église, personnes à attribuer,
-        évangélistes en retard. Les autres rôles n'ont pas de tâche de suivi.
+        Responsable de cellule : la même chose pour les anciens membres que SA
+        cellule suit. Responsable : décisions à prendre dans l'église, personnes
+        à attribuer, évangélistes et cellules en retard. Les autres rôles n'ont
+        pas de tâche de suivi.
         """
         self.ensure_one()
         today = today or fields.Date.context_today(self)
@@ -62,6 +64,11 @@ class ChurchMobileUser(models.Model):
             if not self.evangelist_id:
                 return []
             followups = Followup.search([('evangelist_id', '=', self.evangelist_id.id),
+                                         ('state', 'in', ACTIVE_FOLLOWUP_STATES)])
+        elif self.role == 'cell_leader':
+            if not self.prayer_cell_id:
+                return []
+            followups = Followup.search([('prayer_cell_id', '=', self.prayer_cell_id.id),
                                          ('state', 'in', ACTIVE_FOLLOWUP_STATES)])
         elif self.role in ('manager', 'super_admin'):
             domain = [('state', 'in', ACTIVE_FOLLOWUP_STATES)]
@@ -74,13 +81,14 @@ class ChurchMobileUser(models.Model):
         for f in followups.filtered(lambda f: f._decision_due(today)):
             items.append({
                 'kind': 'decision_due', 'followup_id': f.id, 'member_id': f.member_id.id,
-                'evangelist_id': f.evangelist_id.id, 'due_date': str(f.end_date),
+                'evangelist_id': f.evangelist_id.id, 'prayer_cell_id': f.prayer_cell_id.id,
+                'due_date': str(f.end_date),
                 'title': _('Décision à prendre : %s') % f.member_id.display_name,
                 'detail': _('Suivi arrivé à terme le %s. Intégrer, prolonger ou transférer ?')
                 % f.end_date.strftime('%d/%m/%Y'),
             })
 
-        if self.role == 'evangelist':
+        if self.role in ('evangelist', 'cell_leader'):
             for f in followups:
                 for number in f._overdue_report_weeks(today):
                     items.append({
@@ -110,16 +118,20 @@ class ChurchMobileUser(models.Model):
                 'title': _('%s\u00a0fiche(s) à compléter') % incomplete,
                 'detail': _('Le sexe manque : il oriente le choix du groupe d\'âge.'),
             })
+        # En retard : chaque évangéliste, et chaque cellule qui suit un ancien membre.
         late = {}
         for f in followups:
             overdue = len(f._overdue_report_weeks(today))
-            if overdue:
-                late[f.evangelist_id] = late.get(f.evangelist_id, 0) + overdue
-        for evangelist, count in sorted(late.items(), key=lambda kv: -kv[1]):
+            follower = f.prayer_cell_id or f.evangelist_id
+            if overdue and follower:
+                late[follower] = late.get(follower, 0) + overdue
+        for follower, count in sorted(late.items(), key=lambda kv: -kv[1]):
+            is_cell = follower._name == 'church.prayer.cell'
             items.append({
-                'kind': 'evangelist_late', 'evangelist_id': evangelist.id,
-                'title': _('%(name)s : %(count)s\u00a0rapport(s) en retard', name=evangelist.name, count=count),
-                'detail': _('À relancer.'),
+                'kind': 'cell_late' if is_cell else 'evangelist_late',
+                'prayer_cell_id' if is_cell else 'evangelist_id': follower.id,
+                'title': _('%(name)s : %(count)s\u00a0rapport(s) en retard', name=follower.name, count=count),
+                'detail': _('À relancer (responsable de la cellule).') if is_cell else _('À relancer.'),
             })
         return items
 
@@ -139,5 +151,6 @@ class ChurchMobileUser(models.Model):
             ('report_overdue', _('%s\u00a0rapport(s) en retard')),
             ('to_assign', _('%s\u00a0personne(s) à attribuer')),
             ('evangelist_late', _('%s\u00a0évangéliste(s) en retard')),
+            ('cell_late', _('%s\u00a0cellule(s) en retard')),
             ('to_complete', _('%s\u00a0fiche(s) à compléter')),
         ]

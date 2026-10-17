@@ -115,6 +115,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         integrated: dashboard.integratedCount,
                         abandoned: dashboard.abandonedCount,
                       ),
+                      if (dashboard.activeByCell > 0) ...[
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            const Icon(Icons.groups_outlined, size: 18, color: AppColors.primary),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Dont ${dashboard.activeByCell} ancien(s) membre(s) suivi(s) par les cellules',
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ],
                   ),
                 ),

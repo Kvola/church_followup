@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
 import '../core/theme.dart';
+import '../services/api_service.dart';
 import '../core/constants.dart';
 
 // ─── Loading Shimmer ─────────────────────────────────────────────────
@@ -116,6 +117,18 @@ class ErrorState extends StatelessWidget {
 
   const ErrorState({super.key, required this.message, this.onRetry});
 
+  /// L'icône dit d'un coup d'œil d'où vient le problème : le réseau, le serveur, ou autre chose.
+  IconData get _icon {
+    if (message == ApiException.offlineMessage || message == ApiException.timeoutMessage) {
+      return Icons.wifi_off;
+    }
+    if (message.contains('indisponible') || message.contains('maintenance') ||
+        message == ApiException.serverMessage || message.startsWith(ApiException.serverMessage)) {
+      return Icons.cloud_off;
+    }
+    return Icons.error_outline;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Center(
@@ -130,7 +143,7 @@ class ErrorState extends StatelessWidget {
                 color: AppColors.abandoned.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.error_outline, size: 48, color: AppColors.abandoned),
+              child: Icon(_icon, size: 48, color: AppColors.abandoned),
             ),
             const SizedBox(height: 20),
             Text(message, textAlign: TextAlign.center, style: Theme.of(context).textTheme.bodyLarge),

@@ -19,6 +19,7 @@ const Map<String, (IconData, Color)> _kinds = {
   'reopen_suggested': (Icons.replay_outlined, AppColors.abandoned),
   'to_assign': (Icons.person_add_alt_1_outlined, AppColors.primary),
   'evangelist_late': (Icons.schedule, AppColors.extended),
+  'cell_late': (Icons.schedule, AppColors.extended),
   'to_complete': (Icons.badge_outlined, Colors.grey),
 };
 
@@ -93,7 +94,7 @@ class _TodoScreenState extends State<TodoScreen> {
                             ],
                             ...todo.items.map((item) {
                               final (icon, color) = _kinds[item['kind']] ?? (Icons.circle_outlined, Colors.grey);
-                              final tappable = item['kind'] != 'evangelist_late';
+                              final tappable = item['kind'] != 'evangelist_late' && item['kind'] != 'cell_late';
                               return Card(
                                 margin: const EdgeInsets.only(bottom: 8),
                                 child: ListTile(

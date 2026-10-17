@@ -68,7 +68,8 @@ class AuthProvider extends ChangeNotifier {
   bool get isGroupLeader => userRole == 'group_leader';
 
   // Ce que le serveur autorise à chaque rôle : l'app ne propose rien d'autre.
-  bool get canSeeFollowups => isManager || isEvangelist;
+  /// Le responsable de cellule suit les anciens membres que sa cellule porte.
+  bool get canSeeFollowups => isManager || isEvangelist || isCellLeader;
   bool get canPointSunday => isManager || isEvangelist || isGroupLeader;
   bool get canPointCell => isManager || isCellLeader;
   bool get canDoCheckpoints => isManager || isCellLeader;

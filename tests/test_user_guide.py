@@ -40,7 +40,10 @@ class TestUserGuide(HttpCase):
                       'Nouvelle personne', 'Ancien membre', 'Déjà enregistrée ?', 'Voir sa fiche',
                       "C'est une autre personne", 'Nouvelle cellule', 'Nouveau groupe', 'Modifier',
                       'Modèle', 'Partager', "Rien n'a été importé", 'Importer un fichier',
-                      'Historique des imports', 'Confier'):
+                      'Historique des imports', 'Confier',
+                      # Suivi des anciens membres par une cellule ; messages d'erreur.
+                      'Cellule qui suit', 'Présence en cellule', 'Rédigé par', 'Suivis par une cellule',
+                      'Pas de connexion au serveur', 'Ouvrir un suivi'):
             self.assertIn(label, body, "Le guide ne cite pas « %s »" % label)
         self.assertNotIn('PIN', body, "Il n'y a plus de PIN : le guide ne doit pas en parler")
 

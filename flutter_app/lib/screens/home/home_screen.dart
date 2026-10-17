@@ -224,8 +224,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               const TodoScreen()),
           _TabItem('Ma cellule', Icons.groups_outlined, Icons.groups,
               const PrayerCellListScreen()),
-          _TabItem('Membres', Icons.people_outlined, Icons.people,
-              const MemberListScreen()),
+          // Les anciens membres que sa cellule suit ; les membres passent dans « Plus ».
+          _TabItem('Suivis', Icons.assignment_outlined, Icons.assignment,
+              const FollowupListScreen()),
           _TabItem('Présence', Icons.checklist_outlined, Icons.checklist,
               const AttendanceCellScreen()),
           _TabItem('Plus', Icons.more_horiz_outlined, Icons.more_horiz,
@@ -449,6 +450,12 @@ class _MoreScreen extends StatelessWidget {
             _QuickAction('Églises', Icons.church_outlined, Colors.deepPurple,
                 () => _nav(context, const ChurchManagementScreen())));
       }
+    }
+
+    // Le responsable de cellule a « Suivis » en onglet : ses membres sont ici.
+    if (auth.isCellLeader) {
+      items.add(_QuickAction('Membres', Icons.people_outlined, AppColors.primary,
+          () => _nav(context, const MemberListScreen())));
     }
 
     items.addAll([

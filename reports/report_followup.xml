@@ -29,7 +29,7 @@
 
                         <div class="row mb-3">
                             <div class="col-6">
-                                <strong>Évangéliste :</strong> <t t-esc="doc.evangelist_id.name"/>
+                                <strong t-if="doc.followed_by == 'cell'">Cellule qui suit :</strong><strong t-else="">Évangéliste :</strong> <t t-esc="doc.followed_by_name"/>
                             </div>
                             <div class="col-6">
                                 <strong>Personne suivie :</strong> <t t-esc="doc.member_id.display_name_custom"/>

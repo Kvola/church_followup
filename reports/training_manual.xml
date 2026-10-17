@@ -52,7 +52,7 @@
                 <tr><td>3. Suivre une personne semaine après semaine</td><td>Évangélistes</td><td>40 min</td></tr>
                 <tr><td>4. Décider au terme du suivi</td><td>Évangélistes, responsables</td><td>30 min</td></tr>
                 <tr><td>5. Piloter l'église</td><td>Responsables</td><td>35 min</td></tr>
-                <tr><td>6. Affermir : les points de contrôle</td><td>Responsables de cellule</td><td>20 min</td></tr>
+                <tr><td>6. La cellule : suivre les anciens membres, affermir</td><td>Responsables de cellule</td><td>35 min</td></tr>
                 <tr><td>7. Administrer dans Odoo</td><td>Administrateur</td><td>40 min</td></tr>
                 <tr><td>8. Organiser l'église et importer ses listes</td><td>Responsables, pasteurs</td><td>40 min</td></tr>
             </table>
@@ -170,8 +170,8 @@
                         <p class="voir"><strong>Vous devez voir</strong> : la semaine 3 dans la liste des rapports, et le retard disparu de « À faire ».</p></li>
                     <li>Onglet « Présence » : pointez Traoré Mariam présente au culte de dimanche dernier.
                         <p class="voir"><strong>Vous devez voir</strong> : la case « Présence au culte » déjà cochée au prochain rapport.</p></li>
-                    <li>« Nouveau suivi » pour Kouassi Esther.
-                        <p class="voir"><strong>Vous devez voir</strong> : 6 semaines proposées, la durée de l'église ; modifiable pour elle seule.</p></li>
+                    <li>« Nouveau suivi » pour Aké Nadège.
+                        <p class="voir"><strong>Vous devez voir</strong> : 6 semaines proposées, la durée de l'église ; modifiable pour elle seule. Kouassi Esther n'est pas proposée : ancienne membre, elle est confiée à une cellule.</p></li>
                 </ol>
                 <t t-call="mobile_app_release.guide_capture">
                     <t t-set="chemin" t-value="'church_followup/static/help/app/rapport_semaine.png'"/>
@@ -233,7 +233,7 @@
                 <h3>Objectifs</h3>
                 <ul>
                     <li>Lire le tableau de bord.</li>
-                    <li>Confier les personnes depuis « À attribuer », nouvelles personnes comme anciens membres.</li>
+                    <li>Confier depuis « À attribuer » : une nouvelle personne à un évangéliste, un ancien membre à une cellule de prière.</li>
                     <li>Ouvrir un compte et envoyer l'invitation.</li>
                 </ul>
                 <div class="bloc">
@@ -247,12 +247,15 @@
                     <strong>Bamba Ibrahim</strong> vient du « Camp de Toussaint 2026 » : sa fiche
                     a été créée par l'événement, avec les 8 semaines de suivi qu'il prévoit. Il
                     attend un évangéliste. <strong>Kouassi Esther</strong>, elle, est une
-                    « Ancien membre » qu'on reprend en suivi : son badge le dit.
+                    « Ancien membre » qu'on reprend en suivi : son badge le dit, et c'est une
+                    cellule de prière qui la suivra, pas un évangéliste.
                 </p>
                 <h3>Exercices</h3>
                 <ol>
                     <li>Ouvrez « À attribuer », touchez Bamba Ibrahim, confiez-le à Paul Yao.
                         <p class="voir"><strong>Vous devez voir</strong> : 8 semaines proposées (origine : l'événement), puis Bamba Ibrahim dans les suivis de Paul Yao.</p></li>
+                    <li>« Confier » sur Kouassi Esther.
+                        <p class="voir"><strong>Vous devez voir</strong> : « Cellule qui suit » à la place de l'évangéliste, sa cellule (Cellule Angré 8e tranche) proposée ; après « Ouvrir le suivi », Kouassi Esther dans « Suivis », « → Cellule Angré 8e tranche ».</p></li>
                     <li>« Plus », « Utilisateurs » : repérez les comptes « Jamais connecté ».
                         <p class="voir"><strong>Vous devez voir</strong> : Fatou Cissé, jamais connectée.</p></li>
                     <li>Envoyez l'invitation à Fatou Cissé.
@@ -267,16 +270,18 @@
                     <li>D'où viennent les personnes de « À attribuer » ?</li>
                     <li>Pourquoi peut-on renvoyer une invitation sans risque ?</li>
                     <li>Que signale le badge « Jamais connecté » ?</li>
+                    <li>À qui confie-t-on le suivi d'un ancien membre ?</li>
                 </ol>
                 <p class="note"><strong>Note du formateur</strong> : faites le tour des comptes en fin de séance — chaque « Jamais connecté » est un évangéliste qui ne recevra pas les relances du lundi.</p>
             </div>
 
             <!-- ─── Module 6 ─────────────────────────────────────────── -->
             <div class="module">
-                <h2>Module 6 — Affermir : les points de contrôle</h2>
-                <p class="meta">Responsables de cellule · 20 min · connecté en Fatou Cissé</p>
+                <h2>Module 6 — La cellule : suivre les anciens membres, affermir</h2>
+                <p class="meta">Responsables de cellule · 35 min · connecté en Fatou Cissé</p>
                 <h3>Objectifs</h3>
                 <ul>
+                    <li>Suivre un ancien membre confié à sa cellule : le rapport de la semaine, la présence en cellule, la décision au terme.</li>
                     <li>Faire un point de contrôle à 3 et 6 mois.</li>
                     <li>Comprendre le rattrapage et la proposition de rouvrir un suivi.</li>
                 </ul>
@@ -288,8 +293,24 @@
                 </t>
                 </div>
                 <p><strong>Ouattara Fanta</strong> a été intégrée il y a trois mois : son contrôle « À 3 mois » est dû.</p>
+                <div class="bloc">
+                <t t-call="mobile_app_release.guide_capture">
+                    <t t-set="chemin" t-value="'church_followup/static/help/app/cellule_suivi.png'"/>
+                    <t t-set="alt" t-value="'Un ancien membre suivi par la cellule'"/>
+                </t>
+                </div>
+                <p>
+                    <strong>N'Dri Rachel</strong>, ancienne membre, revient après une longue absence :
+                    sa cellule la suit. Fatou Cissé a rédigé la semaine 1 ; la semaine 2 est en retard.
+                </p>
                 <h3>Exercices</h3>
                 <ol>
+                    <li>Ouvrez « À faire ».
+                        <p class="voir"><strong>Vous devez voir</strong> : le rapport en retard de N'Dri Rachel, semaine 2, et le contrôle de Ouattara Fanta.</p></li>
+                    <li>Onglet « Suivis », N'Dri Rachel, « Ajouter » : semaine 2, appelée, présente en cellule, état « Bon ».
+                        <p class="voir"><strong>Vous devez voir</strong> : la semaine 2 dans les rapports, « Rédigé par Fatou Cissé », et le retard disparu de « À faire ».</p></li>
+                    <li>Onglet « Présence » : pointez N'Dri Rachel présente à la dernière réunion de la cellule.
+                        <p class="voir"><strong>Vous devez voir</strong> : « Présence en cellule » déjà cochée au rapport de cette semaine-là.</p></li>
                     <li>« Points de contrôle », Ouattara Fanta : « Oui, elle tient », avec une observation.
                         <p class="voir"><strong>Vous devez voir</strong> : le contrôle passer dans les contrôles faits ; le suivant reste planifié à 6 mois.</p></li>
                     <li>« Ma cellule », déroulez-la, « Modifier » : passez la réunion à 19:30.
@@ -299,8 +320,9 @@
                 <ol class="questions">
                     <li>Que se passe-t-il après un contrôle défavorable ?</li>
                     <li>Quand une personne devient-elle « Fidèle affermi(e) » ?</li>
+                    <li>Qui rédige le rapport de la semaine d'un ancien membre ?</li>
                 </ol>
-                <p class="note"><strong>Note du formateur</strong> : le contrôle regarde la présence des 90 derniers jours ; invitez le responsable à appeler la personne avant de répondre, pas à se fier au seul chiffre.</p>
+                <p class="note"><strong>Note du formateur</strong> : un ancien membre qui revient a souvent besoin d'être accueilli plus que d'être enseigné ; faites lire la note de Fatou sur la semaine 1. Le contrôle regarde la présence des 90 derniers jours ; invitez le responsable à appeler la personne avant de répondre, pas à se fier au seul chiffre.</p>
             </div>
 
             <!-- ─── Module 7 ─────────────────────────────────────────── -->
@@ -328,7 +350,7 @@
                 <h3>Exercices</h3>
                 <ol>
                     <li>« Configuration › Églises », l'Église Bonne Nouvelle de la Grâce de Angré : passez la durée par défaut à 5 semaines.
-                        <p class="voir"><strong>Vous devez voir</strong> : dans l'application, « Nouveau suivi » pour Kouassi Esther propose maintenant 5 semaines.</p></li>
+                        <p class="voir"><strong>Vous devez voir</strong> : dans l'application, « Nouveau suivi » pour Aké Nadège propose maintenant 5 semaines.</p></li>
                     <li>Onglet « Pasteurs ».
                         <p class="voir"><strong>Vous devez voir</strong> : Marc Kouadio (Pasteur) et Rose Diomandé (Missionnaire), en lecture seule.</p></li>
                     <li>« Configuration › Utilisateurs mobiles », Fatou Cissé : « Inviter », puis l'onglet « Sessions ».
@@ -382,10 +404,10 @@
                         <p class="voir"><strong>Vous devez voir</strong> : Angré Djibi dans la liste, « Aucune cellule ».</p></li>
                     <li>« Plus › Cellules », « Nouvelle cellule » : Cellule Djibi, quartier Angré Djibi, mardi à 19:30, responsable Koné Ali au <code>07 00 06 06 06</code>.
                         <p class="voir"><strong>Vous devez voir</strong> : la cellule dans la liste ; dans « Plus › Utilisateurs », Koné Ali, responsable de cellule, « Jamais connecté ».</p></li>
-                    <li>« Plus › Importer », « Personnes à suivre », « Modèle ». Remplissez trois lignes : Gbagbo Lucie avec l'évangéliste « Awa Koné » ; Tanoh Serge sans évangéliste ; Yao Paul avec l'évangéliste tapé « Awa K. ». Importez.
-                        <p class="voir"><strong>Vous devez voir</strong> : « Rien n'a été importé » et la ligne de Yao Paul citée, avec les évangélistes permis.</p></li>
-                    <li>Choisissez « Awa Koné » dans la liste déroulante pour Yao Paul, enregistrez, importez à nouveau.
-                        <p class="voir"><strong>Vous devez voir</strong> : « Import réussi », 3 créé(s), « 2 suivi(s) démarré(s), 1 personne(s) dans « À attribuer » » ; Tanoh Serge dans « À attribuer ».</p></li>
+                    <li>« Plus › Importer », « Personnes à suivre », « Modèle ». Remplissez quatre lignes : Gbagbo Lucie avec l'évangéliste « Awa Koné » ; Tanoh Serge sans évangéliste ; Yao Paul avec l'évangéliste tapé « Awa K. » ; Kra Odile, profil « Ancien membre », avec l'évangéliste « Awa Koné ». Importez.
+                        <p class="voir"><strong>Vous devez voir</strong> : « Rien n'a été importé », la ligne de Yao Paul citée avec les évangélistes permis, et celle de Kra Odile : un ancien membre est suivi par une cellule de prière.</p></li>
+                    <li>Choisissez « Awa Koné » dans la liste déroulante pour Yao Paul ; pour Kra Odile, videz « Évangéliste » et choisissez la « Cellule qui suit » : Cellule Angré 8e tranche. Enregistrez, importez à nouveau.
+                        <p class="voir"><strong>Vous devez voir</strong> : « Import réussi », 4 créé(s), « 3 suivi(s) démarré(s), 1 personne(s) dans « À attribuer » » ; Tanoh Serge dans « À attribuer », Kra Odile dans les suivis de la cellule.</p></li>
                     <li>Importez encore le même fichier.
                         <p class="voir"><strong>Vous devez voir</strong> : « 0 créé(s) », « déjà à jour », et « Déjà en suivi, laissé(e)s tel quel » : aucun doublon.</p></li>
                     <li>« Membres », ajoutez « Konan Aya » avec son numéro <code>07 00 10 10 10</code>.
@@ -410,7 +432,7 @@
             <h2>Corrigés</h2>
             <h3>Module 1</h3>
             <ol class="reponses">
-                <li>Personne enregistrée (nouvelle personne ou ancien membre) ; confiée à un évangéliste ; suivie chaque semaine ; décision au terme (intégrer, prolonger, interrompre, transférer) ; affermissement par les contrôles à 3 et 6 mois.</li>
+                <li>Personne enregistrée (nouvelle personne ou ancien membre) ; confiée à un évangéliste (nouvelle personne) ou à une cellule de prière (ancien membre) ; suivie chaque semaine ; décision au terme (intégrer, prolonger, interrompre, transférer) ; affermissement par les contrôles à 3 et 6 mois.</li>
                 <li>Il voit combien de personnes sont suivies, intégrées ou perdues et pourquoi ; toute intégration sous le seuil est justifiée par écrit.</li>
             </ol>
             <h3>Module 2</h3>
@@ -429,18 +451,20 @@
             <ol class="reponses">
                 <li>Une justification écrite.</li>
                 <li>Non : le motif est gardé, le suivi peut être repris et reste dans le parcours.</li>
-                <li>Transférer le suivi à un autre évangéliste.</li>
+                <li>Transférer le suivi à un autre évangéliste (pour un ancien membre : à une autre cellule).</li>
             </ol>
             <h3>Module 5</h3>
             <ol class="reponses">
                 <li>Des personnes sans évangéliste — nouvelles personnes ou anciens membres, dont celles créées par un événement ou un import — et des suivis interrompus à reprendre.</li>
                 <li>Elle ne contient aucun secret : le code arrive au moment de se connecter, sur le numéro du compte.</li>
                 <li>Un compte qui ne s'est encore jamais connecté.</li>
+                <li>À une cellule de prière (la sienne, proposée) : son responsable rédige les rapports et décide au terme. Une nouvelle personne, elle, est confiée à un évangéliste.</li>
             </ol>
             <h3>Module 6</h3>
             <ol class="reponses">
                 <li>Un rattrapage est planifié un mois plus tard ; deux défavorables de suite proposent de rouvrir un suivi.</li>
                 <li>Quand les contrôles à 3 mois et à 6 mois sont favorables.</li>
+                <li>Le responsable de la cellule qui le suit (son nom s'affiche sous « Rédigé par »).</li>
             </ol>
             <h3>Module 7</h3>
             <ol class="reponses">

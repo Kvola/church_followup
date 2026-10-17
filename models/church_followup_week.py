@@ -22,6 +22,19 @@ class ChurchFollowupWeek(models.Model):
         string='Pointé(e) au culte', compute='_compute_roll_call_present',
         help="Une présence au culte est enregistrée pendant cette semaine du suivi.",
     )
+    cell_attendance = fields.Boolean(
+        string='Présence en cellule',
+        help="Cochée d'office quand la personne a été pointée présente à une réunion de "
+             "cellule pendant cette semaine du suivi.",
+    )
+    cell_roll_call_present = fields.Boolean(
+        string='Pointé(e) en cellule', compute='_compute_roll_call_present',
+        help="Une présence en cellule est enregistrée pendant cette semaine du suivi.",
+    )
+    reported_by_id = fields.Many2one(
+        'church.mobile.user', string='Rédigé par', readonly=True, ondelete='set null',
+        help="Le compte de l'application qui a rédigé le rapport : l'évangéliste, ou le "
+             "responsable de la cellule qui suit.")
     call_made = fields.Boolean(string='Appel effectué')
     visit_made = fields.Boolean(string='Visite effectuée')
     spiritual_state = fields.Selection([
@@ -45,8 +58,9 @@ class ChurchFollowupWeek(models.Model):
     @api.depends('followup_id.start_date', 'followup_id.member_id', 'week_number')
     def _compute_roll_call_present(self):
         for rec in self:
-            rec.roll_call_present = bool(rec.followup_id and rec.week_number and
-                                         rec.followup_id._roll_call_dates(rec.week_number))
+            ready = bool(rec.followup_id and rec.week_number)
+            rec.roll_call_present = ready and bool(rec.followup_id._roll_call_dates(rec.week_number))
+            rec.cell_roll_call_present = ready and bool(rec.followup_id._cell_roll_call_dates(rec.week_number))
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -56,7 +70,7 @@ class ChurchFollowupWeek(models.Model):
 
     def write(self, vals):
         res = super().write(vals)
-        if {'sunday_attendance', 'week_number', 'followup_id'} & set(vals):
+        if {'sunday_attendance', 'cell_attendance', 'week_number', 'followup_id'} & set(vals):
             self._apply_roll_call()
         return res
 
@@ -65,6 +79,9 @@ class ChurchFollowupWeek(models.Model):
         to_check = self.filtered(lambda w: not w.sunday_attendance and w.roll_call_present)
         if to_check:
             super(ChurchFollowupWeek, to_check).write({'sunday_attendance': True})
+        in_cell = self.filtered(lambda w: not w.cell_attendance and w.cell_roll_call_present)
+        if in_cell:
+            super(ChurchFollowupWeek, in_cell).write({'cell_attendance': True})
 
     @api.constrains('week_number')
     def _check_week_number(self):

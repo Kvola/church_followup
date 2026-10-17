@@ -69,7 +69,7 @@ class TestTodo(TransactionCase):
         self.assertIn('1\u00a0décision(s) à prendre', summary)
         self.assertNotIn('\n', summary)
 
-    def test_cell_leader_has_no_followup_tasks(self):
+    def test_cell_leader_without_followups_has_no_followup_tasks(self):
         cell = self.env['church.prayer.cell'].create({'name': 'C', 'church_id': self.church.id})
         leader = self.env['church.mobile.user'].create({
             'name': 'L', 'phone': '+225 07 00 00 07', 'role': 'cell_leader',

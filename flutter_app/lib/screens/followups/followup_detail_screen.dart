@@ -215,7 +215,12 @@ class _FollowupDetailScreenState extends State<FollowupDetailScreen> {
     await orgProvider.loadAgeGroups();
     if (!mounted) return;
 
-    int? selectedCellId;
+    // La cellule qui a suivi (ancien membre) est proposée pour l'intégrer.
+    final proposedCell = data['target_cell_id'];
+    int? selectedCellId = proposedCell is int &&
+            orgProvider.activeCells.any((c) => c['id'] == proposedCell)
+        ? proposedCell
+        : null;
     int? selectedGroupId;
     final belowThreshold = data['below_threshold'] == true;
     final justificationCtrl = TextEditingController(text: AppConstants.safeStr(data['integration_justification']));
@@ -295,6 +300,7 @@ class _FollowupDetailScreenState extends State<FollowupDetailScreen> {
   }
 
   Future<void> _showTransferDialog(Map<String, dynamic> data) async {
+    if (data['followed_by'] == 'cell') return _showCellTransferDialog(data);
     final provider = context.read<FollowupProvider>();
     await provider.loadEvangelists();
     if (!mounted) return;
@@ -330,6 +336,47 @@ class _FollowupDetailScreenState extends State<FollowupDetailScreen> {
     await _report(result, 'Suivi transféré', close: true);
   }
 
+  /// Un ancien membre passe d'une cellule à une autre (dont le responsable peut se connecter).
+  Future<void> _showCellTransferDialog(Map<String, dynamic> data) async {
+    final org = context.read<OrganizationProvider>();
+    await org.loadCells();
+    if (!mounted) return;
+    final cells = org.activeCells
+        .where((c) => c['id'] is int && c['id'] != data['prayer_cell_id'] && c['has_leader_account'] != false)
+        .toList();
+    int? selected;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: const Text('Transférer à une autre cellule'),
+          content: cells.isEmpty
+              ? const Text('Aucune autre cellule n\'a de responsable qui puisse se connecter.')
+              : DropdownButtonFormField<int>(
+                  isExpanded: true,
+                  decoration: const InputDecoration(labelText: 'Nouvelle cellule'),
+                  items: cells
+                      .map((c) => DropdownMenuItem(value: c['id'] as int, child: Text(AppConstants.safeStr(c['name'], '—'))))
+                      .toList(),
+                  onChanged: (v) => setDialogState(() => selected = v),
+                  initialValue: selected,
+                ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Annuler')),
+            FilledButton(
+              onPressed: selected != null ? () => Navigator.pop(ctx, true) : null,
+              style: FilledButton.styleFrom(backgroundColor: AppColors.transferred),
+              child: const Text('Transférer'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (confirmed != true || selected == null || !mounted) return;
+    final result = await context.read<FollowupProvider>().performAction(data['id'], 'transfer', transferCellId: selected);
+    await _report(result, 'Suivi transféré', close: true);
+  }
+
   // ─── Rapport hebdomadaire ─────────────────────────────────────────
 
   void _showWeekForm(Map<String, dynamic> data, {Map<String, dynamic>? existingWeek}) {
@@ -345,6 +392,10 @@ class _FollowupDetailScreenState extends State<FollowupDetailScreen> {
         : List.generate(total, (i) => i + 1).firstWhere((n) => !reported.contains(n), orElse: () => total);
     final rollCall = existingWeek?['roll_call_present'] == true;
     bool sundayAttendance = existingWeek?['sunday_attendance'] == true || rollCall;
+    // Le suivi d'un ancien membre regarde aussi sa présence en cellule.
+    final byCell = data['followed_by'] == 'cell';
+    final cellRollCall = existingWeek?['cell_roll_call_present'] == true;
+    bool cellAttendance = existingWeek?['cell_attendance'] == true || cellRollCall;
     bool callMade = existingWeek?['call_made'] == true;
     bool visitMade = existingWeek?['visit_made'] == true;
     String spiritualState = AppConstants.spiritualLabels.containsKey(existingWeek?['spiritual_state'])
@@ -391,6 +442,17 @@ class _FollowupDetailScreenState extends State<FollowupDetailScreen> {
                   secondary: Icon(Icons.church, color: sundayAttendance ? AppColors.integrated : null),
                   contentPadding: EdgeInsets.zero,
                 ),
+                if (byCell)
+                  SwitchListTile(
+                    title: const Text('Présence en cellule'),
+                    subtitle: Text(cellRollCall
+                        ? 'Pointé(e) en cellule : la présence est acquise.'
+                        : 'Cochée d\'office si la personne est pointée en cellule.'),
+                    value: cellAttendance,
+                    onChanged: cellRollCall ? null : (v) => setSheetState(() => cellAttendance = v),
+                    secondary: Icon(Icons.groups, color: cellAttendance ? AppColors.integrated : null),
+                    contentPadding: EdgeInsets.zero,
+                  ),
                 SwitchListTile(
                   title: const Text('Appel effectué'),
                   value: callMade,
@@ -445,6 +507,7 @@ class _FollowupDetailScreenState extends State<FollowupDetailScreen> {
                               'followup_id': data['id'],
                               'week_number': weekNumber,
                               'sunday_attendance': sundayAttendance,
+                              if (byCell) 'cell_attendance': cellAttendance,
                               'call_made': callMade,
                               'visit_made': visitMade,
                               'spiritual_state': spiritualState,
@@ -588,7 +651,9 @@ class _HeaderCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Évangéliste : ${data['evangelist_name'] ?? ''}',
+                        data['followed_by'] == 'cell'
+                            ? 'Suivi par : ${data['prayer_cell_name'] ?? ''}'
+                            : 'Évangéliste : ${data['evangelist_name'] ?? ''}',
                         style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                       ),
                     ],
@@ -767,6 +832,7 @@ class _WeekCard extends StatelessWidget {
                           _miniChip('Pointé(e) au culte', AppColors.integrated)
                         else if (week['sunday_attendance'] == true)
                           _miniChip('Culte', AppColors.integrated),
+                        if (week['cell_attendance'] == true) _miniChip('Cellule', AppColors.integrated),
                         if (week['call_made'] == true) _miniChip('Appel', AppColors.inProgress),
                         if (week['visit_made'] == true) _miniChip('Visite', AppColors.extended),
                         if (spiritual.isNotEmpty)
@@ -776,6 +842,11 @@ class _WeekCard extends StatelessWidget {
                     if (notes.isNotEmpty) ...[
                       const SizedBox(height: 6),
                       Text(notes, style: theme.textTheme.bodySmall, maxLines: 2, overflow: TextOverflow.ellipsis),
+                    ],
+                    if (AppConstants.safeStr(week['reported_by_name']).isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text('Rédigé par ${week['reported_by_name']}',
+                          style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
                     ],
                   ],
                 ),

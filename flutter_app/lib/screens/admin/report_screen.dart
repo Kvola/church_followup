@@ -15,6 +15,11 @@ class ReportScreen extends StatefulWidget {
 
 class _ReportScreenState extends State<ReportScreen> {
   int? _selectedEvangelistId;
+
+  /// Rapport d'une cellule (anciens membres) plutôt que d'un évangéliste.
+  bool _byCell = false;
+  int? _selectedCellId;
+  int? get _selectedId => _byCell ? _selectedCellId : _selectedEvangelistId;
   Map<String, dynamic>? _reportData;
   bool _loading = false;
   String? _error;
@@ -24,6 +29,7 @@ class _ReportScreenState extends State<ReportScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<FollowupProvider>().loadEvangelists();
+      context.read<OrganizationProvider>().loadCells();
     });
   }
 
@@ -46,8 +52,37 @@ class _ReportScreenState extends State<ReportScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SectionHeader(title: 'Sélectionner un évangéliste'),
+                  SegmentedButton<bool>(
+                    segments: const [
+                      ButtonSegment(value: false, label: Text('Évangéliste')),
+                      ButtonSegment(value: true, label: Text('Cellule')),
+                    ],
+                    selected: {_byCell},
+                    showSelectedIcon: false,
+                    onSelectionChanged: (v) => setState(() {
+                      _byCell = v.first;
+                      _reportData = null;
+                      _error = null;
+                    }),
+                  ),
                   const SizedBox(height: 8),
+                  if (_byCell)
+                    DropdownButtonFormField<int>(
+                      key: const ValueKey('cell-report'),
+                      isExpanded: true,
+                      decoration: const InputDecoration(
+                        prefixIcon: Icon(Icons.groups_outlined),
+                        hintText: 'Choisir une cellule',
+                      ),
+                      items: context
+                          .watch<OrganizationProvider>()
+                          .activeCells
+                          .where((c) => c['id'] is int)
+                          .map((c) => DropdownMenuItem<int>(value: c['id'] as int, child: Text(AppConstants.safeStr(c['name']))))
+                          .toList(),
+                      onChanged: (value) => setState(() => _selectedCellId = value),
+                    )
+                  else
                   DropdownButtonFormField<int>(
                     decoration: const InputDecoration(
                       prefixIcon: Icon(Icons.person_outline),
@@ -69,7 +104,7 @@ class _ReportScreenState extends State<ReportScreen> {
                   SizedBox(
                     width: double.infinity,
                     child: FilledButton.icon(
-                      onPressed: _selectedEvangelistId != null && !_loading ? _generateReport : null,
+                      onPressed: _selectedId != null && !_loading ? _generateReport : null,
                       icon: _loading
                           ? const SizedBox(
                               width: 18,
@@ -101,7 +136,7 @@ class _ReportScreenState extends State<ReportScreen> {
   }
 
   Future<void> _generateReport() async {
-    if (_selectedEvangelistId == null) return;
+    if (_selectedId == null) return;
 
     setState(() {
       _loading = true;
@@ -110,10 +145,12 @@ class _ReportScreenState extends State<ReportScreen> {
 
     try {
       final orgProvider = context.read<OrganizationProvider>();
-      final result = await orgProvider.getFollowupReport(_selectedEvangelistId!);
+      final result = _byCell
+          ? await orgProvider.getFollowupReport(null, cellId: _selectedCellId)
+          : await orgProvider.getFollowupReport(_selectedEvangelistId!);
       if ((result['followups'] as List? ?? []).isEmpty) {
         setState(() {
-          _error = 'Aucune donnée disponible pour cet évangéliste';
+          _error = _byCell ? 'Cette cellule ne suit encore personne' : 'Aucune donnée disponible pour cet évangéliste';
           _reportData = null;
           _loading = false;
         });
@@ -134,7 +171,8 @@ class _ReportScreenState extends State<ReportScreen> {
   Widget _buildReportContent(ThemeData theme) {
     final data = _reportData!;
     // Le serveur range les chiffres sous « evangelist » ; la liste à côté.
-    final ev = data['evangelist'] is Map ? Map<String, dynamic>.from(data['evangelist']) : <String, dynamic>{};
+    final raw = data['follower'] is Map ? data['follower'] : data['evangelist'];
+    final ev = raw is Map ? Map<String, dynamic>.from(raw) : <String, dynamic>{};
     final evangelistName = AppConstants.safeStr(ev['name']);
     final totalFollowups = ev['total'] ?? 0;
     final activeFollowups = ev['active'] ?? 0;

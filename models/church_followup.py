@@ -7,6 +7,19 @@ from .church_tools import (
 )
 
 
+#: Qui suit la personne : un évangéliste pour une nouvelle personne, une cellule
+#: de prière (son responsable) pour un ancien membre qu'on reprend en suivi.
+FOLLOWERS = [
+    ('evangelist', 'Un évangéliste'),
+    ('cell', 'Une cellule de prière'),
+]
+
+
+def expected_follower(member):
+    """Qui doit suivre cette personne, selon son profil."""
+    return 'cell' if member.person_profile == 'old_member' else 'evangelist'
+
+
 class ChurchFollowup(models.Model):
     _name = 'church.followup'
     _description = 'Suivi d\'évangélisation'
@@ -15,7 +28,15 @@ class ChurchFollowup(models.Model):
 
     name = fields.Char(string='Référence', readonly=True, copy=False, default='Nouveau')
     church_id = fields.Many2one('equipment.church', string='Église', required=True, ondelete='restrict')
-    evangelist_id = fields.Many2one('church.evangelist', string='Évangéliste', required=True, tracking=True)
+    evangelist_id = fields.Many2one(
+        'church.evangelist', string='Évangéliste', tracking=True, index=True,
+        help="Suit une nouvelle personne.")
+    prayer_cell_id = fields.Many2one(
+        'church.prayer.cell', string='Cellule qui suit', tracking=True, index=True, ondelete='restrict',
+        help="Suit un ancien membre : son responsable rédige les rapports et décide au terme.")
+    followed_by = fields.Selection(
+        FOLLOWERS, string='Suivi par', compute='_compute_followed_by', store=True, index=True)
+    followed_by_name = fields.Char(string='Suivi par (nom)', compute='_compute_followed_by', store=True)
     member_id = fields.Many2one('church.member', string='Personne suivie', required=True, tracking=True)
     person_profile = fields.Selection(
         related='member_id.person_profile', store=True, string='Profil',
@@ -44,6 +65,8 @@ class ChurchFollowup(models.Model):
 
     # Résultat
     transferred_to_id = fields.Many2one('church.evangelist', string='Transféré à', ondelete='set null')
+    transferred_to_cell_id = fields.Many2one('church.prayer.cell', string='Transféré à la cellule',
+                                             ondelete='set null')
     target_cell_id = fields.Many2one('church.prayer.cell', string='Cellule cible', ondelete='set null')
     target_age_group_id = fields.Many2one('church.age.group', string='Groupe d\'âge cible', ondelete='set null')
 
@@ -78,11 +101,43 @@ class ChurchFollowup(models.Model):
         help="Le message de fin de période a été posté ; remis à zéro quand le suivi est prolongé.",
     )
 
-    @api.constrains('church_id', 'member_id', 'evangelist_id', 'transferred_to_id',
-                    'target_cell_id', 'target_age_group_id')
+    @api.constrains('church_id', 'member_id', 'evangelist_id', 'prayer_cell_id', 'transferred_to_id',
+                    'transferred_to_cell_id', 'target_cell_id', 'target_age_group_id')
     def _check_same_church(self):
-        check_same_church(self, ['member_id', 'evangelist_id', 'transferred_to_id',
-                                 'target_cell_id', 'target_age_group_id'])
+        check_same_church(self, ['member_id', 'evangelist_id', 'prayer_cell_id', 'transferred_to_id',
+                                 'transferred_to_cell_id', 'target_cell_id', 'target_age_group_id'])
+
+    @api.depends('evangelist_id', 'prayer_cell_id')
+    def _compute_followed_by(self):
+        for rec in self:
+            rec.followed_by = 'cell' if rec.prayer_cell_id else ('evangelist' if rec.evangelist_id else False)
+            rec.followed_by_name = rec.prayer_cell_id.name or rec.evangelist_id.name or False
+
+    @api.constrains('evangelist_id', 'prayer_cell_id', 'member_id', 'state')
+    def _check_follower(self):
+        """Une nouvelle personne est suivie par un évangéliste, un ancien membre par
+        une cellule — jamais les deux, jamais personne. Seuls les suivis en cours
+        sont tenus : un suivi terminé garde l'histoire telle qu'elle a été."""
+        for rec in self.filtered(lambda f: f.state in ACTIVE_FOLLOWUP_STATES):
+            name = rec.member_id.display_name
+            if expected_follower(rec.member_id) == 'cell':
+                if rec.evangelist_id or not rec.prayer_cell_id:
+                    raise ValidationError(_(
+                        "%s est un ancien membre : son suivi se confie à une cellule de prière, "
+                        "pas à un évangéliste.") % name)
+            elif rec.prayer_cell_id or not rec.evangelist_id:
+                raise ValidationError(_(
+                    "%s est une nouvelle personne : son suivi se confie à un évangéliste, "
+                    "pas à une cellule de prière.") % name)
+
+    @api.model
+    def _check_cell_can_follow(self, cell):
+        """Une cellule sans responsable joignable ne peut pas suivre : personne ne
+        rédigerait les rapports, personne ne serait relancé."""
+        if cell and not cell._leader_accounts():
+            raise UserError(_(
+                "La cellule « %s » n'a pas de responsable qui puisse se connecter : ouvrez d'abord "
+                "le compte de son responsable (fiche de la cellule).") % cell.name)
 
     @api.constrains('member_id', 'state')
     def _check_single_active_followup(self):
@@ -164,6 +219,17 @@ class ChurchFollowup(models.Model):
             ('date', '>=', first), ('date', '<=', last),
         ]).mapped('date')
 
+    def _cell_roll_call_dates(self, week_number):
+        """Dates de présence en cellule pointées pendant cette semaine du suivi."""
+        self.ensure_one()
+        if not self.start_date or not self.member_id:
+            return []
+        first, last = self._week_bounds(week_number)
+        return self.env['church.attendance.cell'].sudo().search([
+            ('member_id', '=', self.member_id.id), ('present', '=', True),
+            ('date', '>=', first), ('date', '<=', last),
+        ]).mapped('date')
+
     @api.depends('start_date', 'duration_weeks', 'week_ids.sunday_attendance', 'week_ids.score',
                  'church_id.integration_min_attendance')
     def _compute_attendance(self):
@@ -203,6 +269,18 @@ class ChurchFollowup(models.Model):
             if vals.get('name', 'Nouveau') == 'Nouveau':
                 vals['name'] = self.env['ir.sequence'].next_by_code('church.followup') or 'Nouveau'
             member = Member.browse(vals.get('member_id'))
+            # Un ancien membre est confié à sa propre cellule, sauf autre choix.
+            if member and expected_follower(member) == 'cell' and not vals.get('evangelist_id'):
+                vals.setdefault('prayer_cell_id', member.prayer_cell_id.id or False)
+                if not vals.get('prayer_cell_id'):
+                    raise UserError(_(
+                        "%s est un ancien membre sans cellule : choisissez la cellule de prière "
+                        "qui le suivra.") % member.display_name)
+            if vals.get('prayer_cell_id'):
+                cell = self.env['church.prayer.cell'].browse(vals['prayer_cell_id'])
+                self._check_cell_can_follow(cell)
+                # Au terme, on intègre d'abord dans la cellule qui a suivi.
+                vals.setdefault('target_cell_id', cell.id)
             self._apply_proposed_duration(vals, member)
             # Une reprise garde le lien avec le suivi interrompu.
             if member and member.member_type == 'interrupted' and 'previous_followup_id' not in vals:
@@ -304,25 +382,38 @@ class ChurchFollowup(models.Model):
             'context': {'default_followup_id': self.id},
         }
 
+    def write(self, vals):
+        if vals.get('prayer_cell_id'):
+            self._check_cell_can_follow(self.env['church.prayer.cell'].browse(vals['prayer_cell_id']))
+        return super().write(vals)
+
     def action_transfer(self):
-        """Transférer à un autre évangéliste."""
+        """Transférer à un autre évangéliste, ou — ancien membre — à une autre cellule."""
         for rec in self:
             if rec.state not in ACTIVE_FOLLOWUP_STATES:
                 raise UserError(_('Seuls les suivis en cours peuvent être transférés.'))
-            if not rec.transferred_to_id:
-                raise ValidationError(_('Veuillez sélectionner l\'évangéliste destinataire.'))
-            if rec.transferred_to_id == rec.evangelist_id:
-                raise ValidationError(_('Impossible de transférer à la même personne.'))
+            if rec.followed_by == 'cell':
+                target = rec.transferred_to_cell_id
+                if not target:
+                    raise ValidationError(_('Veuillez sélectionner la cellule destinataire.'))
+                if target == rec.prayer_cell_id:
+                    raise ValidationError(_('Choisissez une autre cellule que celle qui suit déjà.'))
+                follower = {'prayer_cell_id': target.id, 'target_cell_id': target.id}
+            else:
+                if not rec.transferred_to_id:
+                    raise ValidationError(_('Veuillez sélectionner l\'évangéliste destinataire.'))
+                if rec.transferred_to_id == rec.evangelist_id:
+                    raise ValidationError(_('Impossible de transférer à la même personne.'))
+                follower = {'evangelist_id': rec.transferred_to_id.id}
             rec.state = 'transferred'
-            # Créer un nouveau suivi pour le nouvel évangéliste
-            self.create({
+            # Un nouveau suivi, pour le nouvel évangéliste ou la nouvelle cellule.
+            self.create(dict(follower, **{
                 'church_id': rec.church_id.id,
-                'evangelist_id': rec.transferred_to_id.id,
                 'member_id': rec.member_id.id,
                 'start_date': fields.Date.today(),
                 'duration_weeks': rec.duration_weeks,
                 'duration_origin': rec.duration_origin,
-            })
+            }))
 
     @api.model
     def _cron_send_reminders(self):

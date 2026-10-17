@@ -278,8 +278,12 @@ class TestChurchMobileApi(HttpCase):
         self.assertEqual(res['status'], 'error')
         self.assertFalse(self.env['church.attendance.cell'].search([('prayer_cell_id', '=', self.cell2.id)]))
 
-    def test_cell_leader_sees_no_followups(self):
-        self.assertEqual(self._as(self.leader, '/api/church/followups')['code'], 'forbidden')
+    def test_cell_leader_sees_only_his_cell_followups(self):
+        res = self._as(self.leader, '/api/church/followups')
+        self.assertEqual((res['status'], res['followups']), ('success', []),
+                         "Sa cellule ne suit personne : il ne voit pas les suivis des évangélistes")
+        res = self._as(self.leader, '/api/church/followup/detail', followup_id=self.f2.id)
+        self.assertEqual(res['code'], 'invalid')
 
     # ─── Cloisonnement par église ─────────────────────────────────────
 

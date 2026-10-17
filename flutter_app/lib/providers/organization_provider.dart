@@ -239,8 +239,8 @@ class OrganizationProvider extends ChangeNotifier {
   }
 
   // Reports
-  Future<Map<String, dynamic>> getFollowupReport(int evangelistId) async {
-    return await _api.getFollowupReport(evangelistId);
+  Future<Map<String, dynamic>> getFollowupReport(int? evangelistId, {int? cellId}) async {
+    return await _api.getFollowupReport(evangelistId, cellId: cellId);
   }
 
   // ─── Church Management (Super Admin) ──────────────────────────────
