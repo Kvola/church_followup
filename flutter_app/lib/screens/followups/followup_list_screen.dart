@@ -32,7 +32,7 @@ class _FollowupListScreenState extends State<FollowupListScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(auth.isEvangelist ? 'Mes suivis' : 'Suivis'),
+        title: Text(auth.isEvangelist ? 'Mes suivis' : auth.isCellLeader ? 'Suivis de ma cellule' : 'Suivis'),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -163,7 +163,8 @@ class _FollowupCard extends StatelessWidget {
     final state = data['state'] ?? '';
     final stateColor = AppColors.stateColor(state);
     final memberName = data['member_name'] ?? 'Inconnu';
-    final evangelistName = data['evangelist_name'] ?? '';
+    // Qui suit : l'évangéliste, ou la cellule pour un ancien membre.
+    final evangelistName = AppConstants.safeStr(data['followed_by_name'], AppConstants.safeStr(data['evangelist_name']));
     final weeksCompleted = data['current_week'] ?? data['week_count'] ?? 0;
     final durationWeeks = data['duration_weeks'] ?? 0;
     final avgScore = (data['average_score'] ?? 0).toDouble();

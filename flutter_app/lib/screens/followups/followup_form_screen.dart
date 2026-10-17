@@ -5,6 +5,7 @@ import '../../core/theme.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/followup_provider.dart';
 import '../../providers/member_provider.dart';
+import '../../providers/organization_provider.dart';
 import '../../widgets/common.dart';
 import 'followup_detail_screen.dart' show WeeksStepper;
 
@@ -23,6 +24,9 @@ class _FollowupFormScreenState extends State<FollowupFormScreen> {
   final _formKey = GlobalKey<FormState>();
   int? _selectedMemberId;
   int? _selectedEvangelistId;
+
+  /// Un ancien membre est suivi par une cellule de prière (proposée : la sienne).
+  int? _selectedCellId;
   int _durationWeeks = 4;
   bool _durationTouched = false;
   bool _isSaving = false;
@@ -34,7 +38,10 @@ class _FollowupFormScreenState extends State<FollowupFormScreen> {
     _durationWeeks = context.read<AuthProvider>().defaultFollowupWeeks;
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final auth = context.read<AuthProvider>();
-      if (!auth.isEvangelist) context.read<FollowupProvider>().loadEvangelists();
+      if (!auth.isEvangelist) {
+        context.read<FollowupProvider>().loadEvangelists();
+        context.read<OrganizationProvider>().loadCells();
+      }
       await context.read<MemberProvider>().loadAssignable();
       if (mounted && _selectedMemberId != null) _applyProposal(_selectedMemberId);
     });
@@ -42,7 +49,12 @@ class _FollowupFormScreenState extends State<FollowupFormScreen> {
 
   List<Map<String, dynamic>> _candidates(List<Map<String, dynamic>> loaded) {
     final initial = widget.initialMember;
-    final list = loaded.where((m) => m['id'] is int).toList();
+    // Un évangéliste ne suit que des nouvelles personnes : les anciens membres
+    // sont confiés à une cellule, par le responsable.
+    final evangelist = context.read<AuthProvider>().isEvangelist;
+    final list = loaded
+        .where((m) => m['id'] is int && !(evangelist && m['person_profile'] == 'old_member'))
+        .toList();
     if (initial != null && initial['id'] is int && !list.any((m) => m['id'] == initial['id'])) {
       list.insert(0, initial);
     }
@@ -58,7 +70,11 @@ class _FollowupFormScreenState extends State<FollowupFormScreen> {
 
   /// La durée proposée pour la personne (événement d'origine ou réglage de
   /// l'église) pré-remplit le choix, tant que l'évangéliste n'y a pas touché.
+  bool get _forCell => _member(_selectedMemberId)?['person_profile'] == 'old_member';
+
   void _applyProposal(int? memberId) {
+    final cell = _member(memberId)?['prayer_cell_id'];
+    setState(() => _selectedCellId = cell is int ? cell : null);
     final proposed = _member(memberId)?['proposed_followup_weeks'];
     if (!_durationTouched && proposed is int && proposed > 0) {
       setState(() => _durationWeeks = proposed.clamp(AppConstants.minFollowupWeeks, AppConstants.maxFollowupWeeks));
@@ -68,15 +84,20 @@ class _FollowupFormScreenState extends State<FollowupFormScreen> {
   Future<void> _save() async {
     final isEvangelist = context.read<AuthProvider>().isEvangelist;
     if (!_formKey.currentState!.validate()) return;
-    if (_selectedMemberId == null || (!isEvangelist && _selectedEvangelistId == null)) {
-      showErrorSnackbar(context, 'Veuillez choisir la personne et l\'évangéliste');
+    final forCell = _forCell;
+    if (_selectedMemberId == null ||
+        (forCell ? _selectedCellId == null : !isEvangelist && _selectedEvangelistId == null)) {
+      showErrorSnackbar(context, forCell
+          ? 'Choisissez la cellule qui suivra cet ancien membre'
+          : 'Veuillez choisir la personne et l\'évangéliste');
       return;
     }
 
     setState(() => _isSaving = true);
     final result = await context.read<FollowupProvider>().createFollowup({
       'member_id': _selectedMemberId,
-      if (!isEvangelist) 'evangelist_id': _selectedEvangelistId,
+      if (forCell) 'prayer_cell_id': _selectedCellId,
+      if (!forCell && !isEvangelist) 'evangelist_id': _selectedEvangelistId,
       'duration_weeks': _durationWeeks,
     });
     if (!mounted) return;
@@ -99,6 +120,8 @@ class _FollowupFormScreenState extends State<FollowupFormScreen> {
     final member = _member(_selectedMemberId);
     final proposedLabel = AppConstants.safeStr(member?['proposed_followup_label']);
     final members = _candidates(memberProvider.allMembers);
+    final forCell = _forCell;
+    final cells = context.watch<OrganizationProvider>().activeCells.where((c) => c['id'] is int).toList();
 
     return Scaffold(
       appBar: AppBar(title: const Text('Nouveau suivi')),
@@ -125,7 +148,8 @@ class _FollowupFormScreenState extends State<FollowupFormScreen> {
                                 value: m['id'] as int,
                                 child: Text(
                                   '${m['name'] ?? ''} ${m['first_name'] ?? ''}'.trim() +
-                                      (m['member_type'] == 'interrupted' ? ' — reprise' : ''),
+                                      (m['member_type'] == 'interrupted' ? ' — reprise' : '') +
+                                      (m['person_profile'] == 'old_member' ? ' — ancien membre' : ''),
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ))
@@ -139,7 +163,48 @@ class _FollowupFormScreenState extends State<FollowupFormScreen> {
                     ),
             ),
             const SizedBox(height: 12),
-            if (!isEvangelist) ...[
+            if (forCell) ...[
+              _section(
+                theme,
+                'Cellule qui suit',
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Un ancien membre est suivi par une cellule de prière : son responsable rédige '
+                      'les rapports et décide au terme.',
+                      style: theme.textTheme.bodySmall,
+                    ),
+                    const SizedBox(height: 8),
+                    DropdownButtonFormField<int>(
+                      key: ValueKey('cells-${cells.length}-$_selectedCellId'),
+                      isExpanded: true,
+                      decoration: const InputDecoration(
+                        hintText: 'Choisir une cellule',
+                        prefixIcon: Icon(Icons.groups_outlined),
+                      ),
+                      items: cells
+                          .map((c) => DropdownMenuItem(
+                                value: c['id'] as int,
+                                // Sans responsable qui puisse se connecter, personne ne suivrait.
+                                enabled: c['has_leader_account'] != false,
+                                child: Text(
+                                  c['has_leader_account'] == false
+                                      ? '${c['name'] ?? ''} — sans responsable connecté'
+                                      : '${c['name'] ?? ''}',
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ))
+                          .toList(),
+                      onChanged: (v) => setState(() => _selectedCellId = v),
+                      initialValue: cells.any((c) => c['id'] == _selectedCellId) ? _selectedCellId : null,
+                      validator: (_) => _selectedCellId == null ? 'Requis' : null,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+            ] else if (!isEvangelist) ...[
               _section(
                 theme,
                 'Évangéliste',

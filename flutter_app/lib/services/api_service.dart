@@ -4,18 +4,116 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../core/constants.dart';
 
+/// Ce qui a manqué : de là dépendent le message, l'icône, et si l'on peut réessayer.
+enum ApiErrorKind {
+  /// Pas de réseau, ou serveur injoignable.
+  offline,
+
+  /// Le serveur n'a pas répondu à temps.
+  timeout,
+
+  /// Connexion sécurisée impossible (certificat, heure du téléphone).
+  secure,
+
+  /// Le serveur est en maintenance, redémarre, ou a planté.
+  server,
+
+  /// Le service appelé n'existe pas sur ce serveur (versions désaccordées).
+  notFound,
+
+  /// Le serveur refuse : droits, session, rôle.
+  forbidden,
+
+  /// Trop de demandes, ou fichier trop gros.
+  limit,
+
+  /// Une réponse qui n'est pas celle d'un serveur Odoo (page HTML, proxy…).
+  badResponse,
+
+  /// Une décision du serveur, à montrer telle quelle (« Cellule introuvable »…).
+  refused,
+}
+
 class ApiException implements Exception {
   final String message;
   final int? statusCode;
-  final bool isNetwork;
+  final ApiErrorKind kind;
 
   /// Code d'erreur renvoyé par le serveur : `auth_required`, `forbidden`,
   /// `invalid`, `refused`, `duplicate`, `server`…
   final String? code;
 
-  ApiException(this.message, {this.statusCode, this.isNetwork = false, this.code});
+  ApiException(this.message, {this.statusCode, bool isNetwork = false, this.code, ApiErrorKind? kind})
+      : kind = kind ?? (isNetwork ? ApiErrorKind.offline : ApiErrorKind.refused);
 
   bool get isSessionExpired => code == 'auth_required';
+
+  /// Le réseau est en cause : on peut réessayer quand il revient.
+  bool get isNetwork => kind == ApiErrorKind.offline || kind == ApiErrorKind.timeout;
+
+  static const offlineMessage =
+      'Pas de connexion au serveur. Vérifiez vos données mobiles ou le Wi-Fi, puis réessayez.';
+  static const timeoutMessage =
+      'Le serveur ne répond pas (délai dépassé). Vérifiez votre connexion, puis réessayez.';
+  static const unsureWriteMessage =
+      'Le serveur n\'a pas répondu à temps : votre saisie a peut-être été enregistrée. '
+      'Actualisez pour le vérifier avant de la refaire.';
+  static const secureMessage =
+      'Connexion sécurisée impossible. Vérifiez la date et l\'heure du téléphone, puis réessayez.';
+  static const badResponseMessage =
+      'Le serveur a répondu de façon inattendue (maintenance en cours ?). Réessayez dans quelques minutes.';
+  static const serverMessage =
+      'Le serveur a rencontré une erreur. Réessayez ; si cela se reproduit, prévenez l\'administrateur.';
+
+  /// Le message d'un statut HTTP, en mots de tous les jours, avec son code pour le support.
+  static ApiException forStatus(int status) {
+    final (ApiErrorKind kind, String text) = switch (status) {
+      401 || 403 => (ApiErrorKind.forbidden,
+          'Accès refusé par le serveur. Reconnectez-vous ; si cela continue, prévenez votre responsable.'),
+      404 || 405 => (ApiErrorKind.notFound,
+          'Ce service est introuvable sur le serveur : l\'application et le serveur ne sont pas à la même '
+              'version. Mettez l\'application à jour, ou prévenez l\'administrateur.'),
+      408 || 504 || 524 => (ApiErrorKind.timeout,
+          'Le serveur met trop de temps à répondre. Réessayez dans un instant.'),
+      413 => (ApiErrorKind.limit, 'Le fichier envoyé est trop volumineux pour le serveur. Découpez-le, puis réessayez.'),
+      429 => (ApiErrorKind.limit, 'Trop de demandes en peu de temps. Patientez une minute, puis réessayez.'),
+      502 || 503 => (ApiErrorKind.server,
+          'Le serveur est momentanément indisponible (maintenance ou redémarrage). Réessayez dans quelques minutes.'),
+      >= 500 => (ApiErrorKind.server, serverMessage),
+      _ => (ApiErrorKind.badResponse, 'Le serveur a refusé la demande. Mettez l\'application à jour, puis réessayez.'),
+    };
+    return ApiException('$text (erreur $status)', statusCode: status, kind: kind);
+  }
+
+  /// Une panne de transport (sans réponse du serveur), selon son texte.
+  static ApiException forTransport(Object error) {
+    final text = error.toString();
+    if (text.contains('Handshake') || text.contains('CERTIFICATE') || text.contains('certificate')) {
+      return ApiException(secureMessage, kind: ApiErrorKind.secure);
+    }
+    return ApiException(offlineMessage, kind: ApiErrorKind.offline);
+  }
+
+  /// Une erreur JSON-RPC d'Odoo : le message n'est montré que s'il s'adresse à l'utilisateur.
+  static ApiException forRpcError(dynamic error) {
+    final data = error is Map ? error['data'] : null;
+    final name = data is Map ? '${data['name'] ?? ''}' : '';
+    final message = data is Map ? '${data['message'] ?? ''}' : '';
+    if (name.contains('SessionExpired')) {
+      return ApiException('Session expirée : veuillez vous reconnecter.', code: 'auth_required',
+          kind: ApiErrorKind.forbidden);
+    }
+    if (name.contains('AccessDenied') || name.contains('AccessError')) {
+      return ApiException('Action non autorisée.', kind: ApiErrorKind.forbidden);
+    }
+    if (name.contains('NotFound')) return forStatus(404);
+    if ((name.contains('UserError') || name.contains('ValidationError')) && message.isNotEmpty) {
+      return ApiException(message, kind: ApiErrorKind.refused);
+    }
+    // Tout le reste est technique (trace Python) : on ne le montre pas.
+    if (kDebugMode) debugPrint('Erreur serveur : $name $message');
+    return ApiException(serverMessage, kind: ApiErrorKind.server);
+  }
 
   @override
   String toString() => message;
@@ -71,9 +169,20 @@ class ApiService {
 
   bool get hasSession => _token != null;
 
+  /// Les routes qui ne font que lire : elles seules sont redemandées
+  /// d'office après une coupure. Une écriture n'est jamais rejouée à l'aveugle :
+  /// le serveur a pu l'enregistrer avant que la réponse se perde.
+  static bool _isRead(String endpoint) {
+    const writes = ['create', 'save', 'update', 'action', 'run', 'set_church', 'switch', 'logout',
+        'request_otp', 'verify_otp', 'register', 'unregister', 'share', 'delete'];
+    final last = endpoint.split('/').where((p) => p.isNotEmpty).toList();
+    return !last.any((part) => writes.any(part.contains));
+  }
+
   Future<dynamic> call(String endpoint, Map<String, dynamic> params,
       {int retries = 0, Duration? timeout}) async {
     final url = Uri.parse('$_baseUrl$endpoint');
+    final read = _isRead(endpoint);
 
     final body = jsonEncode({
       'jsonrpc': '2.0',
@@ -82,8 +191,17 @@ class ApiService {
       'params': params,
     });
 
+    Future<dynamic> retryOr(ApiException failure) async {
+      if (read && retries < AppConstants.maxRetries) {
+        await Future.delayed(Duration(seconds: retries + 1));
+        return call(endpoint, params, retries: retries + 1, timeout: timeout);
+      }
+      throw failure;
+    }
+
+    final http.Response response;
     try {
-      final response = await _client
+      response = await _client
           .post(url, headers: {
             'Content-Type': 'application/json',
             // La session voyage dans l'en-tête, jamais dans le corps : un
@@ -91,59 +209,51 @@ class ApiService {
             if (_token != null) 'Authorization': 'Bearer $_token',
           }, body: body)
           .timeout(timeout ?? AppConstants.requestTimeout);
-
-      if (response.statusCode != 200) {
-        throw ApiException('Erreur serveur (${response.statusCode})', statusCode: response.statusCode);
-      }
-
-      final dynamic decoded;
-      try {
-        decoded = jsonDecode(response.body);
-      } on FormatException {
-        throw ApiException('Réponse invalide du serveur', statusCode: response.statusCode);
-      }
-
-      if (decoded['error'] != null) {
-        final error = decoded['error'];
-        final msg = error['data']?['message'] ?? error['message'] ?? 'Erreur inconnue';
-        throw ApiException(msg);
-      }
-
-      final result = decoded['result'];
-      if (result == null) throw ApiException('Réponse vide du serveur');
-      if (result is Map && result['code'] == 'auth_required' && _token != null) {
-        final message = (result['message'] ?? 'Session expirée : veuillez vous reconnecter.').toString();
-        onSessionExpired?.call(message);
-        throw ApiException(message, code: 'auth_required');
-      }
-      return result;
     } on TimeoutException {
-      if (retries < AppConstants.maxRetries) {
-        await Future.delayed(Duration(seconds: retries + 1));
-        return call(endpoint, params, retries: retries + 1);
-      }
-      throw ApiException('Le serveur ne répond pas. Vérifiez votre connexion.', isNetwork: true);
-    } on http.ClientException catch (e) {
-      if (retries < AppConstants.maxRetries) {
-        await Future.delayed(Duration(seconds: retries + 1));
-        return call(endpoint, params, retries: retries + 1);
-      }
-      throw ApiException('Erreur réseau: ${e.message}', isNetwork: true);
-    } on ApiException {
-      rethrow;
+      return retryOr(ApiException(read ? ApiException.timeoutMessage : ApiException.unsureWriteMessage,
+          kind: ApiErrorKind.timeout));
     } catch (e) {
-      final msg = e.toString();
-      final isRetryable = msg.contains('SocketException') || msg.contains('Connection');
-      if (isRetryable && retries < AppConstants.maxRetries) {
-        await Future.delayed(Duration(seconds: retries + 1));
-        return call(endpoint, params, retries: retries + 1);
-      }
-      if (isRetryable) {
-        throw ApiException('Connexion impossible. Vérifiez votre réseau.', isNetwork: true);
-      }
-      debugPrint('API error on $endpoint: $e');
-      throw ApiException('Erreur inattendue');
+      // ClientException (web : « XMLHttpRequest error »), SocketException,
+      // HandshakeException… : aucune réponse du serveur.
+      final failure = ApiException.forTransport(e);
+      if (failure.kind == ApiErrorKind.secure) throw failure;
+      return retryOr(failure);
     }
+
+    if (response.statusCode != 200) {
+      final failure = ApiException.forStatus(response.statusCode);
+      // Maintenance ou passerelle : souvent passager, on retente une lecture.
+      if (const {502, 503, 504}.contains(response.statusCode)) return retryOr(failure);
+      throw failure;
+    }
+
+    final dynamic decoded;
+    try {
+      decoded = jsonDecode(response.body);
+    } on FormatException {
+      // Une page HTML (maintenance, portail Wi-Fi, proxy) à la place du JSON.
+      throw ApiException(ApiException.badResponseMessage, statusCode: 200, kind: ApiErrorKind.badResponse);
+    }
+    if (decoded is! Map) {
+      throw ApiException(ApiException.badResponseMessage, kind: ApiErrorKind.badResponse);
+    }
+
+    if (decoded['error'] != null) {
+      final failure = ApiException.forRpcError(decoded['error']);
+      if (failure.isSessionExpired && _token != null) onSessionExpired?.call(failure.message);
+      throw failure;
+    }
+
+    final result = decoded['result'];
+    if (result == null) {
+      throw ApiException(ApiException.badResponseMessage, kind: ApiErrorKind.badResponse);
+    }
+    if (result is Map && result['code'] == 'auth_required' && _token != null) {
+      final message = (result['message'] ?? 'Session expirée : veuillez vous reconnecter.').toString();
+      onSessionExpired?.call(message);
+      throw ApiException(message, code: 'auth_required', kind: ApiErrorKind.forbidden);
+    }
+    return result;
   }
 
   // ─── Auth ──────────────────────────────────────────────────────────
@@ -267,6 +377,7 @@ class ApiService {
     int followupId,
     String action, {
     int? evangelistId,
+    int? transferCellId,
     int? cellId,
     int? groupId,
     int? weeks,
@@ -279,6 +390,7 @@ class ApiService {
       'action': action,
     };
     if (evangelistId != null) params['transferred_to_id'] = evangelistId;
+    if (transferCellId != null) params['transferred_to_cell_id'] = transferCellId;
     if (cellId != null) params['target_cell_id'] = cellId;
     if (groupId != null) params['target_age_group_id'] = groupId;
     if (weeks != null) params['weeks'] = weeks;
@@ -541,8 +653,10 @@ class ApiService {
 
   // ─── Reports ──────────────────────────────────────────────────────
 
-  Future<Map<String, dynamic>> getFollowupReport(int evangelistId) async {
-    final result = await call('/api/church/report/followup', {'evangelist_id': evangelistId});
+  /// Le rapport d'un évangéliste, ou d'une cellule (`cellId`) qui suit des anciens membres.
+  Future<Map<String, dynamic>> getFollowupReport(int? evangelistId, {int? cellId}) async {
+    final result = await call('/api/church/report/followup',
+        cellId != null ? {'prayer_cell_id': cellId} : {'evangelist_id': evangelistId});
     return _successMap(result, 'report');
   }
 }

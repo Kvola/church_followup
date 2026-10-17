@@ -111,6 +111,7 @@ class FollowupProvider extends ChangeNotifier {
     int followupId,
     String action, {
     int? evangelistId,
+    int? transferCellId,
     int? cellId,
     int? groupId,
     int? weeks,
@@ -123,6 +124,7 @@ class FollowupProvider extends ChangeNotifier {
         followupId,
         action,
         evangelistId: evangelistId,
+        transferCellId: transferCellId,
         cellId: cellId,
         groupId: groupId,
         weeks: weeks,
