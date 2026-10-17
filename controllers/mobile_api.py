@@ -15,6 +15,7 @@ from odoo.tools.misc import consteq, hmac as odoo_hmac
 from odoo.addons.otp_auth.tools.client_ip import client_ip
 
 from ..models.church_import import XLSX_MIMETYPE, norm_key
+from ..models.church_followup import expected_follower
 from ..models.church_member import PERSON_PROFILES
 from ..models.church_mobile_user import phone_key
 from ..models.church_tools import ACTIVE_FOLLOWUP_STATES, OTP_SCOPE
@@ -40,6 +41,8 @@ _TOO_MANY = 'Trop de tentatives. Réessayez dans quelques minutes.'
 
 MANAGERS = ('super_admin', 'manager')
 ALL_ROLES = ('super_admin', 'manager', 'evangelist', 'cell_leader', 'group_leader')
+# Qui suit : l'évangéliste (nouvelles personnes), le responsable de cellule (anciens membres).
+FOLLOWUP_ROLES = ('super_admin', 'manager', 'evangelist', 'cell_leader')
 
 
 class ApiInputError(Exception):
@@ -222,7 +225,10 @@ class ChurchMobileApi(http.Controller):
     def _member_domain(self, user, kwargs):
         domain = self._church_domain(user, kwargs)
         if user.role == 'cell_leader':
-            domain.append(('prayer_cell_id', '=', user.prayer_cell_id.id))
+            # Sa cellule, et les anciens membres que sa cellule suit.
+            domain += ['|', ('prayer_cell_id', '=', user.prayer_cell_id.id),
+                       ('followup_ids', 'any', [('prayer_cell_id', '=', user.prayer_cell_id.id or 0),
+                                                ('state', 'in', ACTIVE_FOLLOWUP_STATES)])]
         elif user.role == 'group_leader':
             domain.append(('age_group_id', '=', user.age_group_id.id))
         return domain
@@ -236,7 +242,10 @@ class ChurchMobileApi(http.Controller):
                     or user.evangelist_id in followups.evangelist_id
                     or not followups)
         if user.role == 'cell_leader':
-            return member.prayer_cell_id == user.prayer_cell_id
+            return bool(user.prayer_cell_id) and (
+                member.prayer_cell_id == user.prayer_cell_id
+                or user.prayer_cell_id in member.followup_ids.filtered(
+                    lambda f: f.state in ACTIVE_FOLLOWUP_STATES).prayer_cell_id)
         if user.role == 'group_leader':
             return member.age_group_id == user.age_group_id
         return False
@@ -246,9 +255,25 @@ class ChurchMobileApi(http.Controller):
         if user.role == 'evangelist':
             if followup.evangelist_id != user.evangelist_id:
                 raise ApiInputError('Suivi introuvable.')
+        elif user.role == 'cell_leader':
+            # Le responsable de cellule : les suivis que SA cellule porte, rien d'autre.
+            if not user.prayer_cell_id or followup.prayer_cell_id != user.prayer_cell_id:
+                raise ApiInputError('Suivi introuvable.')
         elif not self._is_manager(user):
             raise ApiInputError('Suivi introuvable.')
         return followup
+
+    @staticmethod
+    def _follower_json(f):
+        """Qui suit : l'évangéliste, ou la cellule (pour un ancien membre)."""
+        return {
+            'evangelist_id': f.evangelist_id.id or False,
+            'evangelist_name': f.evangelist_id.name or '',
+            'prayer_cell_id': f.prayer_cell_id.id or False,
+            'prayer_cell_name': f.prayer_cell_id.name or '',
+            'followed_by': f.followed_by or '',
+            'followed_by_name': f.followed_by_name or '',
+        }
 
     # ─── Authentication ───────────────────────────────────────────────
 
@@ -528,6 +553,9 @@ class ChurchMobileApi(http.Controller):
         if user.role == 'evangelist':
             followup_domain.append(('evangelist_id', '=', user.evangelist_id.id))
             evangelist_domain.append(('id', '=', user.evangelist_id.id))
+        elif user.role == 'cell_leader':
+            followup_domain.append(('prayer_cell_id', '=', user.prayer_cell_id.id or 0))
+            evangelist_domain.append(('id', '=', 0))
         elif not self._is_manager(user):
             followup_domain.append(('id', '=', 0))
             evangelist_domain.append(('id', '=', 0))
@@ -559,6 +587,19 @@ class ChurchMobileApi(http.Controller):
                 'total_count': len(ev_followups),
                 'integration_rate': s['rate'],
             })
+        # Les cellules qui suivent des anciens membres, comme les évangélistes.
+        cell_stats = []
+        for cell in followups.prayer_cell_id.sorted('name'):
+            cell_followups = followups.filtered(lambda f: f.prayer_cell_id == cell)
+            s = stats(cell_followups)
+            cell_stats.append({
+                'id': cell.id,
+                'name': cell.name,
+                'active_count': s['active'],
+                'integrated_count': s['integrated'],
+                'total_count': len(cell_followups),
+                'integration_rate': s['rate'],
+            })
 
         return {
             'status': 'success',
@@ -573,6 +614,9 @@ class ChurchMobileApi(http.Controller):
                 'total_abandoned': global_stats['abandoned'],
                 'integration_rate': global_stats['rate'],
                 'evangelist_stats': evangelist_stats,
+                'cell_stats': cell_stats,
+                'active_by_cell': len(followups.filtered(
+                    lambda f: f.followed_by == 'cell' and f.state in ACTIVE_FOLLOWUP_STATES)),
             },
         }
 
@@ -770,7 +814,9 @@ class ChurchMobileApi(http.Controller):
         return [{
             'followup_id': f.id,
             'reference': f.name,
-            'evangelist_name': f.evangelist_id.name,
+            'evangelist_name': f.evangelist_id.name or '',
+            'followed_by': f.followed_by or '',
+            'followed_by_name': f.followed_by_name or '',
             'start_date': str(f.start_date) if f.start_date else '',
             'end_date': str(f.end_date) if f.end_date else '',
             'duration_weeks': f.duration_weeks,
@@ -849,6 +895,9 @@ class ChurchMobileApi(http.Controller):
             'week_number': w.week_number,
             'sunday_attendance': w.sunday_attendance,
             'roll_call_present': w.roll_call_present,
+            'cell_attendance': w.cell_attendance,
+            'cell_roll_call_present': w.cell_roll_call_present,
+            'reported_by_name': w.reported_by_id.name or '',
             'call_made': w.call_made,
             'visit_made': w.visit_made,
             'spiritual_state': w.spiritual_state or '',
@@ -860,12 +909,15 @@ class ChurchMobileApi(http.Controller):
         return data
 
     @http.route('/api/church/followups', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
-    @church_endpoint(roles=('super_admin', 'manager', 'evangelist'))
+    @church_endpoint(roles=FOLLOWUP_ROLES)
     def get_followups(self, user, **kwargs):
-        """Liste des suivis (un évangéliste ne voit que les siens)."""
+        """Liste des suivis (un évangéliste ne voit que les siens, un responsable de
+        cellule ceux de sa cellule)."""
         domain = self._church_domain(user, kwargs)
         if user.role == 'evangelist':
             domain.append(('evangelist_id', '=', user.evangelist_id.id))
+        elif user.role == 'cell_leader':
+            domain.append(('prayer_cell_id', '=', user.prayer_cell_id.id or 0))
         state = _choice('church.followup', 'state', kwargs.get('state'), 'état')
         if state:
             domain.append(('state', '=', state))
@@ -876,8 +928,7 @@ class ChurchMobileApi(http.Controller):
                 'id': f.id,
                 'name': f.name,
                 'reference': f.name,
-                'evangelist_id': f.evangelist_id.id,
-                'evangelist_name': f.evangelist_id.name,
+                **self._follower_json(f),
                 'member_id': f.member_id.id,
                 'member_name': f.member_id.display_name_custom,
                 'person_profile': f.person_profile,
@@ -903,20 +954,24 @@ class ChurchMobileApi(http.Controller):
     @church_endpoint(roles=('super_admin', 'manager', 'evangelist'))
     def create_followup(self, user, **kwargs):
         """Créer un nouveau suivi."""
-        if user.role == 'evangelist':
+        member = self._get('church.member', user, _int(kwargs, 'member_id', True, 'membre'), 'Membre')
+        vals = {'church_id': member.church_id.id, 'member_id': member.id}
+        if expected_follower(member) == 'cell':
+            # Un ancien membre est confié à une cellule : celle choisie, sinon la sienne.
+            if user.role == 'evangelist':
+                raise ApiInputError("%s est un ancien membre : son suivi se confie à une cellule de "
+                                    "prière, par le responsable." % member.display_name_custom)
+            cell_id = self._ref('church.prayer.cell', user, kwargs, 'prayer_cell_id', 'Cellule')
+            if cell_id:
+                vals['prayer_cell_id'] = cell_id
+        elif user.role == 'evangelist':
             if not user.evangelist_id:
                 raise ApiInputError('Votre compte n\'est relié à aucune fiche d\'évangéliste.')
-            evangelist_id = user.evangelist_id.id
+            vals['evangelist_id'] = user.evangelist_id.id
         else:
-            evangelist_id = self._ref('church.evangelist', user, kwargs, 'evangelist_id', 'Évangéliste')
-            if not evangelist_id:
+            vals['evangelist_id'] = self._ref('church.evangelist', user, kwargs, 'evangelist_id', 'Évangéliste')
+            if not vals['evangelist_id']:
                 raise ApiInputError('Évangéliste requis.')
-        member = self._get('church.member', user, _int(kwargs, 'member_id', True, 'membre'), 'Membre')
-        vals = {
-            'church_id': member.church_id.id,
-            'evangelist_id': evangelist_id,
-            'member_id': member.id,
-        }
         # L'app envoie `duration_weeks` ; `total_weeks` reste accepté.
         duration = _int(kwargs, 'duration_weeks', label='durée') or _int(kwargs, 'total_weeks', label='durée')
         if duration:
@@ -926,12 +981,13 @@ class ChurchMobileApi(http.Controller):
             'status': 'success',
             'success': True,
             'message': 'Suivi créé',
-            'followup': {'id': followup.id, 'name': followup.name, 'duration_weeks': followup.duration_weeks,
-                         'duration_origin': followup.duration_origin},
+            'followup': dict(self._follower_json(followup), id=followup.id, name=followup.name,
+                             duration_weeks=followup.duration_weeks,
+                             duration_origin=followup.duration_origin),
         }
 
     @http.route('/api/church/followup/detail', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
-    @church_endpoint(roles=('super_admin', 'manager', 'evangelist'))
+    @church_endpoint(roles=FOLLOWUP_ROLES)
     def get_followup_detail(self, user, **kwargs):
         """Détail d'un suivi."""
         f = self._get_followup(user, kwargs)
@@ -941,7 +997,10 @@ class ChurchMobileApi(http.Controller):
             'followup': {
                 'id': f.id,
                 'reference': f.name,
-                'evangelist_name': f.evangelist_id.name,
+                **self._follower_json(f),
+                # Au terme, la cellule qui a suivi est proposée pour intégrer.
+                'target_cell_id': f.target_cell_id.id or False,
+                'target_age_group_id': f.target_age_group_id.id or False,
                 'member_name': f.member_id.display_name_custom,
                 'person_profile': f.person_profile,
                 'person_profile_label': dict(PERSON_PROFILES).get(f.person_profile, ''),
@@ -965,7 +1024,7 @@ class ChurchMobileApi(http.Controller):
         }
 
     @http.route('/api/church/followup/week/save', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
-    @church_endpoint(roles=('super_admin', 'manager', 'evangelist'))
+    @church_endpoint(roles=FOLLOWUP_ROLES)
     def save_followup_week(self, user, **kwargs):
         """Enregistrer un rapport hebdomadaire."""
         followup = self._get_followup(user, kwargs)
@@ -982,7 +1041,10 @@ class ChurchMobileApi(http.Controller):
             'spiritual_state': _choice('church.followup.week', 'spiritual_state',
                                        kwargs.get('spiritual_state'), 'état spirituel'),
             'notes': _text(kwargs, 'notes') or False,
+            'reported_by_id': user.id,
         }
+        if 'cell_attendance' in kwargs:
+            vals['cell_attendance'] = _bool(kwargs, 'cell_attendance')
         Week = request.env['church.followup.week'].sudo()
         week = Week.search([('followup_id', '=', followup.id), ('week_number', '=', week_number)], limit=1)
         if week:
@@ -992,7 +1054,7 @@ class ChurchMobileApi(http.Controller):
         return {'status': 'success', 'message': 'Rapport enregistré', 'week': {'id': week.id, 'score': week.score}}
 
     @http.route('/api/church/followup/action', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
-    @church_endpoint(roles=('super_admin', 'manager', 'evangelist'))
+    @church_endpoint(roles=FOLLOWUP_ROLES)
     def followup_action(self, user, **kwargs):
         """Effectuer une action sur un suivi (intégrer, abandonner, etc.)."""
         followup = self._get_followup(user, kwargs)
@@ -1013,6 +1075,13 @@ class ChurchMobileApi(http.Controller):
                 note=_text(kwargs, 'note'))
         elif action == 'extend':
             followup.action_extend(weeks=_int(kwargs, 'weeks', label='semaines à ajouter'))
+        elif action == 'transfer' and followup.followed_by == 'cell':
+            target_id = self._ref('church.prayer.cell', user, kwargs, 'transferred_to_cell_id',
+                                  'Cellule destinataire')
+            if not target_id:
+                raise ApiInputError('Cellule destinataire requise.')
+            followup.write({'transferred_to_cell_id': target_id})
+            followup.action_transfer()
         elif action == 'transfer':
             target_id = self._ref('church.evangelist', user, kwargs, 'transferred_to_id', 'Évangéliste destinataire')
             if not target_id:
@@ -1461,28 +1530,40 @@ class ChurchMobileApi(http.Controller):
     # ─── Report data ──────────────────────────────────────────────────
 
     @http.route('/api/church/report/followup', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
-    @church_endpoint(roles=('super_admin', 'manager', 'evangelist'))
+    @church_endpoint(roles=FOLLOWUP_ROLES)
     def get_followup_report(self, user, **kwargs):
-        """Données du rapport de suivi par évangéliste."""
-        evangelist = self._get('church.evangelist', user,
-                               _int(kwargs, 'evangelist_id', True, 'évangéliste'), 'Évangéliste')
-        if user.role == 'evangelist' and evangelist != user.evangelist_id:
-            raise ApiInputError('Évangéliste introuvable.')
-        followups = request.env['church.followup'].sudo().search(
-            [('evangelist_id', '=', evangelist.id)], order='create_date desc')
+        """Rapport de suivi d'un évangéliste (`evangelist_id`) ou d'une cellule (`prayer_cell_id`)."""
+        if _int(kwargs, 'prayer_cell_id', label='cellule'):
+            cell = self._get('church.prayer.cell', user, _int(kwargs, 'prayer_cell_id'), 'Cellule')
+            if user.role == 'evangelist' or (user.role == 'cell_leader' and cell != user.prayer_cell_id):
+                raise ApiInputError('Cellule introuvable.')
+            followups = request.env['church.followup'].sudo().search(
+                [('prayer_cell_id', '=', cell.id)], order='create_date desc')
+            who = {'name': cell.name, 'phone': cell.leader_phone or '', 'kind': 'cell'}
+        else:
+            evangelist = self._get('church.evangelist', user,
+                                   _int(kwargs, 'evangelist_id', True, 'évangéliste'), 'Évangéliste')
+            if user.role == 'cell_leader' or (user.role == 'evangelist' and evangelist != user.evangelist_id):
+                raise ApiInputError('Évangéliste introuvable.')
+            followups = request.env['church.followup'].sudo().search(
+                [('evangelist_id', '=', evangelist.id)], order='create_date desc')
+            who = {'name': evangelist.name, 'phone': evangelist.phone or '', 'kind': 'evangelist'}
+        integrated = len(followups.filtered(lambda f: f.state == 'integrated'))
+        abandoned = len(followups.filtered(lambda f: f.state == 'abandoned'))
+        summary = dict(who, **{
+            'total': len(followups),
+            'active': len(followups.filtered(lambda f: f.state in ACTIVE_FOLLOWUP_STATES)),
+            'integrated': integrated,
+            'abandoned': abandoned,
+            'extended': len(followups.filtered(lambda f: f.state == 'extended')),
+            'rate': round(integrated / (integrated + abandoned) * 100, 1) if integrated + abandoned else 0,
+        })
         return {
             'status': 'success',
             'report': {
-                'evangelist': {
-                    'name': evangelist.name,
-                    'phone': evangelist.phone or '',
-                    'total': len(followups),
-                    'active': len(followups.filtered(lambda f: f.state in ACTIVE_FOLLOWUP_STATES)),
-                    'integrated': len(followups.filtered(lambda f: f.state == 'integrated')),
-                    'abandoned': len(followups.filtered(lambda f: f.state == 'abandoned')),
-                    'extended': len(followups.filtered(lambda f: f.state == 'extended')),
-                    'rate': round(evangelist.integration_rate, 1),
-                },
+                # `evangelist` : la clé que lisent les apps déjà installées.
+                'evangelist': summary,
+                'follower': summary,
                 'followups': [{
                     'name': f.name,
                     'duration_weeks': f.duration_weeks,
@@ -1495,6 +1576,7 @@ class ChurchMobileApi(http.Controller):
                     'weeks': [{
                         'week_number': w.week_number,
                         'sunday_attendance': w.sunday_attendance,
+                        'cell_attendance': w.cell_attendance,
                         'call_made': w.call_made,
                         'visit_made': w.visit_made,
                         'spiritual_state': w.spiritual_state or '',

@@ -83,6 +83,8 @@
                                     <th>Cellule</th>
                                     <th>Responsable</th>
                                     <th>Membres</th>
+                                    <th>Anciens membres suivis</th>
+                                    <th>Réintégrés</th>
                                     <th>Jour</th>
                                 </tr>
                             </thead>
@@ -92,6 +94,8 @@
                                         <td><t t-esc="cell.name"/></td>
                                         <td><t t-esc="cell.leader_name or '-'"/></td>
                                         <td><t t-esc="cell.member_count"/></td>
+                                        <td><t t-esc="cell.active_followup_count"/></td>
+                                        <td><t t-esc="cell.integrated_followup_count"/></td>
                                         <td><t t-esc="dict(cell._fields['meeting_day'].selection).get(cell.meeting_day, '-')"/></td>
                                     </tr>
                                 </t>

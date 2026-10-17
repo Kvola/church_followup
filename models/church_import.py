@@ -29,6 +29,7 @@ from psycopg2 import IntegrityError
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
 
+from .church_followup import expected_follower
 from .church_member import name_tokens
 from .church_tools import MAX_PROPOSED_WEEKS
 
@@ -138,6 +139,10 @@ class ImportSpec:
     def create_vals(self, values):
         """Ce qu'on ne pose qu'à la création (jamais pour compléter une fiche)."""
         return {}
+
+    def validate(self, values):
+        """Les incohérences d'une ligne (entre ses colonnes), en phrases."""
+        return []
 
     def after_write(self, env, church, record, values, created, ctx, row):
         """Ce qui suit l'écriture (compte du responsable, suivi…). Peut lever."""
@@ -399,8 +404,9 @@ class ToFollowImport(PersonImport):
     kind = 'to_follow'
     label = 'Personnes à suivre'
     sheet = 'A suivre'
-    intro = ("Les personnes à suivre : nouvelles personnes ou anciens membres repris en suivi. "
-             "Avec un évangéliste, le suivi démarre ; sans, la personne attend dans « À attribuer ».")
+    intro = ("Les personnes à suivre. Une nouvelle personne est suivie par un évangéliste, un ancien "
+             "membre par une cellule de prière. Avec l'un ou l'autre, le suivi démarre ; sans, la "
+             "personne attend dans « À attribuer ».")
 
     @property
     def columns(self):
@@ -414,7 +420,12 @@ class ToFollowImport(PersonImport):
                 Column('evangelist_id', 'Évangéliste', kind='choice', width=24,
                        choices=_church_names('church.evangelist', lambda r: r.phone or r.id),
                        example='Awa Koné',
-                       help="Facultatif. Indiqué : le suivi démarre. Vide : « À attribuer »."),
+                       help="Nouvelles personnes seulement. Indiqué : le suivi démarre. Vide : « À attribuer »."),
+                Column('prayer_cell_id', 'Cellule qui suit', kind='choice', width=26,
+                       choices=_church_names('church.prayer.cell', lambda r: r.meeting_location or r.id),
+                       example='Cellule Angré 8e tranche',
+                       help="Anciens membres seulement. Indiquée : le suivi démarre avec cette cellule. "
+                            "Vide : « À attribuer » (sa cellule y sera proposée)."),
                 Column('duration_weeks', 'Durée du suivi (semaines)', kind='int', minimum=1,
                        maximum=MAX_PROPOSED_WEEKS, width=14, example='6',
                        help="Facultatif : la durée de l'église s'applique (1 à %d)." % MAX_PROPOSED_WEEKS),
@@ -426,9 +437,18 @@ class ToFollowImport(PersonImport):
         vals = super().to_vals(env, church, values, row, ctx)
         # Le profil, le statut et le référent se décident à la création ou au suivi,
         # jamais en « complétant » une fiche.
-        for key in ('person_profile', 'evangelist_id', 'duration_weeks', 'start_date'):
+        for key in ('person_profile', 'evangelist_id', 'prayer_cell_id', 'duration_weeks', 'start_date'):
             vals.pop(key, None)
         return vals
+
+    def validate(self, values):
+        if values.get('person_profile') == 'old_member' and values.get('evangelist_id'):
+            return [_("un ancien membre est suivi par une cellule de prière, pas par un évangéliste "
+                      "(remplissez « Cellule qui suit »).")]
+        if values.get('person_profile') != 'old_member' and values.get('prayer_cell_id'):
+            return [_("une nouvelle personne est suivie par un évangéliste, pas par une cellule "
+                      "(remplissez « Évangéliste »).")]
+        return []
 
     def create_vals(self, values):
         return {'person_profile': values.get('person_profile') or 'new', 'member_type': 'new'}
@@ -439,16 +459,26 @@ class ToFollowImport(PersonImport):
                 lambda f: f.state in ('in_progress', 'extended')):
             ctx['already'].append(member.display_name_custom)
             return
-        evangelist = env['church.evangelist'].browse(values['evangelist_id']) if values.get('evangelist_id') else None
-        if evangelist:
-            vals = {'church_id': church.id, 'evangelist_id': evangelist.id, 'member_id': member.id,
-                    'start_date': values.get('start_date') or fields.Date.context_today(member)}
+        # Qui suit dépend du profil de la personne (déjà connue : le sien, pas celui du fichier).
+        if expected_follower(member) == 'cell':
+            if values.get('evangelist_id'):
+                raise UserError(_("%s est un ancien membre : son suivi se confie à une cellule de prière.")
+                                % member.display_name_custom)
+            follower = {'prayer_cell_id': values['prayer_cell_id']} if values.get('prayer_cell_id') else None
+        else:
+            if values.get('prayer_cell_id'):
+                raise UserError(_("%s est une nouvelle personne : son suivi se confie à un évangéliste.")
+                                % member.display_name_custom)
+            follower = {'evangelist_id': values['evangelist_id']} if values.get('evangelist_id') else None
+        if follower:
+            vals = dict(follower, church_id=church.id, member_id=member.id,
+                        start_date=values.get('start_date') or fields.Date.context_today(member))
             if values.get('duration_weeks'):
                 vals['duration_weeks'] = values['duration_weeks']
             env['church.followup'].create(vals)
             ctx['started'] += 1
             return
-        # Sans évangéliste : la personne attend qu'on lui en confie un.
+        # Sans évangéliste ni cellule : la personne attend qu'on la confie.
         changes = {}
         if member.member_type not in ('new', 'interrupted'):  # un suivi interrompu y est déjà
             changes['member_type'] = 'new'
@@ -857,6 +887,10 @@ class ChurchImport(models.AbstractModel):
                     errors.append(_("Ligne %(row)s — %(col)s : %(msg)s", row=row, col=column.header, msg=e))
                     row_ok = False
             if not row_ok:
+                continue
+            problems = spec.validate(values)
+            if problems:
+                errors.extend(_("Ligne %(row)s : %(msg)s", row=row, msg=msg) for msg in problems)
                 continue
             identity = spec.identity(values)
             if identity in seen:
