@@ -17,11 +17,13 @@ const demoInvitation = 'Bonjour Fatou Cissé,\n\n'
     '3. Recopiez le code reçu par WhatsApp ou SMS.';
 
 Map<String, dynamic> _week(int n, {bool culte = false, bool pointe = false, bool appel = false,
-        bool visite = false, String etat = 'good', int score = 0, String notes = ''}) =>
+        bool visite = false, String etat = 'good', int score = 0, String notes = '',
+        bool cellule = false, String par = ''}) =>
     {
       'id': n, 'week_number': n, 'date': '2026-09-${(n * 7 + 1).toString().padLeft(2, '0')}',
       'sunday_attendance': culte || pointe, 'roll_call_present': pointe, 'call_made': appel,
       'visit_made': visite, 'spiritual_state': etat, 'score': score, 'notes': notes,
+      'cell_attendance': cellule, 'cell_roll_call_present': cellule, 'reported_by_name': par,
     };
 
 /// Konan Aya : suivi prolongé, arrivé à terme, présence sous le seuil.
@@ -71,6 +73,23 @@ final Map<String, dynamic> suiviJean = {
   'below_threshold': true, 'weeks': [_week(1, appel: true, etat: 'average', score: 5)],
 };
 
+/// N'Dri Rachel : ancienne membre suivie par la cellule de Fatou Cissé (semaine 2 en retard).
+final Map<String, dynamic> suiviRachel = {
+  'id': 104, 'name': 'SUV/2026/0104', 'reference': 'SUV/2026/0104',
+  'evangelist_id': false, 'evangelist_name': '', 'followed_by': 'cell',
+  'prayer_cell_id': 1, 'prayer_cell_name': 'Cellule Angré 8e tranche',
+  'followed_by_name': 'Cellule Angré 8e tranche', 'target_cell_id': 1, 'target_age_group_id': false,
+  'member_id': 19, 'member_name': "N'Dri Rachel", 'member_phone': '+225 07 00 19 19 19',
+  'person_profile': 'old_member', 'person_profile_label': 'Ancien membre',
+  'start_date': '2026-09-27', 'end_date': '2026-11-08', 'planned_end_date': '2026-11-08',
+  'state': 'in_progress', 'duration_weeks': 6, 'total_weeks': 6, 'duration_origin': 'church',
+  'current_week': 1, 'week_count': 1, 'progress': 16.7, 'average_score': 8.0,
+  'elapsed_weeks': 3, 'attendance_weeks': 1, 'attendance_rate': 33, 'attendance_threshold': 75,
+  'below_threshold': true, 'integration_justification': '',
+  'weeks': [_week(1, appel: true, visite: true, etat: 'average', score: 8, cellule: true,
+      notes: 'Contente de retrouver la cellule.', par: 'Fatou Cissé')],
+};
+
 Map<String, dynamic> _person(int id, String name, String first, String type,
         {String gender = 'female', String cell = '', String group = '', int age = 0,
         int weeks = 6, String origin = 'church', String label = '', bool toComplete = false,
@@ -95,12 +114,13 @@ final List<Map<String, dynamic>> demoMembers = [
   _person(12, 'Bamba', 'Ibrahim', 'new', gender: 'male', age: 19, weeks: 8, origin: 'event',
       label: '8 semaines — Événement d\'origine (Camp de Toussaint 2026)'),
   // Ancienne membre qu'on reprend en suivi : elle attend son évangéliste.
-  _person(13, 'Kouassi', 'Esther', 'new', age: 27, profile: 'old_member'),
+  _person(13, 'Kouassi', 'Esther', 'new', age: 27, profile: 'old_member', cell: 'Cellule Angré 8e tranche'),
   _person(14, 'Diallo', 'Moussa', 'interrupted', gender: 'male', age: 35),
   _person(15, 'Ouattara', 'Fanta', 'integrated', cell: 'Cellule Angré 8e tranche', group: 'Jeunes', age: 22),
   _person(16, 'Yapi', 'Serge', 'established', gender: 'male', cell: 'Cellule Angré 8e tranche', group: 'Mariés 25-35', age: 33),
   _person(17, 'Koffi', 'Jean', 'in_followup', gender: 'male', age: 28),
   _person(18, 'Aké', 'Nadège', 'new', toComplete: true),
+  _person(19, "N'Dri", 'Rachel', 'in_followup', cell: 'Cellule Angré 8e tranche', age: 38, profile: 'old_member'),
 ];
 
 final Map<String, dynamic> todoEvangelist = {
@@ -136,8 +156,10 @@ final Map<String, dynamic> todoManager = {
 };
 
 final Map<String, dynamic> todoCellLeader = {
-  'status': 'success', 'count': 1, 'summary': '1\u00a0contrôle(s) à faire',
+  'status': 'success', 'count': 2, 'summary': '1\u00a0rapport(s) en retard, 1\u00a0contrôle(s) à faire',
   'items': [
+    {'kind': 'report_overdue', 'followup_id': 104, 'member_id': 19, 'week_number': 2,
+     'title': "Rapport en retard : N'Dri Rachel, semaine 2", 'detail': 'À rédiger dans l\'application.'},
     {'kind': 'checkpoint_due', 'checkpoint_id': 7, 'member_id': 15, 'due_date': '2026-10-15',
      'title': 'Contrôle à 3 mois : Ouattara Fanta', 'detail': 'La personne vient-elle toujours ?'},
   ],
@@ -187,7 +209,7 @@ Map<String, dynamic> demoResponse(String path, Map<String, dynamic> params, Stri
   }
   if (ends('/followup/detail')) {
     final id = params['followup_id'];
-    return {'status': 'success', 'followup': id == 102 ? suiviMariam : suiviAya};
+    return {'status': 'success', 'followup': id == 104 ? suiviRachel : id == 102 ? suiviMariam : suiviAya};
   }
   if (ends('/followups/to_assign')) {
     return {
@@ -201,9 +223,13 @@ Map<String, dynamic> demoResponse(String path, Map<String, dynamic> params, Stri
     };
   }
   if (ends('/followups')) {
-    final all = [suiviAya, suiviMariam, suiviJean];
+    final all = [suiviAya, suiviMariam, suiviJean, suiviRachel];
     return {'status': 'success',
-            'followups': role == 'evangelist' ? all.where((f) => f['evangelist_id'] == 1).toList() : all};
+            'followups': switch (role) {
+              'evangelist' => all.where((f) => f['evangelist_id'] == 1).toList(),
+              'cell_leader' => all.where((f) => f['prayer_cell_id'] == 1).toList(),
+              _ => all,
+            }};
   }
   if (ends('/members')) {
     final type = params['member_type'];

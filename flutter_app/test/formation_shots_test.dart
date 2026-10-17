@@ -112,7 +112,17 @@ void main() {
         await t.drag(find.byType(Scrollable).first, const Offset(0, -260));
       }));
 
+  // Un ancien membre se confie à une cellule (la sienne proposée).
+  testWidgets('confier_cellule', (t) => shoot(t, name: 'confier_cellule', role: 'manager',
+      screen: FollowupFormScreen(initialMember: demoMembers.firstWhere((m) => m['id'] == 13))));
+
   // ─── Responsable de cellule ───────────────────────────────────────
+  testWidgets('cellule_suivis', (t) => shoot(t, name: 'cellule_suivis',
+      screen: const FollowupListScreen(), role: 'cell_leader'));
+  testWidgets('cellule_suivi', (t) => shoot(t, name: 'cellule_suivi', role: 'cell_leader',
+      screen: const FollowupDetailScreen(followupId: 104)));
+  testWidgets('cellule_rapport', (t) => shoot(t, name: 'cellule_rapport', role: 'cell_leader',
+      screen: const FollowupDetailScreen(followupId: 104), avantLaPhoto: (t) => tapText(t, 'Ajouter')));
   testWidgets('cellule_a_faire', (t) => shoot(t, name: 'cellule_a_faire',
       screen: const HomeScreen(), role: 'cell_leader'));
   testWidgets('controles', (t) => shoot(t, name: 'controles', screen: const CheckpointListScreen(), role: 'cell_leader'));

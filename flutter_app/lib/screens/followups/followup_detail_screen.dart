@@ -652,7 +652,7 @@ class _HeaderCard extends StatelessWidget {
                       const SizedBox(height: 4),
                       Text(
                         data['followed_by'] == 'cell'
-                            ? 'Suivi par la cellule : ${data['prayer_cell_name'] ?? ''}'
+                            ? 'Suivi par : ${data['prayer_cell_name'] ?? ''}'
                             : 'Évangéliste : ${data['evangelist_name'] ?? ''}',
                         style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                       ),

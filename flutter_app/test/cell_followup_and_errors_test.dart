@@ -175,7 +175,7 @@ void main() {
       '/followup/detail': {'status': 'success', 'followup': _cellFollowup},
       '/followup/week/save': {'status': 'success', 'week': {'id': 2, 'score': 8}},
     }, role: 'cell_leader', user: {'prayer_cell_id': 1});
-    expect(find.text('Suivi par la cellule : Cellule Riviera'), findsOneWidget);
+    expect(find.text('Suivi par : Cellule Riviera'), findsOneWidget);
     expect(find.text('Rédigé par Fatou Cissé'), findsOneWidget);
     expect(find.text('Cellule'), findsWidgets, reason: 'La présence en cellule de la semaine 1');
     await tester.tap(find.text('Ajouter'));
