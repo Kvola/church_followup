@@ -2,7 +2,7 @@ import re
 import unicodedata
 
 from odoo import api, fields, models, _
-from odoo.exceptions import ValidationError
+from odoo.exceptions import UserError, ValidationError
 from dateutil.relativedelta import relativedelta
 
 from .church_tools import (
@@ -173,6 +173,14 @@ class ChurchMember(models.Model):
         return dict(FOLLOWUP_ORIGINS).get(self.proposed_followup_origin, '')
 
     def write(self, vals):
+        if 'person_profile' in vals:
+            # Le profil décide de qui suit (évangéliste ou cellule) : il ne change pas
+            # sous un suivi en cours, qui deviendrait incohérent.
+            for rec in self.filtered(lambda m: m.person_profile != vals['person_profile']):
+                if rec.followup_ids.filtered(lambda f: f.state in ('in_progress', 'extended')):
+                    raise UserError(_(
+                        "Le profil de %s ne peut pas changer pendant son suivi : terminez ou "
+                        "interrompez d'abord le suivi en cours.") % rec.display_name_custom)
         # Une durée saisie à la main par un responsable devient « son choix ».
         if 'planned_followup_weeks' in vals and 'planned_followup_origin' not in vals:
             vals = dict(vals, planned_followup_origin='manual' if vals['planned_followup_weeks'] else False)

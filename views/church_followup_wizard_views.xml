@@ -8,7 +8,16 @@
                 <group>
                     <field name="member_ids" widget="many2many_tags"/>
                     <field name="church_id" invisible="1"/>
-                    <field name="evangelist_id" options="{'no_create': True}"/>
+                    <field name="has_new" invisible="1"/>
+                    <field name="has_old" invisible="1"/>
+                    <field name="evangelist_id" options="{'no_create': True}" invisible="not has_new"
+                           required="has_new"/>
+                    <field name="prayer_cell_id" options="{'no_create': True}" invisible="not has_old"
+                           placeholder="La cellule de chacun"/>
+                    <div colspan="2" class="text-muted" invisible="not has_old or not has_new">
+                        Les nouvelles personnes sont confiées à l'évangéliste, les anciens membres à
+                        une cellule de prière.
+                    </div>
                     <field name="duration_weeks"/>
                 </group>
                 <group string="Durées proposées" invisible="not proposal_summary">

@@ -16,7 +16,10 @@ class TestImportPeople(ImportCase):
         cls.Member = cls.env['church.member']
         cls.ev = cls.env['church.evangelist'].create({
             'name': 'Awa Koné', 'phone': '+225 07 00 01 01 01', 'church_id': cls.church.id})
-        cls.cell = cls.env['church.prayer.cell'].create({'name': 'Cellule Riviera', 'church_id': cls.church.id})
+        cls.cell = cls.env['church.prayer.cell'].create({
+            'name': 'Cellule Riviera', 'church_id': cls.church.id,
+            'leader_name': 'Fatou', 'leader_phone': '+225 07 00 05 05 05'})
+        cls.cell.action_create_leader_account()
 
     def _member(self, name, first_name, **vals):
         return self.Member.create(dict({'name': name, 'first_name': first_name, 'church_id': self.church.id}, **vals))
@@ -27,7 +30,7 @@ class TestImportPeople(ImportCase):
         old = self._member('YAO', 'Marc', member_type='old_member')
         self.assertEqual(old.person_profile, 'old_member')
         followup = self.env['church.followup'].create({
-            'church_id': self.church.id, 'evangelist_id': self.ev.id, 'member_id': old.id})
+            'church_id': self.church.id, 'prayer_cell_id': self.cell.id, 'member_id': old.id})
         self.assertEqual(old.member_type, 'in_followup', "Le statut suit le parcours…")
         self.assertEqual(old.person_profile, 'old_member', "… le profil, non")
         self.assertEqual(followup.person_profile, 'old_member')

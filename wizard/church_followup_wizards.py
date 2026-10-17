@@ -5,18 +5,26 @@ from ..models.church_tools import ABANDON_REASONS, MAX_PROPOSED_WEEKS
 
 
 class ChurchFollowupAssign(models.TransientModel):
-    """Confie une ou plusieurs nouvelles personnes à un évangéliste.
+    """Ouvre le suivi d'une ou plusieurs personnes.
 
-    Sans durée saisie, chacune garde la durée proposée pour elle (événement
-    d'origine, sinon réglage de l'église).
+    Une nouvelle personne est confiée à l'évangéliste choisi ; un ancien membre,
+    à la cellule choisie, sinon à sa propre cellule. Sans durée saisie, chacune
+    garde la durée proposée pour elle (événement d'origine, sinon réglage de
+    l'église).
     """
     _name = 'church.followup.assign'
     _description = 'Ouvrir un suivi'
 
     member_ids = fields.Many2many('church.member', string='Personnes', required=True)
     church_id = fields.Many2one('equipment.church', compute='_compute_church_id')
-    evangelist_id = fields.Many2one('church.evangelist', string='Évangéliste', required=True,
-                                    domain="[('church_id', '=', church_id)]")
+    evangelist_id = fields.Many2one('church.evangelist', string='Évangéliste',
+                                    domain="[('church_id', '=', church_id)]",
+                                    help="Pour les nouvelles personnes.")
+    prayer_cell_id = fields.Many2one('church.prayer.cell', string='Cellule de prière',
+                                     domain="[('church_id', '=', church_id)]",
+                                     help="Pour les anciens membres. Vide : la cellule de chacun.")
+    has_new = fields.Boolean(compute='_compute_church_id')
+    has_old = fields.Boolean(compute='_compute_church_id')
     duration_weeks = fields.Integer(
         string='Durée (semaines)',
         help="Laisser vide pour appliquer à chacun la durée proposée pour lui.",
@@ -28,6 +36,8 @@ class ChurchFollowupAssign(models.TransientModel):
         for rec in self:
             churches = rec.member_ids.church_id
             rec.church_id = churches if len(churches) == 1 else False
+            rec.has_old = any(m.person_profile == 'old_member' for m in rec.member_ids)
+            rec.has_new = any(m.person_profile != 'old_member' for m in rec.member_ids)
             rec.proposal_summary = '\n'.join(
                 '%s : %s' % (m.display_name, m.proposed_followup_label) for m in rec.member_ids[:20])
 
@@ -45,13 +55,28 @@ class ChurchFollowupAssign(models.TransientModel):
             raise UserError(_('Choisissez des personnes d\'une même église.'))
         if self.duration_weeks and not 1 <= self.duration_weeks <= MAX_PROPOSED_WEEKS:
             raise UserError(_('La durée va de 1 à %s semaines.') % MAX_PROPOSED_WEEKS)
-        vals_list = []
+        vals_list, missing = [], []
         for member in self.member_ids:
-            vals = {'church_id': member.church_id.id, 'evangelist_id': self.evangelist_id.id,
-                    'member_id': member.id}
+            vals = {'church_id': member.church_id.id, 'member_id': member.id}
+            if member.person_profile == 'old_member':
+                cell = self.prayer_cell_id or member.prayer_cell_id
+                if not cell:
+                    missing.append(_("%s (ancien membre sans cellule : choisissez une cellule)")
+                                   % member.display_name)
+                    continue
+                vals['prayer_cell_id'] = cell.id
+            else:
+                if not self.evangelist_id:
+                    missing.append(_("%s (nouvelle personne : choisissez un évangéliste)")
+                                   % member.display_name)
+                    continue
+                vals['evangelist_id'] = self.evangelist_id.id
             if self.duration_weeks:
                 vals['duration_weeks'] = self.duration_weeks
             vals_list.append(vals)
+        if missing:
+            raise UserError(_("Personne n'est confié tant que chacun n'a pas qui le suit :\n%s")
+                            % '\n'.join(missing))
         followups = self.env['church.followup'].create(vals_list)
         if len(followups) == 1:
             return {'type': 'ir.actions.act_window', 'res_model': 'church.followup',

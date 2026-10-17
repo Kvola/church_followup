@@ -87,7 +87,7 @@
                                     <field name="start_date"/>
                                     <field name="end_date"/>
                                     <field name="duration_weeks"/>
-                                    <field name="evangelist_id"/>
+                                    <field name="followed_by_name" string="Suivi par"/>
                                     <field name="state" widget="badge"/>
                                     <field name="abandon_reason" optional="show"/>
                                     <field name="abandon_note" optional="hide"/>

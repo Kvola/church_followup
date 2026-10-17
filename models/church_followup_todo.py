@@ -113,7 +113,7 @@ class ChurchMobileUser(models.Model):
         late = {}
         for f in followups:
             overdue = len(f._overdue_report_weeks(today))
-            if overdue:
+            if overdue and f.evangelist_id:
                 late[f.evangelist_id] = late.get(f.evangelist_id, 0) + overdue
         for evangelist, count in sorted(late.items(), key=lambda kv: -kv[1]):
             items.append({
